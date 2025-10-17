@@ -1,0 +1,182 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd backend && npm ci --legacy-peer-deps
+        
+    - name: Run linting
+      run: |
+        npm run lint || true
+        cd backend && npm run lint || true
+        
+    - name: Run frontend tests
+      run: |
+        npm run test:ci
+        
+    - name: Run backend unit tests
+      run: |
+        cd backend && npm run test:ci
+        
+    - name: Run backend integration tests
+      run: |
+        cd backend && npm test -- --testPathPattern=integration --coverage --watchAll=false --passWithNoTests
+        
+    - name: Run backend performance tests
+      run: |
+        cd backend && npm test -- --testPathPattern=performance --coverage --watchAll=false --passWithNoTests
+        
+    - name: Run backend security tests
+      run: |
+        cd backend && npm test -- --testPathPattern=security --coverage --watchAll=false --passWithNoTests
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage/lcov.info,./backend/coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+
+  build-frontend:
+    name: Build React Native App
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Build APK
+      run: |
+        chmod +x build-apk.sh
+        ./build-apk.sh
+        
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: carbon-intelligence-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+
+  build-backend:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: cd backend && npm ci --legacy-peer-deps
+      
+    - name: Build Docker image
+      run: |
+        cd backend
+        # Install dependencies first
+        npm ci --legacy-peer-deps
+        docker build -t carbon-intelligence-backend:${{ github.sha }} .
+        
+    - name: Save Docker image
+      run: |
+        docker save carbon-intelligence-backend:${{ github.sha }} | gzip > carbon-intelligence-backend.tar.gz
+        
+    - name: Upload Docker image artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: carbon-intelligence-backend-image
+        path: backend/carbon-intelligence-backend.tar.gz
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Deploy to staging
+      run: |
+        chmod +x scripts/deploy-staging.sh
+        ./scripts/deploy-staging.sh
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Deploy to production
+      run: |
+        chmod +x scripts/deploy-production.sh
+        ./scripts/deploy-production.sh

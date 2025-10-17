@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production",
+    "Description": "Environment name (development, staging, production)"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.medium",
+    "Description": "EC2 instance type for the application servers"
+  },
+  {
+    "ParameterKey": "DatabaseInstanceClass",
+    "ParameterValue": "db.t3.medium",
+    "Description": "RDS instance class for the database"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "carbon-intelligence.example.com",
+    "Description": "Domain name for the application (update this with your actual domain)"
+  }
+]
