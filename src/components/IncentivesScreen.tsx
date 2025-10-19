@@ -74,7 +74,7 @@ const IncentivesScreen: React.FC = () => {
     nextLevelPoints: 2000,
     currentLevelPoints: 1000,
     achievementsUnlocked: 8,
-    totalAchievements: 15,
+    totalAchievements: 19,
     streak: 7,
     carbonSaved: 45.2
   });
@@ -129,6 +129,36 @@ const IncentivesScreen: React.FC = () => {
       completed: false,
       progress: 1,
       maxProgress: 3
+    },
+    {
+      id: '6',
+      title: 'Green Finance Pioneer',
+      description: 'Apply for 2 green finance schemes or loans',
+      points: 300,
+      icon: '💰',
+      completed: false,
+      progress: 0,
+      maxProgress: 2
+    },
+    {
+      id: '7',
+      title: 'ESG Investor',
+      description: 'Complete ESG compliance assessment',
+      points: 250,
+      icon: '📈',
+      completed: false,
+      progress: 0,
+      maxProgress: 1
+    },
+    {
+      id: '8',
+      title: 'Carbon Credit Trader',
+      description: 'Participate in carbon credit trading',
+      points: 400,
+      icon: '🌍',
+      completed: false,
+      progress: 0,
+      maxProgress: 1
     }
   ]);
 
@@ -171,6 +201,46 @@ const IncentivesScreen: React.FC = () => {
       description: '1-hour consultation with sustainability expert',
       cost: 2000,
       category: 'Services',
+      available: false
+    },
+    {
+      id: '6',
+      title: 'Green Loan Application Support',
+      description: 'Assistance with green finance loan applications',
+      cost: 800,
+      category: 'Green Finance',
+      available: true
+    },
+    {
+      id: '7',
+      title: 'ESG Reporting Template',
+      description: 'Professional ESG reporting template and guidance',
+      cost: 1200,
+      category: 'Green Finance',
+      available: true
+    },
+    {
+      id: '8',
+      title: 'Carbon Credit Marketplace Access',
+      description: 'Access to verified carbon credit trading platform',
+      cost: 1500,
+      category: 'Green Finance',
+      available: true
+    },
+    {
+      id: '9',
+      title: 'Green Bond Issuance Guide',
+      description: 'Complete guide for issuing green bonds',
+      cost: 2500,
+      category: 'Green Finance',
+      available: true
+    },
+    {
+      id: '10',
+      title: 'Sustainability Finance Workshop',
+      description: '2-day workshop on sustainable finance strategies',
+      cost: 3000,
+      category: 'Green Finance',
       available: false
     }
   ]);
