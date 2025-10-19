@@ -453,4 +453,380 @@ router.post('/process-data', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/ai-agents/multi-agent-workflow
+// @desc    Execute multi-agent workflow
+// @access  Private
+router.post('/multi-agent-workflow', auth, async (req, res) => {
+  try {
+    const { workflowId, msmeId, triggerData } = req.body;
+
+    if (!workflowId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Workflow ID is required'
+      });
+    }
+
+    const execution = await aiAgentService.executeMultiAgentWorkflow(
+      workflowId, 
+      msmeId || req.user.msmeId, 
+      triggerData || {}
+    );
+
+    res.json({
+      success: true,
+      message: 'Multi-agent workflow execution started',
+      data: {
+        executionId: execution.executionId,
+        status: execution.status,
+        steps: execution.steps.length,
+        parallelGroups: execution.coordination.parallelGroups.length
+      }
+    });
+  } catch (error) {
+    logger.error('Multi-agent workflow execution error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/ai-agents/multi-agent-status
+// @desc    Get multi-agent system status
+// @access  Private
+router.get('/multi-agent-status', auth, async (req, res) => {
+  try {
+    const status = await aiAgentService.getMultiAgentStatus();
+
+    res.json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    logger.error('Get multi-agent status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai-agents/coordinate-agents
+// @desc    Coordinate multiple agents for a specific task
+// @access  Private
+router.post('/coordinate-agents', auth, async (req, res) => {
+  try {
+    const { agentIds, taskType, input, coordinationMode = 'parallel' } = req.body;
+
+    if (!agentIds || !Array.isArray(agentIds) || agentIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Agent IDs array is required'
+      });
+    }
+
+    if (!taskType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Task type is required'
+      });
+    }
+
+    const coordinationId = `coord_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tasks = [];
+
+    // Create tasks for each agent
+    for (const agentId of agentIds) {
+      const agent = await AIAgent.findById(agentId);
+      if (!agent || !agent.isActive) {
+        continue; // Skip inactive agents
+      }
+
+      const task = await aiAgentService.createTask({
+        agentId,
+        msmeId: req.user.msmeId,
+        taskType,
+        input: {
+          ...input,
+          coordinationId,
+          coordinationMode,
+          participatingAgents: agentIds
+        },
+        priority: 'high',
+        metadata: {
+          coordinationId,
+          coordinationMode,
+          participatingAgents: agentIds
+        }
+      });
+
+      tasks.push(task);
+    }
+
+    // Execute coordination based on mode
+    let results;
+    if (coordinationMode === 'parallel') {
+      results = await aiAgentService.executeParallelCoordination(tasks);
+    } else if (coordinationMode === 'sequential') {
+      results = await aiAgentService.executeSequentialCoordination(tasks);
+    } else if (coordinationMode === 'consensus') {
+      results = await aiAgentService.executeConsensusCoordination(tasks);
+    } else {
+      throw new Error(`Unknown coordination mode: ${coordinationMode}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'Agent coordination completed',
+      data: {
+        coordinationId,
+        mode: coordinationMode,
+        participatingAgents: agentIds,
+        tasks: tasks.map(t => ({
+          taskId: t.taskId,
+          agentId: t.agentId,
+          status: t.status
+        })),
+        results
+      }
+    });
+  } catch (error) {
+    logger.error('Agent coordination error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai-agents/balance-load
+// @desc    Balance load across agents
+// @access  Private (Admin only)
+router.post('/balance-load', auth, async (req, res) => {
+  try {
+    await aiAgentService.balanceAgentLoad();
+
+    res.json({
+      success: true,
+      message: 'Agent load balancing completed'
+    });
+  } catch (error) {
+    logger.error('Load balancing error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/ai-agents/coordination/:coordinationId
+// @desc    Get coordination results
+// @access  Private
+router.get('/coordination/:coordinationId', auth, async (req, res) => {
+  try {
+    const { coordinationId } = req.params;
+
+    // Find all tasks with this coordination ID
+    const tasks = await AITask.find({
+      'metadata.coordinationId': coordinationId,
+      msmeId: req.user.msmeId
+    }).populate('agentId', 'name type');
+
+    const results = {
+      coordinationId,
+      totalTasks: tasks.length,
+      completedTasks: tasks.filter(t => t.status === 'completed').length,
+      failedTasks: tasks.filter(t => t.status === 'failed').length,
+      tasks: tasks.map(task => ({
+        taskId: task.taskId,
+        agentName: task.agentId?.name,
+        agentType: task.agentId?.type,
+        status: task.status,
+        output: task.output,
+        error: task.error,
+        duration: task.metadata?.actualDuration
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    logger.error('Get coordination results error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/ai-agents/dashboard-metrics
+// @desc    Get dashboard metrics for multi-agent system
+// @access  Private
+router.get('/dashboard-metrics', auth, async (req, res) => {
+  try {
+    const { timeRange = '24h' } = req.query;
+    
+    // Calculate time range
+    const now = new Date();
+    let startTime;
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    // Get task metrics
+    const taskMetrics = await AITask.aggregate([
+      {
+        $match: {
+          msmeId: req.user.msmeId,
+          createdAt: { $gte: startTime }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            hour: { $hour: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          avgDuration: { $avg: '$metadata.actualDuration' }
+        }
+      },
+      {
+        $sort: { '_id.hour': 1 }
+      }
+    ]);
+
+    // Get agent performance metrics
+    const agentMetrics = await AITask.aggregate([
+      {
+        $match: {
+          msmeId: req.user.msmeId,
+          createdAt: { $gte: startTime }
+        }
+      },
+      {
+        $group: {
+          _id: '$agentId',
+          totalTasks: { $sum: 1 },
+          completedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          failedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+          },
+          avgDuration: { $avg: '$metadata.actualDuration' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'aigents',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'agent'
+        }
+      },
+      {
+        $unwind: '$agent'
+      },
+      {
+        $project: {
+          agentName: '$agent.name',
+          agentType: '$agent.type',
+          totalTasks: 1,
+          completedTasks: 1,
+          failedTasks: 1,
+          successRate: {
+            $multiply: [
+              { $divide: ['$completedTasks', '$totalTasks'] },
+              100
+            ]
+          },
+          avgDuration: 1
+        }
+      }
+    ]);
+
+    // Get hourly metrics for charts
+    const hourlyMetrics = await AITask.aggregate([
+      {
+        $match: {
+          msmeId: req.user.msmeId,
+          createdAt: { $gte: startTime }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            hour: { $hour: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          activeTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
+          },
+          completedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          failedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+          },
+          avgResponseTime: { $avg: '$metadata.actualDuration' }
+        }
+      },
+      {
+        $sort: { '_id.day': 1, '_id.hour': 1 }
+      }
+    ]);
+
+    const metrics = {
+      timeRange,
+      taskMetrics,
+      agentMetrics,
+      hourlyMetrics,
+      summary: {
+        totalTasks: taskMetrics.reduce((sum, m) => sum + m.count, 0),
+        completedTasks: taskMetrics
+          .filter(m => m._id.status === 'completed')
+          .reduce((sum, m) => sum + m.count, 0),
+        failedTasks: taskMetrics
+          .filter(m => m._id.status === 'failed')
+          .reduce((sum, m) => sum + m.count, 0),
+        averageResponseTime: taskMetrics
+          .filter(m => m.avgDuration)
+          .reduce((sum, m) => sum + m.avgDuration, 0) / 
+          taskMetrics.filter(m => m.avgDuration).length || 0
+      }
+    };
+
+    res.json({
+      success: true,
+      data: metrics
+    });
+  } catch (error) {
+    logger.error('Get dashboard metrics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

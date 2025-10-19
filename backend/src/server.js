@@ -22,6 +22,7 @@ const incentivesRoutes = require('./routes/incentives');
 const reportingRoutes = require('./routes/reporting');
 const aiAgentRoutes = require('./routes/ai-agents');
 const aiWorkflowRoutes = require('./routes/ai-workflows');
+const multiAgentWorkflowRoutes = require('./routes/multi-agent-workflows');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -84,6 +85,7 @@ app.use('/api/incentives', incentivesRoutes);
 app.use('/api/reporting', reportingRoutes);
 app.use('/api/ai-agents', aiAgentRoutes);
 app.use('/api/ai-workflows', aiWorkflowRoutes);
+app.use('/api/multi-agent-workflows', multiAgentWorkflowRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -8,6 +8,8 @@ import CarbonFootprint from './components/CarbonFootprint';
 import Recommendations from './components/Recommendations';
 import IncentivesScreen from './components/IncentivesScreen';
 import ReportingScreen from './components/ReportingScreen';
+import MultiAgentManagement from './components/MultiAgentManagement';
+import MultiAgentDashboard from './components/MultiAgentDashboard';
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/incentives" element={<IncentivesScreen />} />
           <Route path="/reporting" element={<ReportingScreen />} />
+          <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
+          <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
         </Routes>
       </Container>
     </Box>

@@ -11,6 +11,10 @@ class AIAgentService {
     this.isProcessing = false;
     this.maxConcurrentTasks = 5;
     this.currentTasks = 0;
+    this.multiAgentWorkflows = new Map();
+    this.agentCoordination = new Map();
+    this.parallelExecutionQueue = [];
+    this.agentCommunication = new Map();
   }
 
   async initialize() {
@@ -111,6 +115,241 @@ class AIAgentService {
     } catch (error) {
       logger.error('Failed to execute workflow:', error);
       throw error;
+    }
+  }
+
+  // Multi-Agent Orchestration Methods
+  async executeMultiAgentWorkflow(workflowId, msmeId, triggerData = {}) {
+    try {
+      const workflow = await AIWorkflow.findById(workflowId);
+      if (!workflow) {
+        throw new Error('Workflow not found');
+      }
+
+      const executionId = this.generateExecutionId();
+      const execution = new AIExecution({
+        executionId,
+        workflowId,
+        msmeId,
+        trigger: {
+          type: workflow.trigger.type,
+          source: 'multi_agent',
+          data: triggerData
+        },
+        steps: workflow.steps.map(step => ({
+          stepId: step.stepId,
+          agentId: step.agentId,
+          status: 'pending',
+          executionMode: step.executionMode || 'sequential'
+        })),
+        coordination: {
+          mode: 'multi_agent',
+          parallelGroups: this.identifyParallelGroups(workflow.steps),
+          dependencies: this.buildDependencyGraph(workflow.steps)
+        }
+      });
+
+      await execution.save();
+
+      // Execute multi-agent workflow
+      await this.executeMultiAgentWorkflowSteps(execution);
+
+      return execution;
+    } catch (error) {
+      logger.error('Failed to execute multi-agent workflow:', error);
+      throw error;
+    }
+  }
+
+  async executeMultiAgentWorkflowSteps(execution) {
+    try {
+      const workflow = await AIWorkflow.findById(execution.workflowId);
+      const { parallelGroups, dependencies } = execution.coordination;
+
+      // Execute parallel groups sequentially, but steps within each group in parallel
+      for (const group of parallelGroups) {
+        const groupPromises = group.map(stepId => 
+          this.executeMultiAgentStep(execution, stepId, dependencies)
+        );
+        
+        await Promise.allSettled(groupPromises);
+      }
+
+      // Mark execution as completed
+      execution.status = 'completed';
+      execution.completedAt = new Date();
+      execution.duration = execution.completedAt - execution.startedAt;
+      await execution.save();
+
+      logger.info(`Multi-agent workflow execution completed: ${execution.executionId}`);
+    } catch (error) {
+      execution.status = 'failed';
+      execution.error = {
+        message: error.message,
+        code: 'MULTI_AGENT_EXECUTION_ERROR',
+        timestamp: new Date()
+      };
+      await execution.save();
+      
+      logger.error('Multi-agent workflow execution failed:', error);
+      throw error;
+    }
+  }
+
+  async executeMultiAgentStep(execution, stepId, dependencies) {
+    try {
+      const step = execution.steps.find(s => s.stepId === stepId);
+      if (!step || step.status !== 'pending') {
+        return;
+      }
+
+      // Check if dependencies are satisfied
+      if (!this.areDependenciesSatisfied(stepId, dependencies, execution)) {
+        return;
+      }
+
+      step.status = 'running';
+      step.startedAt = new Date();
+      await execution.save();
+
+      const workflow = await AIWorkflow.findById(execution.workflowId);
+      const workflowStep = workflow.steps.find(s => s.stepId === stepId);
+
+      // Create task for the step
+      const task = await this.createTask({
+        agentId: step.agentId,
+        msmeId: execution.msmeId,
+        taskType: workflowStep.taskType,
+        input: execution.trigger.data,
+        parameters: workflowStep.parameters,
+        metadata: {
+          executionId: execution.executionId,
+          stepId: step.stepId,
+          coordinationMode: 'multi_agent'
+        }
+      });
+
+      step.taskId = task._id;
+      await execution.save();
+
+      // Execute the task with multi-agent coordination
+      const result = await this.executeTaskWithCoordination(task, execution);
+
+      step.status = 'completed';
+      step.completedAt = new Date();
+      step.duration = step.completedAt - step.startedAt;
+      step.output = result;
+      await execution.save();
+
+      // Notify dependent steps
+      await this.notifyDependentSteps(stepId, dependencies, execution);
+
+      logger.info(`Multi-agent step completed: ${stepId} in ${step.duration}ms`);
+    } catch (error) {
+      const step = execution.steps.find(s => s.stepId === stepId);
+      if (step) {
+        step.status = 'failed';
+        step.error = {
+          message: error.message,
+          code: 'MULTI_AGENT_STEP_ERROR'
+        };
+        await execution.save();
+      }
+      
+      logger.error(`Multi-agent step failed: ${stepId}`, error);
+      throw error;
+    }
+  }
+
+  async executeTaskWithCoordination(task, execution) {
+    try {
+      const agent = this.agents.get(task.agentId.toString());
+      if (!agent) {
+        throw new Error(`Agent not found: ${task.agentId}`);
+      }
+
+      task.status = 'in_progress';
+      task.startedAt = new Date();
+      await task.save();
+
+      // Check for inter-agent communication requirements
+      const coordinationData = await this.gatherCoordinationData(task, execution);
+      
+      // Route to appropriate agent handler with coordination data
+      const result = await this.routeToAgentWithCoordination(agent, task, coordinationData);
+
+      task.status = 'completed';
+      task.completedAt = new Date();
+      task.output = result;
+      task.metadata.actualDuration = task.completedAt - task.startedAt;
+      await task.save();
+
+      // Update agent performance
+      await this.updateAgentPerformance(agent.id, task);
+
+      // Store results for other agents
+      await this.storeCoordinationResults(task, result, execution);
+
+      return result;
+    } catch (error) {
+      task.status = 'failed';
+      task.error = {
+        message: error.message,
+        code: 'COORDINATED_TASK_ERROR',
+        stack: error.stack,
+        timestamp: new Date()
+      };
+      await task.save();
+
+      logger.error(`Coordinated task failed: ${task.taskId}`, error);
+      throw error;
+    }
+  }
+
+  async routeToAgentWithCoordination(agent, task, coordinationData) {
+    const startTime = Date.now();
+
+    try {
+      // Merge coordination data with task input
+      const enhancedInput = {
+        ...task.input,
+        coordinationData,
+        multiAgentContext: {
+          executionId: task.metadata.executionId,
+          stepId: task.metadata.stepId,
+          coordinationMode: task.metadata.coordinationMode
+        }
+      };
+
+      const enhancedTask = { ...task, input: enhancedInput };
+
+      switch (agent.type) {
+        case 'carbon_analyzer':
+          return await this.carbonAnalyzerAgent(enhancedTask);
+        case 'recommendation_engine':
+          return await this.recommendationEngineAgent(enhancedTask);
+        case 'data_processor':
+          return await this.dataProcessorAgent(enhancedTask);
+        case 'anomaly_detector':
+          return await this.anomalyDetectorAgent(enhancedTask);
+        case 'trend_analyzer':
+          return await this.trendAnalyzerAgent(enhancedTask);
+        case 'compliance_monitor':
+          return await this.complianceMonitorAgent(enhancedTask);
+        case 'optimization_advisor':
+          return await this.optimizationAdvisorAgent(enhancedTask);
+        case 'report_generator':
+          return await this.reportGeneratorAgent(enhancedTask);
+        default:
+          throw new Error(`Unknown agent type: ${agent.type}`);
+      }
+    } finally {
+      const duration = Date.now() - startTime;
+      task.results = {
+        ...task.results,
+        processingTime: duration,
+        coordinationTime: duration - (task.results?.processingTime || 0)
+      };
     }
   }
 
@@ -736,6 +975,425 @@ class AIAgentService {
 
   generateRecommendationsSection(recommendations) {
     return {};
+  }
+
+  // Multi-Agent Coordination Helper Methods
+  identifyParallelGroups(steps) {
+    const groups = [];
+    const processed = new Set();
+    
+    for (const step of steps) {
+      if (processed.has(step.stepId)) continue;
+      
+      const group = [step.stepId];
+      processed.add(step.stepId);
+      
+      // Find steps that can run in parallel (no dependencies between them)
+      for (const otherStep of steps) {
+        if (processed.has(otherStep.stepId)) continue;
+        
+        if (this.canRunInParallel(step, otherStep, steps)) {
+          group.push(otherStep.stepId);
+          processed.add(otherStep.stepId);
+        }
+      }
+      
+      groups.push(group);
+    }
+    
+    return groups;
+  }
+
+  canRunInParallel(step1, step2, allSteps) {
+    // Check if step1 depends on step2 or vice versa
+    const step1Deps = step1.dependencies || [];
+    const step2Deps = step2.dependencies || [];
+    
+    return !step1Deps.includes(step2.stepId) && !step2Deps.includes(step1.stepId);
+  }
+
+  buildDependencyGraph(steps) {
+    const graph = new Map();
+    
+    for (const step of steps) {
+      graph.set(step.stepId, {
+        dependencies: step.dependencies || [],
+        dependents: []
+      });
+    }
+    
+    // Build reverse dependencies
+    for (const step of steps) {
+      const deps = step.dependencies || [];
+      for (const dep of deps) {
+        if (graph.has(dep)) {
+          graph.get(dep).dependents.push(step.stepId);
+        }
+      }
+    }
+    
+    return graph;
+  }
+
+  areDependenciesSatisfied(stepId, dependencies, execution) {
+    const stepDeps = dependencies.get(stepId)?.dependencies || [];
+    
+    for (const dep of stepDeps) {
+      const depStep = execution.steps.find(s => s.stepId === dep);
+      if (!depStep || depStep.status !== 'completed') {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  async notifyDependentSteps(completedStepId, dependencies, execution) {
+    const dependents = dependencies.get(completedStepId)?.dependents || [];
+    
+    for (const dependentId of dependents) {
+      const dependentStep = execution.steps.find(s => s.stepId === dependentId);
+      if (dependentStep && dependentStep.status === 'pending') {
+        // Check if all dependencies are now satisfied
+        if (this.areDependenciesSatisfied(dependentId, dependencies, execution)) {
+          // Trigger execution of dependent step
+          await this.executeMultiAgentStep(execution, dependentId, dependencies);
+        }
+      }
+    }
+  }
+
+  async gatherCoordinationData(task, execution) {
+    const coordinationData = {
+      previousResults: {},
+      sharedContext: {},
+      agentStates: {}
+    };
+
+    // Gather results from previously completed steps
+    const completedSteps = execution.steps.filter(s => s.status === 'completed');
+    for (const step of completedSteps) {
+      if (step.output) {
+        coordinationData.previousResults[step.stepId] = step.output;
+      }
+    }
+
+    // Gather shared context from all agents
+    for (const [agentId, agent] of this.agents) {
+      if (this.agentCommunication.has(agentId)) {
+        coordinationData.agentStates[agentId] = this.agentCommunication.get(agentId);
+      }
+    }
+
+    return coordinationData;
+  }
+
+  async storeCoordinationResults(task, result, execution) {
+    const agentId = task.agentId.toString();
+    const stepId = task.metadata.stepId;
+    
+    // Store results for inter-agent communication
+    if (!this.agentCommunication.has(agentId)) {
+      this.agentCommunication.set(agentId, {});
+    }
+    
+    const agentComm = this.agentCommunication.get(agentId);
+    agentComm[stepId] = {
+      result,
+      timestamp: new Date(),
+      executionId: execution.executionId
+    };
+
+    // Store in execution context for dependent steps
+    execution.coordination = execution.coordination || {};
+    execution.coordination.results = execution.coordination.results || {};
+    execution.coordination.results[stepId] = result;
+    
+    await execution.save();
+  }
+
+  // Multi-Agent Status and Monitoring
+  async getMultiAgentStatus() {
+    const status = {
+      totalAgents: this.agents.size,
+      activeAgents: 0,
+      processingTasks: this.currentTasks,
+      queuedTasks: this.taskQueue.length,
+      parallelExecutions: this.parallelExecutionQueue.length,
+      agentStates: {},
+      coordinationStatus: {}
+    };
+
+    for (const [agentId, agent] of this.agents) {
+      if (agent.status === 'active') {
+        status.activeAgents++;
+      }
+      
+      status.agentStates[agentId] = {
+        name: agent.name,
+        type: agent.type,
+        status: agent.status,
+        performance: agent.performance,
+        lastActivity: agent.performance?.lastActivity
+      };
+    }
+
+    // Coordination status
+    for (const [agentId, commData] of this.agentCommunication) {
+      status.coordinationStatus[agentId] = {
+        lastCommunication: Math.max(...Object.values(commData).map(d => d.timestamp.getTime())),
+        activeChannels: Object.keys(commData).length
+      };
+    }
+
+    return status;
+  }
+
+  // Agent Load Balancing
+  async balanceAgentLoad() {
+    const agentLoads = new Map();
+    
+    // Calculate current load for each agent
+    for (const [agentId, agent] of this.agents) {
+      const activeTasks = this.taskQueue.filter(t => t.agentId.toString() === agentId).length;
+      const processingTasks = this.currentTasks;
+      
+      agentLoads.set(agentId, {
+        queued: activeTasks,
+        processing: processingTasks,
+        total: activeTasks + processingTasks,
+        capacity: agent.performance?.maxConcurrentTasks || 5
+      });
+    }
+
+    // Redistribute tasks if needed
+    const overloadedAgents = Array.from(agentLoads.entries())
+      .filter(([_, load]) => load.total > load.capacity);
+    
+    const underloadedAgents = Array.from(agentLoads.entries())
+      .filter(([_, load]) => load.total < load.capacity * 0.5);
+
+    if (overloadedAgents.length > 0 && underloadedAgents.length > 0) {
+      await this.redistributeTasks(overloadedAgents, underloadedAgents);
+    }
+  }
+
+  async redistributeTasks(overloadedAgents, underloadedAgents) {
+    // Simple round-robin redistribution
+    for (const [overloadedId, overloadedLoad] of overloadedAgents) {
+      const excessTasks = overloadedLoad.total - overloadedLoad.capacity;
+      const tasksToMove = this.taskQueue
+        .filter(t => t.agentId.toString() === overloadedId)
+        .slice(0, excessTasks);
+
+      for (let i = 0; i < tasksToMove.length && i < underloadedAgents.length; i++) {
+        const [underloadedId] = underloadedAgents[i];
+        const task = tasksToMove[i];
+        
+        // Reassign task to underloaded agent
+        task.agentId = underloadedId;
+        task.metadata.reassigned = true;
+        task.metadata.originalAgent = overloadedId;
+        
+        logger.info(`Redistributed task ${task.taskId} from agent ${overloadedId} to ${underloadedId}`);
+      }
+    }
+  }
+
+  // Agent Coordination Methods
+  async executeParallelCoordination(tasks) {
+    try {
+      logger.info(`Starting parallel coordination for ${tasks.length} tasks`);
+      
+      const promises = tasks.map(task => this.executeTask(task));
+      const results = await Promise.allSettled(promises);
+      
+      const coordinationResults = {
+        mode: 'parallel',
+        totalTasks: tasks.length,
+        successful: results.filter(r => r.status === 'fulfilled').length,
+        failed: results.filter(r => r.status === 'rejected').length,
+        results: results.map((result, index) => ({
+          taskId: tasks[index].taskId,
+          agentId: tasks[index].agentId,
+          status: result.status,
+          output: result.status === 'fulfilled' ? result.value : null,
+          error: result.status === 'rejected' ? result.reason.message : null
+        }))
+      };
+
+      logger.info(`Parallel coordination completed: ${coordinationResults.successful}/${coordinationResults.totalTasks} successful`);
+      return coordinationResults;
+    } catch (error) {
+      logger.error('Parallel coordination failed:', error);
+      throw error;
+    }
+  }
+
+  async executeSequentialCoordination(tasks) {
+    try {
+      logger.info(`Starting sequential coordination for ${tasks.length} tasks`);
+      
+      const results = [];
+      let previousOutput = null;
+      
+      for (const task of tasks) {
+        // Pass previous output as context
+        if (previousOutput) {
+          task.input = {
+            ...task.input,
+            previousResults: previousOutput
+          };
+        }
+        
+        const result = await this.executeTask(task);
+        results.push({
+          taskId: task.taskId,
+          agentId: task.agentId,
+          status: 'completed',
+          output: result
+        });
+        
+        previousOutput = result;
+      }
+      
+      const coordinationResults = {
+        mode: 'sequential',
+        totalTasks: tasks.length,
+        successful: results.length,
+        failed: 0,
+        results
+      };
+
+      logger.info(`Sequential coordination completed: ${coordinationResults.successful}/${coordinationResults.totalTasks} successful`);
+      return coordinationResults;
+    } catch (error) {
+      logger.error('Sequential coordination failed:', error);
+      throw error;
+    }
+  }
+
+  async executeConsensusCoordination(tasks) {
+    try {
+      logger.info(`Starting consensus coordination for ${tasks.length} tasks`);
+      
+      // Execute all tasks in parallel first
+      const promises = tasks.map(task => this.executeTask(task));
+      const results = await Promise.allSettled(promises);
+      
+      const successfulResults = results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value);
+      
+      if (successfulResults.length === 0) {
+        throw new Error('All tasks failed in consensus coordination');
+      }
+      
+      // Build consensus from successful results
+      const consensus = this.buildConsensus(successfulResults);
+      
+      const coordinationResults = {
+        mode: 'consensus',
+        totalTasks: tasks.length,
+        successful: successfulResults.length,
+        failed: results.length - successfulResults.length,
+        consensus,
+        individualResults: results.map((result, index) => ({
+          taskId: tasks[index].taskId,
+          agentId: tasks[index].agentId,
+          status: result.status,
+          output: result.status === 'fulfilled' ? result.value : null,
+          error: result.status === 'rejected' ? result.reason.message : null
+        }))
+      };
+
+      logger.info(`Consensus coordination completed: ${coordinationResults.successful}/${coordinationResults.totalTasks} successful`);
+      return coordinationResults;
+    } catch (error) {
+      logger.error('Consensus coordination failed:', error);
+      throw error;
+    }
+  }
+
+  buildConsensus(results) {
+    // Simple consensus building - can be enhanced based on specific use cases
+    const consensus = {
+      confidence: 0,
+      recommendations: [],
+      insights: [],
+      metrics: {}
+    };
+
+    if (results.length === 0) {
+      return consensus;
+    }
+
+    // Calculate confidence based on agreement
+    consensus.confidence = Math.min(1.0, results.length / 3); // Simple confidence metric
+
+    // Aggregate recommendations
+    const allRecommendations = results.flatMap(r => r.recommendations || []);
+    consensus.recommendations = this.aggregateRecommendations(allRecommendations);
+
+    // Aggregate insights
+    const allInsights = results.flatMap(r => r.insights || []);
+    consensus.insights = this.aggregateInsights(allInsights);
+
+    // Aggregate metrics
+    consensus.metrics = this.aggregateMetrics(results);
+
+    return consensus;
+  }
+
+  aggregateRecommendations(recommendations) {
+    // Group by category and priority
+    const grouped = recommendations.reduce((acc, rec) => {
+      const key = `${rec.category}_${rec.priority}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(rec);
+      return acc;
+    }, {});
+
+    // Select top recommendations from each group
+    const aggregated = [];
+    for (const group of Object.values(grouped)) {
+      // Sort by potential impact and select top ones
+      const sorted = group.sort((a, b) => (b.potentialReduction || 0) - (a.potentialReduction || 0));
+      aggregated.push(...sorted.slice(0, 2)); // Top 2 from each group
+    }
+
+    return aggregated;
+  }
+
+  aggregateInsights(insights) {
+    // Remove duplicates and combine similar insights
+    const unique = insights.filter((insight, index, self) => 
+      index === self.findIndex(i => i.type === insight.type && i.message === insight.message)
+    );
+
+    return unique;
+  }
+
+  aggregateMetrics(results) {
+    const metrics = {};
+    
+    // Aggregate numerical metrics
+    const numericFields = ['totalEmissions', 'averageResponseTime', 'successRate'];
+    for (const field of numericFields) {
+      const values = results.map(r => r[field]).filter(v => typeof v === 'number');
+      if (values.length > 0) {
+        metrics[field] = {
+          average: values.reduce((a, b) => a + b, 0) / values.length,
+          min: Math.min(...values),
+          max: Math.max(...values),
+          count: values.length
+        };
+      }
+    }
+
+    return metrics;
   }
 }
 
