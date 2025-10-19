@@ -16,6 +16,7 @@ const carbonRoutes = require('./routes/carbon');
 const smsRoutes = require('./routes/sms');
 const emailRoutes = require('./routes/email');
 const analyticsRoutes = require('./routes/analytics');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -68,6 +69,7 @@ app.use('/api/carbon', carbonRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

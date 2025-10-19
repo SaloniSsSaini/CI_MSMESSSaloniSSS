@@ -98,7 +98,48 @@ const transactionSchema = new mongoose.Schema({
     default: false
   },
   processedAt: Date,
-  tags: [String]
+  tags: [String],
+  
+  // Spam detection fields
+  isSpam: {
+    type: Boolean,
+    default: false
+  },
+  spamScore: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  spamReasons: [String],
+  spamConfidence: {
+    type: Number,
+    min: 0,
+    max: 1,
+    default: 0
+  },
+  
+  // Duplicate detection fields
+  isDuplicate: {
+    type: Boolean,
+    default: false
+  },
+  duplicateType: {
+    type: String,
+    enum: ['exact', 'near', 'fuzzy'],
+    default: null
+  },
+  similarityScore: {
+    type: Number,
+    min: 0,
+    max: 1,
+    default: 0
+  },
+  matchedTransactionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    default: null
+  },
+  duplicateReasons: [String]
 }, {
   timestamps: true
 });
@@ -109,5 +150,8 @@ transactionSchema.index({ source: 1, sourceId: 1 });
 transactionSchema.index({ category: 1, date: -1 });
 transactionSchema.index({ 'carbonFootprint.co2Emissions': -1 });
 transactionSchema.index({ description: 'text' });
+transactionSchema.index({ isSpam: 1, msmeId: 1 });
+transactionSchema.index({ isDuplicate: 1, msmeId: 1 });
+transactionSchema.index({ msmeId: 1, date: -1, isSpam: 1, isDuplicate: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

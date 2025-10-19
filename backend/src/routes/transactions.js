@@ -22,7 +22,11 @@ router.get('/', auth, async (req, res) => {
     } = req.query;
     
     const msmeId = req.user.msmeId;
-    const query = { msmeId };
+    const query = { 
+      msmeId,
+      isSpam: { $ne: true },
+      isDuplicate: { $ne: true }
+    };
     
     // Apply filters
     if (category) query.category = category;
@@ -76,7 +80,11 @@ router.get('/analytics', auth, async (req, res) => {
     const { startDate, endDate, groupBy = 'month' } = req.query;
     const msmeId = req.user.msmeId;
 
-    const query = { msmeId };
+    const query = { 
+      msmeId,
+      isSpam: { $ne: true },
+      isDuplicate: { $ne: true }
+    };
     
     if (startDate || endDate) {
       query.date = {};

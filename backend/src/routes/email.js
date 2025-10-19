@@ -4,6 +4,8 @@ const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const carbonCalculationService = require('../services/carbonCalculationService');
+const spamDetectionService = require('../services/spamDetectionService');
+const duplicateDetectionService = require('../services/duplicateDetectionService');
 const Transaction = require('../models/Transaction');
 const logger = require('../utils/logger');
 
@@ -50,6 +52,38 @@ router.post('/process', [
       });
     }
 
+    // Detect spam
+    const spamDetection = spamDetectionService.detectSpam(result.transaction, {
+      sender: from,
+      subject,
+      body
+    });
+
+    // Detect duplicates
+    const duplicateDetection = await duplicateDetectionService.detectDuplicate(result.transaction, msmeId);
+
+    // Skip processing if spam or duplicate
+    if (spamDetection.isSpam || duplicateDetection.isDuplicate) {
+      logger.info(`Email skipped - Spam: ${spamDetection.isSpam}, Duplicate: ${duplicateDetection.isDuplicate}`, {
+        messageId,
+        msmeId,
+        spamReasons: spamDetection.reasons,
+        duplicateReasons: duplicateDetection.reasons
+      });
+
+      return res.json({
+        success: true,
+        message: 'Email processed but skipped due to spam/duplicate detection',
+        data: {
+          skipped: true,
+          spam: spamDetection.isSpam,
+          duplicate: duplicateDetection.isDuplicate,
+          spamReasons: spamDetection.reasons,
+          duplicateReasons: duplicateDetection.reasons
+        }
+      });
+    }
+
     // Calculate carbon footprint
     const carbonData = carbonCalculationService.calculateTransactionCarbonFootprint(result.transaction);
     result.transaction.carbonFootprint = carbonData;
@@ -59,7 +93,18 @@ router.post('/process', [
       msmeId,
       ...result.transaction,
       isProcessed: true,
-      processedAt: new Date()
+      processedAt: new Date(),
+      // Spam detection results
+      isSpam: spamDetection.isSpam,
+      spamScore: spamDetection.score,
+      spamReasons: spamDetection.reasons,
+      spamConfidence: spamDetection.confidence,
+      // Duplicate detection results
+      isDuplicate: duplicateDetection.isDuplicate,
+      duplicateType: duplicateDetection.duplicateType,
+      similarityScore: duplicateDetection.similarityScore,
+      matchedTransactionId: duplicateDetection.matchedTransaction?._id,
+      duplicateReasons: duplicateDetection.reasons
     });
 
     await transaction.save();
@@ -98,7 +143,12 @@ router.get('/transactions', auth, async (req, res) => {
     const { page = 1, limit = 10, category, startDate, endDate } = req.query;
     const msmeId = req.user.msmeId;
 
-    const query = { msmeId, source: 'email' };
+    const query = { 
+      msmeId, 
+      source: 'email',
+      isSpam: { $ne: true },
+      isDuplicate: { $ne: true }
+    };
     
     if (category) {
       query.category = category;
@@ -148,7 +198,12 @@ router.get('/analytics', auth, async (req, res) => {
     const { startDate, endDate } = req.query;
     const msmeId = req.user.msmeId;
 
-    const query = { msmeId, source: 'email' };
+    const query = { 
+      msmeId, 
+      source: 'email',
+      isSpam: { $ne: true },
+      isDuplicate: { $ne: true }
+    };
     
     if (startDate || endDate) {
       query.date = {};
@@ -290,6 +345,30 @@ router.post('/bulk-process', [
         const result = await emailService.processEmail(email);
         
         if (result.success) {
+          // Detect spam
+          const spamDetection = spamDetectionService.detectSpam(result.transaction, {
+            sender: email.from,
+            subject: email.subject,
+            body: email.body
+          });
+
+          // Detect duplicates
+          const duplicateDetection = await duplicateDetectionService.detectDuplicate(result.transaction, msmeId);
+
+          // Skip processing if spam or duplicate
+          if (spamDetection.isSpam || duplicateDetection.isDuplicate) {
+            results.push({
+              messageId: email.messageId,
+              success: true,
+              skipped: true,
+              spam: spamDetection.isSpam,
+              duplicate: duplicateDetection.isDuplicate,
+              spamReasons: spamDetection.reasons,
+              duplicateReasons: duplicateDetection.reasons
+            });
+            continue;
+          }
+
           // Calculate carbon footprint
           const carbonData = carbonCalculationService.calculateTransactionCarbonFootprint(result.transaction);
           result.transaction.carbonFootprint = carbonData;
@@ -299,7 +378,18 @@ router.post('/bulk-process', [
             msmeId,
             ...result.transaction,
             isProcessed: true,
-            processedAt: new Date()
+            processedAt: new Date(),
+            // Spam detection results
+            isSpam: spamDetection.isSpam,
+            spamScore: spamDetection.score,
+            spamReasons: spamDetection.reasons,
+            spamConfidence: spamDetection.confidence,
+            // Duplicate detection results
+            isDuplicate: duplicateDetection.isDuplicate,
+            duplicateType: duplicateDetection.duplicateType,
+            similarityScore: duplicateDetection.similarityScore,
+            matchedTransactionId: duplicateDetection.matchedTransaction?._id,
+            duplicateReasons: duplicateDetection.reasons
           });
 
           await transaction.save();
