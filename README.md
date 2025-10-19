@@ -1,87 +1,72 @@
-# Carbon Intelligence - MSME Carbon Footprint Measurement
+# Carbon Intelligence - MSME Carbon Footprint Platform
 
-A comprehensive React application designed to help MSME (Micro, Small, and Medium Enterprises) companies measure their carbon footprint and receive personalized sustainable manufacturing recommendations.
+A comprehensive mobile application and backend platform that reads SMS messages and emails to analyze transactions and measure carbon footprint for MSME (Micro, Small, and Medium Enterprises) in terms of sustainable manufacturing.
 
 ## 🌱 Overview
 
-Carbon Intelligence is a digital platform that enables MSME companies to:
-- Register with detailed MSME information including Udyog Aadhar, GST, and PAN numbers
-- Measure their carbon footprint across all manufacturing processes
-- Receive personalized recommendations for sustainable manufacturing practices
-- Track their environmental impact and progress over time
+Carbon Intelligence is a complete solution that enables MSME companies to:
+- **Automatically analyze SMS and email transactions** for carbon footprint calculation
+- **Track sustainability metrics** across all manufacturing processes
+- **Receive personalized recommendations** for sustainable manufacturing practices
+- **Monitor environmental impact** and progress over time
+- **Generate detailed analytics** and insights
 
-## ✨ Features
+## 🏗️ Architecture
 
-### MSME Registration
-- **Comprehensive Registration Form** with multi-step wizard
-- **MSME-Specific Fields**:
-  - Udyog Aadhar Number validation
-  - GST Number validation
-  - PAN Number validation
-  - Company type classification (Micro/Small/Medium)
-  - Industry categorization
-  - Business metrics (turnover, employees, manufacturing units)
-- **Form Validation** with real-time error checking
-- **Data Persistence** using localStorage
+### Backend (Node.js/Express)
+- **RESTful API** for data processing and analysis
+- **MongoDB** for data storage
+- **SMS & Email Processing** with NLP and machine learning
+- **Carbon Footprint Calculation** algorithms
+- **Real-time Analytics** and reporting
 
-### Carbon Footprint Assessment
-- **Multi-Step Assessment Process**:
-  1. Energy Consumption (Electricity & Fuel)
-  2. Water Usage & Waste Management
-  3. Transportation
-  4. Raw Materials
-  5. Manufacturing Process
-  6. Environmental Controls
-  7. Results & Analysis
-- **Comprehensive Calculations**:
-  - Energy-related CO₂ emissions
-  - Water consumption impact
-  - Waste generation and recycling
-  - Transportation emissions
-  - Material sourcing impact
-  - Manufacturing process efficiency
-- **Real-time Carbon Score** calculation
-- **Detailed Breakdown** by category
+### Mobile App (React Native)
+- **Cross-platform** iOS and Android support
+- **Intuitive UI** for data visualization
+- **Real-time sync** with backend
+- **Offline capabilities** for critical functions
+- **Push notifications** for insights and recommendations
 
-### Sustainable Manufacturing Recommendations
-- **Personalized Recommendations** based on company profile
-- **Categorized Suggestions**:
-  - Energy efficiency improvements
-  - Waste management optimization
-  - Water conservation measures
-  - Green transportation solutions
-  - Process optimization
-  - Supply chain sustainability
-  - Employee engagement programs
-- **Implementation Guidance** with step-by-step instructions
-- **Financial Impact Analysis**:
-  - Estimated annual savings
-  - Payback period calculations
-  - CO₂ reduction potential
-- **Priority-based Filtering** (High/Medium/Low priority)
+## ✨ Key Features
 
-### Dashboard
-- **Company Overview** with key metrics
-- **Carbon Score Visualization** with progress indicators
-- **Quick Action Cards** for easy navigation
-- **Business Metrics Display**:
-  - Annual turnover
-  - Number of employees
-  - Manufacturing units
-- **Real-time Status** updates
+### 📱 Mobile Application
+- **Dashboard** with carbon score and key metrics
+- **Transaction Management** with SMS/email analysis
+- **Carbon Footprint Tracking** with detailed breakdowns
+- **Analytics & Insights** with charts and trends
+- **Recommendations Engine** for sustainability improvements
+- **Profile Management** and settings
+
+### 🔧 Backend Services
+- **SMS Processing** with transaction extraction
+- **Email Analysis** with content parsing
+- **Carbon Calculation** using industry-standard emission factors
+- **Analytics Engine** for insights and trends
+- **Recommendation System** for sustainability improvements
+- **User Management** and authentication
+
+### 📊 Carbon Footprint Calculation
+- **Energy Consumption** (Electricity & Fuel)
+- **Water Usage** and treatment impact
+- **Waste Management** and recycling
+- **Transportation** emissions
+- **Raw Materials** sourcing impact
+- **Manufacturing Process** efficiency
+- **Environmental Controls** assessment
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (version 16 or higher)
-- npm or yarn package manager
+- Node.js (v16 or higher)
+- MongoDB (v4.4 or higher)
+- React Native development environment
+- Android Studio / Xcode (for mobile development)
 
-### Installation
+### Backend Setup
 
-1. **Clone the repository**
+1. **Navigate to backend directory**
    ```bash
-   git clone <repository-url>
-   cd carbon-intelligence-msme
+   cd backend
    ```
 
 2. **Install dependencies**
@@ -89,144 +74,161 @@ Carbon Intelligence is a digital platform that enables MSME companies to:
    npm install
    ```
 
-3. **Start the development server**
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Start MongoDB**
+   ```bash
+   # Make sure MongoDB is running on your system
+   mongod
+   ```
+
+5. **Start the backend server**
+   ```bash
+   npm run dev
+   ```
+
+The backend will be available at `http://localhost:5000`
+
+### Mobile App Setup
+
+1. **Navigate to mobile directory**
+   ```bash
+   cd mobile
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Install iOS dependencies** (iOS only)
+   ```bash
+   cd ios && pod install && cd ..
+   ```
+
+4. **Start Metro bundler**
    ```bash
    npm start
    ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+5. **Run on Android**
+   ```bash
+   npm run android
+   ```
 
-### Available Scripts
+6. **Run on iOS**
+   ```bash
+   npm run ios
+   ```
 
-- `npm start` - Runs the app in development mode
-- `npm test` - Launches the test runner
-- `npm run build` - Builds the app for production
-- `npm run lint` - Runs ESLint for code quality
-- `npm run lint:fix` - Fixes ESLint issues automatically
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
-src/
-├── components/
-│   ├── __tests__/
-│   │   ├── MSMERegistration.test.tsx
-│   │   ├── Dashboard.test.tsx
-│   │   ├── CarbonFootprint.test.tsx
-│   │   └── Recommendations.test.tsx
-│   ├── MSMERegistration.tsx
-│   ├── Dashboard.tsx
-│   ├── CarbonFootprint.tsx
-│   └── Recommendations.tsx
-├── App.tsx
-├── index.tsx
-└── setupTests.ts
+carbon-intelligence/
+├── backend/                 # Node.js/Express backend
+│   ├── src/
+│   │   ├── config/         # Database configuration
+│   │   ├── models/         # MongoDB models
+│   │   ├── routes/         # API routes
+│   │   ├── services/       # Business logic services
+│   │   ├── middleware/     # Express middleware
+│   │   └── utils/          # Utility functions
+│   └── package.json
+├── mobile/                 # React Native mobile app
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── screens/        # App screens
+│   │   ├── services/       # API services
+│   │   ├── theme/          # App theme and styling
+│   │   └── context/        # React context providers
+│   └── package.json
+└── README.md
 ```
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+
+### SMS Processing
+- `POST /api/sms/process` - Process single SMS
+- `POST /api/sms/bulk-process` - Process multiple SMS
+- `GET /api/sms/transactions` - Get SMS transactions
+- `GET /api/sms/analytics` - Get SMS analytics
+
+### Email Processing
+- `POST /api/email/process` - Process single email
+- `POST /api/email/bulk-process` - Process multiple emails
+- `GET /api/email/transactions` - Get email transactions
+- `GET /api/email/analytics` - Get email analytics
+
+### Carbon Footprint
+- `POST /api/carbon/assess` - Perform carbon assessment
+- `GET /api/carbon/assessments` - Get carbon assessments
+- `GET /api/carbon/dashboard` - Get carbon dashboard data
+
+### Analytics
+- `GET /api/analytics/overview` - Get analytics overview
+- `GET /api/analytics/trends` - Get trend analytics
+- `GET /api/analytics/insights` - Get insights and recommendations
 
 ## 🧪 Testing
 
-The application includes comprehensive test coverage:
-
-- **Unit Tests** for all components
-- **Form Validation Tests** for MSME registration
-- **Carbon Footprint Calculation Tests**
-- **Recommendation System Tests**
-- **Navigation and User Flow Tests**
-
-Run tests with:
+### Backend Testing
 ```bash
+cd backend
 npm test
 ```
 
-## 📊 Carbon Footprint Calculation
+### Mobile App Testing
+```bash
+cd mobile
+npm test
+```
 
-The application uses industry-standard emission factors and calculation methods:
+## 📱 Mobile App Features
 
-### Energy Consumption
-- **Electricity**: Based on grid mix and renewable energy sources
-- **Fuel**: Diesel, Petrol, LPG, CNG with respective emission factors
+### Dashboard
+- Carbon score visualization
+- Key metrics overview
+- Recent transactions
+- Quick actions
 
-### Water Usage
-- **Consumption Impact**: Water treatment and distribution emissions
-- **Wastewater Treatment**: Additional processing requirements
+### Transaction Management
+- SMS and email analysis
+- Manual transaction entry
+- Category classification
+- Carbon footprint calculation
 
-### Waste Management
-- **Solid Waste**: Landfill decomposition emissions
-- **Recycling Impact**: Reduced emissions through recycling
-- **Hazardous Waste**: Higher emission factors for hazardous materials
+### Carbon Footprint Tracking
+- Detailed emission breakdown
+- Category-wise analysis
+- Trend visualization
+- Recommendations
 
-### Transportation
-- **Vehicle Fleet**: Distance-based calculations
-- **Fuel Efficiency**: Vehicle-specific consumption rates
+### Analytics
+- Interactive charts
+- Trend analysis
+- Insights and recommendations
+- Export capabilities
 
-### Raw Materials
-- **Material Types**: Steel, Aluminum, Plastic, Paper, Glass
-- **Supplier Distance**: Transportation impact of sourcing
+## 🔒 Security Features
 
-### Manufacturing Process
-- **Production Volume**: Scale-based efficiency factors
-- **Process Efficiency**: Optimization potential
-- **Equipment Age**: Modern vs. legacy equipment impact
-
-## 🎯 MSME Registration Fields
-
-### Company Information
-- Company Name
-- Company Type (Micro/Small/Medium)
-- Industry Category
-- Establishment Year
-
-### MSME Registration Details
-- **Udyog Aadhar Number** (Format: XX00XX0000)
-- **GST Number** (Format: 00XXXXX0000X0X)
-- **PAN Number** (Format: XXXXX0000X)
-
-### Contact & Address
-- Email Address
-- Phone Number
-- Complete Address
-- City, State, Pincode
-- Country
-
-### Business Details
-- Annual Turnover
-- Number of Employees
-- Manufacturing Units
-- Primary Products/Services
-
-### Environmental Compliance
-- Environmental Clearance Certificate
-- Pollution Control Board Registration
-- Waste Management System
-
-## 🔧 Technology Stack
-
-- **Frontend**: React 18 with TypeScript
-- **UI Framework**: Material-UI (MUI)
-- **Form Management**: React Hook Form with Yup validation
-- **Routing**: React Router DOM
-- **Charts**: Recharts
-- **Testing**: Jest with React Testing Library
-- **Build Tool**: Create React App
-
-## 📱 Responsive Design
-
-The application is fully responsive and optimized for:
-- Desktop computers
-- Tablets
-- Mobile devices
-
-## 🔒 Data Privacy
-
-- All data is stored locally in the browser
-- No external API calls or data transmission
-- GDPR-compliant data handling
-- User consent for data processing
+- **JWT Authentication** for secure API access
+- **Data Encryption** for sensitive information
+- **Input Validation** and sanitization
+- **Rate Limiting** to prevent abuse
+- **CORS Configuration** for cross-origin requests
 
 ## 🌍 Environmental Impact
 
-This application helps MSME companies:
+This platform helps MSME companies:
 - **Reduce Carbon Footprint** through data-driven insights
 - **Improve Sustainability** with actionable recommendations
 - **Comply with Regulations** through environmental tracking
@@ -254,14 +256,16 @@ For support and questions:
 
 ## 🚀 Future Enhancements
 
-- **API Integration** for real-time data
-- **Advanced Analytics** with historical tracking
-- **Mobile App** development
+- **Machine Learning** for better transaction classification
+- **IoT Integration** for real-time data collection
+- **Blockchain** for carbon credit trading
+- **Advanced Analytics** with predictive modeling
 - **Multi-language Support**
 - **Integration** with government databases
 - **Automated Reporting** for compliance
-- **Machine Learning** for better recommendations
 
 ---
 
 **Built with ❤️ for a sustainable future**
+
+*Helping MSME companies measure, track, and reduce their carbon footprint through intelligent transaction analysis and sustainable manufacturing recommendations.*
