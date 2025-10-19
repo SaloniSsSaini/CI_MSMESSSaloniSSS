@@ -17,6 +17,8 @@ const smsRoutes = require('./routes/sms');
 const emailRoutes = require('./routes/email');
 const analyticsRoutes = require('./routes/analytics');
 const adminRoutes = require('./routes/admin');
+const incentivesRoutes = require('./routes/incentives');
+const reportingRoutes = require('./routes/reporting');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -70,6 +72,8 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/incentives', incentivesRoutes);
+app.use('/api/reporting', reportingRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

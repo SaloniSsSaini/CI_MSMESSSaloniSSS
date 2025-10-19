@@ -6,6 +6,8 @@ import MSMERegistration from './components/MSMERegistration';
 import Dashboard from './components/Dashboard';
 import CarbonFootprint from './components/CarbonFootprint';
 import Recommendations from './components/Recommendations';
+import IncentivesScreen from './components/IncentivesScreen';
+import ReportingScreen from './components/ReportingScreen';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/carbon-footprint" element={<CarbonFootprint />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          <Route path="/incentives" element={<IncentivesScreen />} />
+          <Route path="/reporting" element={<ReportingScreen />} />
         </Routes>
       </Container>
     </Box>

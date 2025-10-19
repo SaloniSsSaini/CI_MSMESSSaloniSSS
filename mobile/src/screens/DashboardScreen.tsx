@@ -197,6 +197,20 @@ const DashboardScreen = ({ navigation }: any) => {
               >
                 View Analytics
               </Chip>
+              <Chip
+                icon="trophy"
+                onPress={() => navigation.navigate('Incentives')}
+                style={styles.actionChip}
+              >
+                Incentives
+              </Chip>
+              <Chip
+                icon="file-document"
+                onPress={() => navigation.navigate('Reporting')}
+                style={styles.actionChip}
+              >
+                Reports
+              </Chip>
             </View>
           </Card.Content>
         </Card>

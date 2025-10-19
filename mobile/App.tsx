@@ -16,6 +16,8 @@ import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SMSAnalysisScreen from './src/screens/SMSAnalysisScreen';
 import EmailAnalysisScreen from './src/screens/EmailAnalysisScreen';
+import IncentivesScreen from './src/screens/IncentivesScreen';
+import ReportingScreen from './src/screens/ReportingScreen';
 
 // Import theme
 import { theme } from './src/theme/theme';
@@ -129,6 +131,16 @@ const App = () => {
                     name="EmailAnalysis" 
                     component={EmailAnalysisScreen}
                     options={{ title: 'Email Analysis' }}
+                  />
+                  <Stack.Screen 
+                    name="Incentives" 
+                    component={IncentivesScreen}
+                    options={{ title: 'Incentives & Rewards' }}
+                  />
+                  <Stack.Screen 
+                    name="Reporting" 
+                    component={ReportingScreen}
+                    options={{ title: 'Sustainability Reports' }}
                   />
                   <Stack.Screen 
                     name="Profile" 

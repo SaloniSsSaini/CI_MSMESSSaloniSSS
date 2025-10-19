@@ -15,7 +15,9 @@ import {
   Assessment as AssessmentIcon,
   Lightbulb as LightbulbIcon,
   Factory as FactoryIcon,
-  Timeline as TimelineIcon
+  Timeline as TimelineIcon,
+  EmojiEvents as TrophyIcon,
+  Assessment as ReportIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -277,18 +279,47 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TimelineIcon color="primary" sx={{ mr: 1 }} />
+                <TrophyIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">
-                  Progress Tracking
+                  Incentives & Rewards
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" paragraph>
-                Track your sustainability progress over time
+                Earn points and unlock rewards for sustainable practices
               </Typography>
             </CardContent>
             <CardActions>
-              <Button size="small" variant="outlined">
-                View Progress
+              <Button 
+                size="small" 
+                variant="contained"
+                onClick={() => navigate('/incentives')}
+              >
+                View Incentives
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ReportIcon color="primary" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Sustainability Reports
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Generate comprehensive sustainability reports and analytics
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button 
+                size="small" 
+                variant="contained"
+                onClick={() => navigate('/reporting')}
+              >
+                View Reports
               </Button>
             </CardActions>
           </Card>
