@@ -234,6 +234,73 @@ const CarbonFootprintScreen = ({ navigation }: any) => {
               </Card>
             )}
 
+            {/* ESG Scope Breakdown */}
+            {assessment.esgScopes && (
+              <Card style={styles.card}>
+                <Card.Content>
+                  <Title style={styles.cardTitle}>ESG Scope Breakdown</Title>
+                  <View style={styles.scopeContainer}>
+                    <View style={styles.scopeItem}>
+                      <View style={styles.scopeHeader}>
+                        <Text style={[styles.scopeTitle, { color: colors.error }]}>Scope 1</Text>
+                        <Text style={styles.scopeValue}>
+                          {assessment.esgScopes.scope1?.total?.toFixed(1) || '0.0'} kg CO₂
+                        </Text>
+                      </View>
+                      <Text style={styles.scopeDescription}>
+                        Direct emissions from owned or controlled sources
+                      </Text>
+                      <ProgressBar
+                        progress={assessment.totalCO2Emissions > 0 
+                          ? (assessment.esgScopes.scope1?.total || 0) / assessment.totalCO2Emissions 
+                          : 0}
+                        color={colors.error}
+                        style={styles.scopeProgress}
+                      />
+                    </View>
+
+                    <View style={styles.scopeItem}>
+                      <View style={styles.scopeHeader}>
+                        <Text style={[styles.scopeTitle, { color: colors.warning }]}>Scope 2</Text>
+                        <Text style={styles.scopeValue}>
+                          {assessment.esgScopes.scope2?.total?.toFixed(1) || '0.0'} kg CO₂
+                        </Text>
+                      </View>
+                      <Text style={styles.scopeDescription}>
+                        Indirect emissions from purchased energy
+                      </Text>
+                      <ProgressBar
+                        progress={assessment.totalCO2Emissions > 0 
+                          ? (assessment.esgScopes.scope2?.total || 0) / assessment.totalCO2Emissions 
+                          : 0}
+                        color={colors.warning}
+                        style={styles.scopeProgress}
+                      />
+                    </View>
+
+                    <View style={styles.scopeItem}>
+                      <View style={styles.scopeHeader}>
+                        <Text style={[styles.scopeTitle, { color: colors.info }]}>Scope 3</Text>
+                        <Text style={styles.scopeValue}>
+                          {assessment.esgScopes.scope3?.total?.toFixed(1) || '0.0'} kg CO₂
+                        </Text>
+                      </View>
+                      <Text style={styles.scopeDescription}>
+                        All other indirect emissions in the value chain
+                      </Text>
+                      <ProgressBar
+                        progress={assessment.totalCO2Emissions > 0 
+                          ? (assessment.esgScopes.scope3?.total || 0) / assessment.totalCO2Emissions 
+                          : 0}
+                        color={colors.info}
+                        style={styles.scopeProgress}
+                      />
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            )}
+
             {/* Category Breakdown */}
             <Card style={styles.card}>
               <Card.Content>
@@ -535,6 +602,39 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  scopeContainer: {
+    marginTop: theme.spacing.sm,
+  },
+  scopeItem: {
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.roundness,
+  },
+  scopeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  scopeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  scopeValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  scopeDescription: {
+    fontSize: 12,
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.sm,
+  },
+  scopeProgress: {
+    height: 6,
+    borderRadius: 3,
   },
 });
 

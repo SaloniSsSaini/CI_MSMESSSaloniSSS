@@ -236,6 +236,43 @@ class CarbonCalculationService {
         materials: { consumption: 0, co2Emissions: 0, type: 'mixed', supplierDistance: 0 },
         manufacturing: { productionVolume: 0, co2Emissions: 0, efficiency: 0, equipmentAge: 0 }
       },
+      // ESG Scope breakdown
+      esgScopes: {
+        scope1: {
+          total: 0,
+          breakdown: {
+            directFuel: 0,
+            directTransport: 0,
+            directManufacturing: 0,
+            fugitiveEmissions: 0
+          },
+          description: 'Direct emissions from owned or controlled sources'
+        },
+        scope2: {
+          total: 0,
+          breakdown: {
+            electricity: 0,
+            heating: 0,
+            cooling: 0,
+            steam: 0
+          },
+          description: 'Indirect emissions from purchased energy'
+        },
+        scope3: {
+          total: 0,
+          breakdown: {
+            purchasedGoods: 0,
+            transportation: 0,
+            wasteDisposal: 0,
+            businessTravel: 0,
+            employeeCommuting: 0,
+            leasedAssets: 0,
+            investments: 0,
+            other: 0
+          },
+          description: 'All other indirect emissions in the value chain'
+        }
+      },
       carbonScore: 0,
       recommendations: []
     };
@@ -249,6 +286,9 @@ class CarbonCalculationService {
       
       // Update breakdown
       this.updateBreakdown(assessment.breakdown, transaction, carbonData.co2Emissions);
+      
+      // Update ESG scope breakdown
+      this.updateESGScopes(assessment.esgScopes, transaction, carbonData.co2Emissions);
     });
 
     // Calculate carbon score
@@ -305,6 +345,103 @@ class CarbonCalculationService {
         breakdown.manufacturing.co2Emissions += co2Emissions;
         break;
     }
+  }
+
+  updateESGScopes(esgScopes, transaction, co2Emissions) {
+    const { category, subcategory, description } = transaction;
+    
+    // Scope 1: Direct emissions from owned or controlled sources
+    if (this.isScope1Emission(transaction)) {
+      esgScopes.scope1.total += co2Emissions;
+      
+      if (category === 'energy' && subcategory !== 'renewable' && subcategory !== 'grid') {
+        esgScopes.scope1.breakdown.directFuel += co2Emissions;
+      } else if (category === 'transportation') {
+        esgScopes.scope1.breakdown.directTransport += co2Emissions;
+      } else if (category === 'equipment' || category === 'maintenance') {
+        esgScopes.scope1.breakdown.directManufacturing += co2Emissions;
+      } else if (description && description.toLowerCase().includes('fugitive')) {
+        esgScopes.scope1.breakdown.fugitiveEmissions += co2Emissions;
+      }
+    }
+    
+    // Scope 2: Indirect emissions from purchased energy
+    else if (this.isScope2Emission(transaction)) {
+      esgScopes.scope2.total += co2Emissions;
+      
+      if (category === 'energy' && (subcategory === 'grid' || subcategory === 'renewable')) {
+        esgScopes.scope2.breakdown.electricity += co2Emissions;
+      } else if (description && description.toLowerCase().includes('heating')) {
+        esgScopes.scope2.breakdown.heating += co2Emissions;
+      } else if (description && description.toLowerCase().includes('cooling')) {
+        esgScopes.scope2.breakdown.cooling += co2Emissions;
+      } else if (description && description.toLowerCase().includes('steam')) {
+        esgScopes.scope2.breakdown.steam += co2Emissions;
+      }
+    }
+    
+    // Scope 3: All other indirect emissions
+    else {
+      esgScopes.scope3.total += co2Emissions;
+      
+      if (category === 'raw_materials') {
+        esgScopes.scope3.breakdown.purchasedGoods += co2Emissions;
+      } else if (category === 'transportation' && !this.isScope1Emission(transaction)) {
+        esgScopes.scope3.breakdown.transportation += co2Emissions;
+      } else if (category === 'waste_management') {
+        esgScopes.scope3.breakdown.wasteDisposal += co2Emissions;
+      } else if (description && description.toLowerCase().includes('travel')) {
+        esgScopes.scope3.breakdown.businessTravel += co2Emissions;
+      } else if (description && description.toLowerCase().includes('commuting')) {
+        esgScopes.scope3.breakdown.employeeCommuting += co2Emissions;
+      } else if (description && description.toLowerCase().includes('lease')) {
+        esgScopes.scope3.breakdown.leasedAssets += co2Emissions;
+      } else if (description && description.toLowerCase().includes('investment')) {
+        esgScopes.scope3.breakdown.investments += co2Emissions;
+      } else {
+        esgScopes.scope3.breakdown.other += co2Emissions;
+      }
+    }
+  }
+
+  isScope1Emission(transaction) {
+    const { category, subcategory, description } = transaction;
+    
+    // Direct fuel combustion
+    if (category === 'energy' && subcategory !== 'renewable' && subcategory !== 'grid') {
+      return true;
+    }
+    
+    // Company-owned vehicles
+    if (category === 'transportation' && description && 
+        (description.toLowerCase().includes('company') || 
+         description.toLowerCase().includes('owned') ||
+         description.toLowerCase().includes('fleet'))) {
+      return true;
+    }
+    
+    // Direct manufacturing processes
+    if (category === 'equipment' || category === 'maintenance') {
+      return true;
+    }
+    
+    // Fugitive emissions
+    if (description && description.toLowerCase().includes('fugitive')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  isScope2Emission(transaction) {
+    const { category, subcategory } = transaction;
+    
+    // Purchased electricity, heating, cooling, steam
+    if (category === 'energy' && (subcategory === 'grid' || subcategory === 'renewable')) {
+      return true;
+    }
+    
+    return false;
   }
 
   calculateCarbonScore(assessment, msmeData) {

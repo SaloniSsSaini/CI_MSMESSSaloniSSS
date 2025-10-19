@@ -70,7 +70,10 @@ const carbonFootprintSchema = yup.object({
   hasAirPollutionControl: yup.boolean(),
   hasWaterPollutionControl: yup.boolean(),
   hasNoiseControl: yup.boolean(),
-  hasEnergyEfficientEquipment: yup.boolean()
+  hasEnergyEfficientEquipment: yup.boolean(),
+  
+  // Additional data for ESG calculations
+  numberOfEmployees: yup.number().required('Number of employees is required').min(1)
 });
 
 type CarbonFootprintForm = yup.InferType<typeof carbonFootprintSchema>;
@@ -107,7 +110,8 @@ const CarbonFootprint: React.FC = () => {
       hasAirPollutionControl: false,
       hasWaterPollutionControl: false,
       hasNoiseControl: false,
-      hasEnergyEfficientEquipment: false
+      hasEnergyEfficientEquipment: false,
+      numberOfEmployees: 10
     }
   });
 
@@ -149,7 +153,7 @@ const CarbonFootprint: React.FC = () => {
       case 4:
         return ['productionVolume', 'processEfficiency', 'equipmentAge'];
       case 5:
-        return ['hasAirPollutionControl', 'hasWaterPollutionControl', 'hasNoiseControl', 'hasEnergyEfficientEquipment'];
+        return ['hasAirPollutionControl', 'hasWaterPollutionControl', 'hasNoiseControl', 'hasEnergyEfficientEquipment', 'numberOfEmployees'];
       default:
         return [];
     }
@@ -165,16 +169,31 @@ const CarbonFootprint: React.FC = () => {
     const formData = watch();
     const totalCO2 = calculateTotalCO2(formData);
     
+    const energyCO2 = calculateEnergyCO2(formData);
+    const waterCO2 = calculateWaterCO2(formData);
+    const wasteCO2 = calculateWasteCO2(formData);
+    const transportCO2 = calculateTransportCO2(formData);
+    const materialsCO2 = calculateMaterialsCO2(formData);
+    const manufacturingCO2 = calculateManufacturingCO2(formData);
+
     setCarbonFootprint({
       totalCO2,
       breakdown: {
-        energy: calculateEnergyCO2(formData),
-        water: calculateWaterCO2(formData),
-        waste: calculateWasteCO2(formData),
-        transportation: calculateTransportCO2(formData),
-        materials: calculateMaterialsCO2(formData),
-        manufacturing: calculateManufacturingCO2(formData)
+        energy: energyCO2,
+        water: waterCO2,
+        waste: wasteCO2,
+        transportation: transportCO2,
+        materials: materialsCO2,
+        manufacturing: manufacturingCO2
       },
+      esgScopes: calculateESGScopes(formData, {
+        energy: energyCO2,
+        water: waterCO2,
+        waste: wasteCO2,
+        transportation: transportCO2,
+        materials: materialsCO2,
+        manufacturing: manufacturingCO2
+      }),
       recommendations: generateRecommendations(formData, totalCO2),
       score: calculateCarbonScore(totalCO2, formData)
     });
@@ -235,6 +254,53 @@ const CarbonFootprint: React.FC = () => {
     const ageFactor = Math.max(0.5, 1 - (data.equipmentAge * 0.02));
     
     return data.productionVolume * 0.1 * (1 - efficiencyFactor) * ageFactor;
+  };
+
+  const calculateESGScopes = (data: CarbonFootprintForm, breakdown: any) => {
+    // Scope 1: Direct emissions (fuel combustion, company vehicles, manufacturing processes)
+    const scope1 = {
+      total: 0,
+      breakdown: {
+        directFuel: data.fuelConsumption * (data.fuelType === 'diesel' ? 2.68 : 2.31),
+        directTransport: data.vehicleFleet * data.averageDistance * 12 * 2.68 / data.fuelEfficiency,
+        directManufacturing: breakdown.manufacturing * 0.3, // 30% of manufacturing is direct
+        fugitiveEmissions: 0 // Assume no fugitive emissions for now
+      },
+      description: 'Direct emissions from owned or controlled sources'
+    };
+    scope1.total = Object.values(scope1.breakdown).reduce((sum: number, val: any) => sum + val, 0);
+
+    // Scope 2: Indirect energy emissions (purchased electricity, heating, cooling, steam)
+    const scope2 = {
+      total: 0,
+      breakdown: {
+        electricity: data.electricityConsumption * (data.electricitySource === 'renewable' ? 0.1 : 0.8),
+        heating: 0, // Assume no separate heating
+        cooling: 0, // Assume no separate cooling
+        steam: 0    // Assume no steam usage
+      },
+      description: 'Indirect emissions from purchased energy'
+    };
+    scope2.total = Object.values(scope2.breakdown).reduce((sum: number, val: any) => sum + val, 0);
+
+    // Scope 3: Other indirect emissions (purchased goods, transportation, waste disposal, etc.)
+    const scope3 = {
+      total: 0,
+      breakdown: {
+        purchasedGoods: breakdown.materials * 0.8, // 80% of materials are purchased goods
+        transportation: breakdown.transportation * 0.2, // 20% of transport is outsourced
+        wasteDisposal: breakdown.waste * 0.5, // 50% of waste disposal is outsourced
+        businessTravel: 0, // Assume no business travel for MSME
+        employeeCommuting: data.numberOfEmployees * 0.1, // Estimate commuting emissions
+        leasedAssets: 0, // Assume no leased assets
+        investments: 0, // Assume no investment-related emissions
+        other: breakdown.water * 0.3 // 30% of water treatment is outsourced
+      },
+      description: 'All other indirect emissions in the value chain'
+    };
+    scope3.total = Object.values(scope3.breakdown).reduce((sum: number, val: any) => sum + val, 0);
+
+    return { scope1, scope2, scope3 };
   };
 
   const calculateCarbonScore = (totalCO2: number, data: CarbonFootprintForm): number => {
@@ -699,6 +765,22 @@ const CarbonFootprint: React.FC = () => {
                 )}
               />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="numberOfEmployees"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    type="number"
+                    label="Number of Employees"
+                    error={!!errors.numberOfEmployees}
+                    helperText={errors.numberOfEmployees?.message}
+                  />
+                )}
+              />
+            </Grid>
           </Grid>
         );
 
@@ -771,7 +853,58 @@ const CarbonFootprint: React.FC = () => {
                   <Card>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
-                        Emission Breakdown
+                        ESG Scope Breakdown
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <Box textAlign="center" sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                            <Typography variant="h6" color="error">
+                              {carbonFootprint.esgScopes?.scope1?.total?.toFixed(2) || '0.00'} kg CO₂
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                              Scope 1
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Direct Emissions
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Box textAlign="center" sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                            <Typography variant="h6" color="warning.main">
+                              {carbonFootprint.esgScopes?.scope2?.total?.toFixed(2) || '0.00'} kg CO₂
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                              Scope 2
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Indirect Energy
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Box textAlign="center" sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                            <Typography variant="h6" color="info.main">
+                              {carbonFootprint.esgScopes?.scope3?.total?.toFixed(2) || '0.00'} kg CO₂
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                              Scope 3
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Value Chain
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Category Breakdown
                       </Typography>
                       <Grid container spacing={2}>
                         {Object.entries(carbonFootprint.breakdown).map(([category, value]) => (

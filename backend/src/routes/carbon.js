@@ -69,6 +69,7 @@ router.post('/assess', auth, async (req, res) => {
       period: dateRange,
       totalCO2Emissions: assessment.totalCO2Emissions,
       breakdown: assessment.breakdown,
+      esgScopes: assessment.esgScopes,
       carbonScore: assessment.carbonScore,
       recommendations: assessment.recommendations,
       status: 'completed'

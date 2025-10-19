@@ -76,6 +76,63 @@ const carbonAssessmentSchema = new mongoose.Schema({
       equipmentAge: Number
     }
   },
+  esgScopes: {
+    scope1: {
+      total: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+      breakdown: {
+        directFuel: Number,
+        directTransport: Number,
+        directManufacturing: Number,
+        fugitiveEmissions: Number
+      },
+      description: {
+        type: String,
+        default: 'Direct emissions from owned or controlled sources'
+      }
+    },
+    scope2: {
+      total: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+      breakdown: {
+        electricity: Number,
+        heating: Number,
+        cooling: Number,
+        steam: Number
+      },
+      description: {
+        type: String,
+        default: 'Indirect emissions from purchased energy'
+      }
+    },
+    scope3: {
+      total: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+      breakdown: {
+        purchasedGoods: Number,
+        transportation: Number,
+        wasteDisposal: Number,
+        businessTravel: Number,
+        employeeCommuting: Number,
+        leasedAssets: Number,
+        investments: Number,
+        other: Number
+      },
+      description: {
+        type: String,
+        default: 'All other indirect emissions in the value chain'
+      }
+    }
+  },
   carbonScore: {
     type: Number,
     required: true,
