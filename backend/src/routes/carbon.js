@@ -4,6 +4,8 @@ const auth = require('../middleware/auth');
 const CarbonAssessment = require('../models/CarbonAssessment');
 const Transaction = require('../models/Transaction');
 const carbonCalculationService = require('../services/carbonCalculationService');
+const aiAgentService = require('../services/aiAgentService');
+const AIAgent = require('../models/AIAgent');
 const logger = require('../utils/logger');
 
 // @route   POST /api/carbon/assess
@@ -59,8 +61,39 @@ router.post('/assess', auth, async (req, res) => {
       });
     }
 
-    // Calculate carbon footprint
-    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(msmeData, transactions);
+    // Calculate carbon footprint using AI agents if available
+    let assessment;
+    try {
+      const carbonAnalyzerAgent = await AIAgent.findOne({ type: 'carbon_analyzer', isActive: true });
+      
+      if (carbonAnalyzerAgent) {
+        // Use AI agent for enhanced analysis
+        const task = await aiAgentService.createTask({
+          agentId: carbonAnalyzerAgent._id,
+          msmeId,
+          taskType: 'carbon_analysis',
+          input: { transactions, msmeData },
+          priority: 'high'
+        });
+
+        // Wait for task completion (in production, this would be async)
+        // For now, fall back to traditional calculation
+        assessment = carbonCalculationService.calculateMSMECarbonFootprint(msmeData, transactions);
+        
+        // Enhance with AI insights if task completed
+        if (task.status === 'completed' && task.output) {
+          assessment.aiInsights = task.output.insights;
+          assessment.aiRecommendations = task.output.recommendations;
+          assessment.anomalies = task.output.anomalies;
+        }
+      } else {
+        // Fallback to traditional calculation
+        assessment = carbonCalculationService.calculateMSMECarbonFootprint(msmeData, transactions);
+      }
+    } catch (error) {
+      logger.warn('AI agent analysis failed, using traditional calculation:', error);
+      assessment = carbonCalculationService.calculateMSMECarbonFootprint(msmeData, transactions);
+    }
 
     // Create carbon assessment record
     const carbonAssessment = new CarbonAssessment({
@@ -314,6 +347,187 @@ router.put('/recommendations/:id/implement', auth, async (req, res) => {
 
   } catch (error) {
     logger.error('Implement recommendation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/carbon/ai-analyze
+// @desc    Perform AI-enhanced carbon analysis
+// @access  Private
+router.post('/ai-analyze', auth, async (req, res) => {
+  try {
+    const { 
+      transactions,
+      msmeData,
+      analysisType = 'comprehensive',
+      includeRecommendations = true,
+      includeAnomalyDetection = true
+    } = req.body;
+    
+    const msmeId = req.user.msmeId;
+
+    if (!transactions || !Array.isArray(transactions)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transactions data is required'
+      });
+    }
+
+    // Get AI agents
+    const carbonAnalyzerAgent = await AIAgent.findOne({ type: 'carbon_analyzer', isActive: true });
+    const recommendationAgent = await AIAgent.findOne({ type: 'recommendation_engine', isActive: true });
+    const anomalyAgent = await AIAgent.findOne({ type: 'anomaly_detector', isActive: true });
+
+    if (!carbonAnalyzerAgent) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI carbon analyzer agent not available'
+      });
+    }
+
+    const results = {
+      analysisId: `ai_analysis_${Date.now()}`,
+      timestamp: new Date(),
+      agents: {
+        carbonAnalyzer: carbonAnalyzerAgent ? 'active' : 'inactive',
+        recommendationEngine: recommendationAgent ? 'active' : 'inactive',
+        anomalyDetector: anomalyAgent ? 'active' : 'inactive'
+      },
+      results: {}
+    };
+
+    // Carbon Analysis
+    try {
+      const carbonTask = await aiAgentService.createTask({
+        agentId: carbonAnalyzerAgent._id,
+        msmeId,
+        taskType: 'carbon_analysis',
+        input: { transactions, msmeData },
+        priority: 'high'
+      });
+
+      results.results.carbonAnalysis = {
+        taskId: carbonTask.taskId,
+        status: carbonTask.status,
+        estimatedCompletion: new Date(Date.now() + 5 * 60 * 1000)
+      };
+    } catch (error) {
+      logger.error('Carbon analysis task creation failed:', error);
+      results.results.carbonAnalysis = {
+        error: 'Failed to create carbon analysis task',
+        fallback: 'Using traditional calculation'
+      };
+    }
+
+    // Recommendations (if requested and agent available)
+    if (includeRecommendations && recommendationAgent) {
+      try {
+        const recTask = await aiAgentService.createTask({
+          agentId: recommendationAgent._id,
+          msmeId,
+          taskType: 'recommendation_generation',
+          input: { transactions, msmeData },
+          priority: 'medium'
+        });
+
+        results.results.recommendations = {
+          taskId: recTask.taskId,
+          status: recTask.status,
+          estimatedCompletion: new Date(Date.now() + 3 * 60 * 1000)
+        };
+      } catch (error) {
+        logger.error('Recommendation task creation failed:', error);
+        results.results.recommendations = {
+          error: 'Failed to create recommendation task'
+        };
+      }
+    }
+
+    // Anomaly Detection (if requested and agent available)
+    if (includeAnomalyDetection && anomalyAgent) {
+      try {
+        const anomalyTask = await aiAgentService.createTask({
+          agentId: anomalyAgent._id,
+          msmeId,
+          taskType: 'anomaly_detection',
+          input: { transactions },
+          priority: 'medium'
+        });
+
+        results.results.anomalyDetection = {
+          taskId: anomalyTask.taskId,
+          status: anomalyTask.status,
+          estimatedCompletion: new Date(Date.now() + 2 * 60 * 1000)
+        };
+      } catch (error) {
+        logger.error('Anomaly detection task creation failed:', error);
+        results.results.anomalyDetection = {
+          error: 'Failed to create anomaly detection task'
+        };
+      }
+    }
+
+    logger.info(`AI carbon analysis initiated for MSME ${msmeId}`, {
+      analysisId: results.analysisId,
+      transactionCount: transactions.length,
+      agentsUsed: Object.keys(results.results).length
+    });
+
+    res.json({
+      success: true,
+      message: 'AI-enhanced carbon analysis initiated',
+      data: results
+    });
+
+  } catch (error) {
+    logger.error('AI carbon analysis error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/carbon/ai-tasks/:taskId
+// @desc    Get AI task results
+// @access  Private
+router.get('/ai-tasks/:taskId', auth, async (req, res) => {
+  try {
+    const AITask = require('../models/AITask');
+    const task = await AITask.findOne({
+      taskId: req.params.taskId,
+      msmeId: req.user.msmeId
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'AI task not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        taskId: task.taskId,
+        status: task.status,
+        input: task.input,
+        output: task.output,
+        error: task.error,
+        createdAt: task.createdAt,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        results: task.results
+      }
+    });
+
+  } catch (error) {
+    logger.error('Get AI task error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
+const aiAgentService = require('./services/aiAgentService');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -19,12 +20,19 @@ const analyticsRoutes = require('./routes/analytics');
 const adminRoutes = require('./routes/admin');
 const incentivesRoutes = require('./routes/incentives');
 const reportingRoutes = require('./routes/reporting');
+const aiAgentRoutes = require('./routes/ai-agents');
+const aiWorkflowRoutes = require('./routes/ai-workflows');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize AI Agent Service
+aiAgentService.initialize().catch(error => {
+  logger.error('Failed to initialize AI Agent Service:', error);
+});
 
 // Security middleware
 app.use(helmet());
@@ -74,6 +82,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/incentives', incentivesRoutes);
 app.use('/api/reporting', reportingRoutes);
+app.use('/api/ai-agents', aiAgentRoutes);
+app.use('/api/ai-workflows', aiWorkflowRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
