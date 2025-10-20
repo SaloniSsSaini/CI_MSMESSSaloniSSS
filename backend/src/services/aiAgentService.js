@@ -2,6 +2,7 @@ const AIAgent = require('../models/AIAgent');
 const AITask = require('../models/AITask');
 const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
+const agentOptimizationService = require('./agentOptimizationService');
 const logger = require('../utils/logger');
 
 class AIAgentService {
@@ -440,20 +441,45 @@ class AIAgentService {
         throw new Error(`Agent not found: ${task.agentId}`);
       }
 
+      // Optimize task execution
+      const optimizedTask = await agentOptimizationService.optimizeTaskExecution(task);
+      
       task.status = 'in_progress';
       task.startedAt = new Date();
       await task.save();
 
-      // Route to appropriate agent handler
-      const result = await this.routeToAgent(agent, task);
+      // Get optimized connection
+      const connection = await agentOptimizationService.getOptimizedConnection(
+        task.agentId, 
+        'default'
+      );
+
+      // Check for cached result
+      const cacheKey = agentOptimizationService.generateCacheKey(
+        agent.type, 
+        task.taskType, 
+        this.hashInput(task.input)
+      );
+
+      const result = await agentOptimizationService.getCachedResult(
+        cacheKey,
+        () => this.routeToAgent(agent, task),
+        this.getCacheTTL(task.taskType)
+      );
 
       task.status = 'completed';
       task.completedAt = new Date();
       task.output = result;
       task.metadata.actualDuration = task.completedAt - task.startedAt;
+      task.metadata.optimization = {
+        cached: this.cache.has(cacheKey),
+        connectionId: connection.id,
+        scheduledTime: optimizedTask.scheduledTime
+      };
       await task.save();
 
-      // Update agent performance
+      // Update agent performance with optimization service
+      await agentOptimizationService.updateAgentPerformance(agent.id, task, result);
       await this.updateAgentPerformance(agent.id, task);
 
       return result;
@@ -476,31 +502,61 @@ class AIAgentService {
     const startTime = Date.now();
 
     try {
+      // Enhanced routing with optimization context
+      const optimizedTask = {
+        ...task,
+        optimizationContext: {
+          agentCapabilities: await agentOptimizationService.getAgentCapabilities(agent.id),
+          workload: await agentOptimizationService.getAgentWorkload(agent.id),
+          performanceMetrics: agentOptimizationService.performanceMetrics.get(agent.type)
+        }
+      };
+
+      let result;
       switch (agent.type) {
         case 'carbon_analyzer':
-          return await this.carbonAnalyzerAgent(task);
+          result = await this.carbonAnalyzerAgent(optimizedTask);
+          break;
         case 'recommendation_engine':
-          return await this.recommendationEngineAgent(task);
+          result = await this.recommendationEngineAgent(optimizedTask);
+          break;
         case 'data_processor':
-          return await this.dataProcessorAgent(task);
+          result = await this.dataProcessorAgent(optimizedTask);
+          break;
         case 'anomaly_detector':
-          return await this.anomalyDetectorAgent(task);
+          result = await this.anomalyDetectorAgent(optimizedTask);
+          break;
         case 'trend_analyzer':
-          return await this.trendAnalyzerAgent(task);
+          result = await this.trendAnalyzerAgent(optimizedTask);
+          break;
         case 'compliance_monitor':
-          return await this.complianceMonitorAgent(task);
+          result = await this.complianceMonitorAgent(optimizedTask);
+          break;
         case 'optimization_advisor':
-          return await this.optimizationAdvisorAgent(task);
+          result = await this.optimizationAdvisorAgent(optimizedTask);
+          break;
         case 'report_generator':
-          return await this.reportGeneratorAgent(task);
+          result = await this.reportGeneratorAgent(optimizedTask);
+          break;
         default:
           throw new Error(`Unknown agent type: ${agent.type}`);
       }
+
+      // Add optimization metadata to result
+      result.optimization = {
+        processingTime: Date.now() - startTime,
+        agentType: agent.type,
+        optimizationApplied: true,
+        cacheHit: false // Will be set by optimization service
+      };
+
+      return result;
     } finally {
       const duration = Date.now() - startTime;
       task.results = {
         ...task.results,
-        processingTime: duration
+        processingTime: duration,
+        optimizationTime: duration - (task.results?.processingTime || 0)
       };
     }
   }
@@ -1394,6 +1450,485 @@ class AIAgentService {
     }
 
     return metrics;
+  }
+
+  // Optimization helper methods
+  hashInput(input) {
+    const crypto = require('crypto');
+    return crypto.createHash('md5').update(JSON.stringify(input)).digest('hex');
+  }
+
+  getCacheTTL(taskType) {
+    const ttlMap = {
+      'carbon_analysis': 600, // 10 minutes
+      'recommendation_generation': 300, // 5 minutes
+      'data_processing': 180, // 3 minutes
+      'anomaly_detection': 120, // 2 minutes
+      'trend_analysis': 300, // 5 minutes
+      'compliance_check': 600, // 10 minutes
+      'optimization_advice': 300, // 5 minutes
+      'report_generation': 1800 // 30 minutes
+    };
+    
+    return ttlMap[taskType] || 300;
+  }
+
+  // Enhanced multi-agent coordination with optimization
+  async executeOptimizedMultiAgentWorkflow(workflowId, msmeId, triggerData = {}) {
+    try {
+      const workflow = await AIWorkflow.findById(workflowId);
+      if (!workflow) {
+        throw new Error('Workflow not found');
+      }
+
+      const executionId = this.generateExecutionId();
+      const execution = new AIExecution({
+        executionId,
+        workflowId,
+        msmeId,
+        trigger: {
+          type: workflow.trigger.type,
+          source: 'optimized_multi_agent',
+          data: triggerData
+        },
+        steps: workflow.steps.map(step => ({
+          stepId: step.stepId,
+          agentId: step.agentId,
+          status: 'pending',
+          executionMode: step.executionMode || 'optimized_parallel',
+          optimization: {
+            priority: this.calculateStepPriority(step),
+            resourceRequirements: this.estimateStepResources(step),
+            dependencies: step.dependencies || []
+          }
+        })),
+        coordination: {
+          mode: 'optimized_multi_agent',
+          parallelGroups: this.identifyOptimizedParallelGroups(workflow.steps),
+          dependencies: this.buildDependencyGraph(workflow.steps),
+          optimization: {
+            loadBalancing: true,
+            caching: true,
+            predictiveScaling: true
+          }
+        }
+      });
+
+      await execution.save();
+
+      // Execute optimized multi-agent workflow
+      await this.executeOptimizedMultiAgentWorkflowSteps(execution);
+
+      return execution;
+    } catch (error) {
+      logger.error('Failed to execute optimized multi-agent workflow:', error);
+      throw error;
+    }
+  }
+
+  async executeOptimizedMultiAgentWorkflowSteps(execution) {
+    try {
+      const workflow = await AIWorkflow.findById(execution.workflowId);
+      const { parallelGroups, dependencies } = execution.coordination;
+
+      // Execute with optimization
+      for (const group of parallelGroups) {
+        const groupPromises = group.map(stepId => 
+          this.executeOptimizedMultiAgentStep(execution, stepId, dependencies)
+        );
+        
+        await Promise.allSettled(groupPromises);
+      }
+
+      // Mark execution as completed
+      execution.status = 'completed';
+      execution.completedAt = new Date();
+      execution.duration = execution.completedAt - execution.startedAt;
+      await execution.save();
+
+      logger.info(`Optimized multi-agent workflow execution completed: ${execution.executionId}`);
+    } catch (error) {
+      execution.status = 'failed';
+      execution.error = {
+        message: error.message,
+        code: 'OPTIMIZED_MULTI_AGENT_EXECUTION_ERROR',
+        timestamp: new Date()
+      };
+      await execution.save();
+      
+      logger.error('Optimized multi-agent workflow execution failed:', error);
+      throw error;
+    }
+  }
+
+  async executeOptimizedMultiAgentStep(execution, stepId, dependencies) {
+    try {
+      const step = execution.steps.find(s => s.stepId === stepId);
+      if (!step || step.status !== 'pending') {
+        return;
+      }
+
+      // Check if dependencies are satisfied
+      if (!this.areDependenciesSatisfied(stepId, dependencies, execution)) {
+        return;
+      }
+
+      step.status = 'running';
+      step.startedAt = new Date();
+      await execution.save();
+
+      const workflow = await AIWorkflow.findById(execution.workflowId);
+      const workflowStep = workflow.steps.find(s => s.stepId === stepId);
+
+      // Create optimized task
+      const task = await this.createOptimizedTask({
+        agentId: step.agentId,
+        msmeId: execution.msmeId,
+        taskType: workflowStep.taskType,
+        input: execution.trigger.data,
+        parameters: workflowStep.parameters,
+        metadata: {
+          executionId: execution.executionId,
+          stepId: step.stepId,
+          coordinationMode: 'optimized_multi_agent',
+          optimization: step.optimization
+        }
+      });
+
+      step.taskId = task._id;
+      await execution.save();
+
+      // Execute the task with optimization
+      const result = await this.executeTaskWithOptimization(task, execution);
+
+      step.status = 'completed';
+      step.completedAt = new Date();
+      step.duration = step.completedAt - step.startedAt;
+      step.output = result;
+      await execution.save();
+
+      // Notify dependent steps
+      await this.notifyDependentSteps(stepId, dependencies, execution);
+
+      logger.info(`Optimized multi-agent step completed: ${stepId} in ${step.duration}ms`);
+    } catch (error) {
+      const step = execution.steps.find(s => s.stepId === stepId);
+      if (step) {
+        step.status = 'failed';
+        step.error = {
+          message: error.message,
+          code: 'OPTIMIZED_MULTI_AGENT_STEP_ERROR'
+        };
+        await execution.save();
+      }
+      
+      logger.error(`Optimized multi-agent step failed: ${stepId}`, error);
+      throw error;
+    }
+  }
+
+  async createOptimizedTask(taskData) {
+    try {
+      const task = new AITask({
+        taskId: this.generateTaskId(),
+        ...taskData,
+        status: 'pending',
+        optimization: {
+          scheduled: true,
+          priority: taskData.metadata?.optimization?.priority || 5,
+          resourceRequirements: taskData.metadata?.optimization?.resourceRequirements || {}
+        }
+      });
+
+      await task.save();
+      
+      // Add to optimization scheduler
+      await agentOptimizationService.scheduleTask(task, 'medium');
+      
+      logger.info(`Created optimized AI task: ${task.taskId} for agent: ${task.agentId}`);
+      
+      return task;
+    } catch (error) {
+      logger.error('Failed to create optimized AI task:', error);
+      throw error;
+    }
+  }
+
+  async executeTaskWithOptimization(task, execution) {
+    try {
+      const agent = this.agents.get(task.agentId.toString());
+      if (!agent) {
+        throw new Error(`Agent not found: ${task.agentId}`);
+      }
+
+      task.status = 'in_progress';
+      task.startedAt = new Date();
+      await task.save();
+
+      // Get coordination data with optimization
+      const coordinationData = await this.gatherOptimizedCoordinationData(task, execution);
+      
+      // Route to appropriate agent handler with optimization
+      const result = await this.routeToAgentWithOptimization(agent, task, coordinationData);
+
+      task.status = 'completed';
+      task.completedAt = new Date();
+      task.output = result;
+      task.metadata.actualDuration = task.completedAt - task.startedAt;
+      await task.save();
+
+      // Update agent performance with optimization
+      await agentOptimizationService.updateAgentPerformance(agent.id, task, result);
+      await this.updateAgentPerformance(agent.id, task);
+
+      // Store results for other agents with optimization
+      await this.storeOptimizedCoordinationResults(task, result, execution);
+
+      return result;
+    } catch (error) {
+      task.status = 'failed';
+      task.error = {
+        message: error.message,
+        code: 'OPTIMIZED_TASK_ERROR',
+        stack: error.stack,
+        timestamp: new Date()
+      };
+      await task.save();
+
+      logger.error(`Optimized task failed: ${task.taskId}`, error);
+      throw error;
+    }
+  }
+
+  async routeToAgentWithOptimization(agent, task, coordinationData) {
+    const startTime = Date.now();
+
+    try {
+      // Enhanced input with optimization context
+      const optimizedInput = {
+        ...task.input,
+        coordinationData,
+        multiAgentContext: {
+          executionId: task.metadata.executionId,
+          stepId: task.metadata.stepId,
+          coordinationMode: task.metadata.coordinationMode,
+          optimization: task.metadata.optimization
+        },
+        optimizationContext: {
+          agentCapabilities: await agentOptimizationService.getAgentCapabilities(agent.id),
+          workload: await agentOptimizationService.getAgentWorkload(agent.id),
+          performanceMetrics: agentOptimizationService.performanceMetrics.get(agent.type)
+        }
+      };
+
+      const enhancedTask = { ...task, input: optimizedInput };
+
+      let result;
+      switch (agent.type) {
+        case 'carbon_analyzer':
+          result = await this.carbonAnalyzerAgent(enhancedTask);
+          break;
+        case 'recommendation_engine':
+          result = await this.recommendationEngineAgent(enhancedTask);
+          break;
+        case 'data_processor':
+          result = await this.dataProcessorAgent(enhancedTask);
+          break;
+        case 'anomaly_detector':
+          result = await this.anomalyDetectorAgent(enhancedTask);
+          break;
+        case 'trend_analyzer':
+          result = await this.trendAnalyzerAgent(enhancedTask);
+          break;
+        case 'compliance_monitor':
+          result = await this.complianceMonitorAgent(enhancedTask);
+          break;
+        case 'optimization_advisor':
+          result = await this.optimizationAdvisorAgent(enhancedTask);
+          break;
+        case 'report_generator':
+          result = await this.reportGeneratorAgent(enhancedTask);
+          break;
+        default:
+          throw new Error(`Unknown agent type: ${agent.type}`);
+      }
+
+      // Add optimization metadata
+      result.optimization = {
+        processingTime: Date.now() - startTime,
+        agentType: agent.type,
+        optimizationApplied: true,
+        coordinationOptimized: true
+      };
+
+      return result;
+    } finally {
+      const duration = Date.now() - startTime;
+      task.results = {
+        ...task.results,
+        processingTime: duration,
+        optimizationTime: duration - (task.results?.processingTime || 0)
+      };
+    }
+  }
+
+  calculateStepPriority(step) {
+    const basePriority = 5;
+    const taskTypePriority = {
+      'carbon_analysis': 8,
+      'recommendation_generation': 6,
+      'data_processing': 4,
+      'anomaly_detection': 9,
+      'trend_analysis': 5,
+      'compliance_check': 7,
+      'optimization_advice': 6,
+      'report_generation': 3
+    };
+    
+    return basePriority + (taskTypePriority[step.taskType] || 0);
+  }
+
+  estimateStepResources(step) {
+    return {
+      memory: this.estimateMemoryUsage(step),
+      cpu: this.estimateCPUUsage(step),
+      network: this.estimateNetworkUsage(step),
+      storage: this.estimateStorageUsage(step)
+    };
+  }
+
+  identifyOptimizedParallelGroups(steps) {
+    // Enhanced parallel group identification with optimization
+    const groups = [];
+    const processed = new Set();
+    const resourceConstraints = new Map();
+    
+    for (const step of steps) {
+      if (processed.has(step.stepId)) continue;
+      
+      const group = [step.stepId];
+      processed.add(step.stepId);
+      
+      // Find steps that can run in parallel with resource optimization
+      for (const otherStep of steps) {
+        if (processed.has(otherStep.stepId)) continue;
+        
+        if (this.canRunInParallelOptimized(step, otherStep, steps, resourceConstraints)) {
+          group.push(otherStep.stepId);
+          processed.add(otherStep.stepId);
+          
+          // Update resource constraints
+          this.updateResourceConstraints(resourceConstraints, otherStep);
+        }
+      }
+      
+      groups.push(group);
+    }
+    
+    return groups;
+  }
+
+  canRunInParallelOptimized(step1, step2, allSteps, resourceConstraints) {
+    // Check dependencies
+    const step1Deps = step1.dependencies || [];
+    const step2Deps = step2.dependencies || [];
+    
+    if (step1Deps.includes(step2.stepId) || step2Deps.includes(step1.stepId)) {
+      return false;
+    }
+    
+    // Check resource constraints
+    const step1Resources = this.estimateStepResources(step1);
+    const step2Resources = this.estimateStepResources(step2);
+    
+    const totalMemory = (resourceConstraints.get('memory') || 0) + step1Resources.memory + step2Resources.memory;
+    const totalCPU = (resourceConstraints.get('cpu') || 0) + step1Resources.cpu + step2Resources.cpu;
+    
+    // Resource limits (adjust based on system capacity)
+    return totalMemory < 2048 && totalCPU < 4.0; // 2GB memory, 4 CPU cores
+  }
+
+  updateResourceConstraints(resourceConstraints, step) {
+    const resources = this.estimateStepResources(step);
+    resourceConstraints.set('memory', (resourceConstraints.get('memory') || 0) + resources.memory);
+    resourceConstraints.set('cpu', (resourceConstraints.get('cpu') || 0) + resources.cpu);
+  }
+
+  async gatherOptimizedCoordinationData(task, execution) {
+    const coordinationData = {
+      previousResults: {},
+      sharedContext: {},
+      agentStates: {},
+      optimization: {
+        cacheHits: 0,
+        performanceMetrics: {},
+        resourceUsage: {}
+      }
+    };
+
+    // Gather results from previously completed steps with optimization
+    const completedSteps = execution.steps.filter(s => s.status === 'completed');
+    for (const step of completedSteps) {
+      if (step.output) {
+        coordinationData.previousResults[step.stepId] = step.output;
+      }
+    }
+
+    // Gather shared context from all agents with optimization
+    for (const [agentId, agent] of this.agents) {
+      if (this.agentCommunication.has(agentId)) {
+        coordinationData.agentStates[agentId] = this.agentCommunication.get(agentId);
+      }
+      
+      // Add optimization metrics
+      const metrics = agentOptimizationService.performanceMetrics.get(agent.type);
+      if (metrics) {
+        coordinationData.optimization.performanceMetrics[agentId] = metrics;
+      }
+    }
+
+    return coordinationData;
+  }
+
+  async storeOptimizedCoordinationResults(task, result, execution) {
+    const agentId = task.agentId.toString();
+    const stepId = task.metadata.stepId;
+    
+    // Store results for inter-agent communication with optimization
+    if (!this.agentCommunication.has(agentId)) {
+      this.agentCommunication.set(agentId, {});
+    }
+    
+    const agentComm = this.agentCommunication.get(agentId);
+    agentComm[stepId] = {
+      result,
+      timestamp: new Date(),
+      executionId: execution.executionId,
+      optimization: {
+        processingTime: task.metadata.actualDuration,
+        resourceUsage: task.metadata.optimization?.resourceRequirements || {},
+        cacheHit: task.metadata.optimization?.cached || false
+      }
+    };
+
+    // Store in execution context for dependent steps with optimization
+    execution.coordination = execution.coordination || {};
+    execution.coordination.results = execution.coordination.results || {};
+    execution.coordination.results[stepId] = {
+      ...result,
+      optimization: {
+        processingTime: task.metadata.actualDuration,
+        resourceUsage: task.metadata.optimization?.resourceRequirements || {},
+        cacheHit: task.metadata.optimization?.cached || false
+      }
+    };
+    
+    await execution.save();
+  }
+
+  // Get optimization metrics
+  async getOptimizationMetrics() {
+    return agentOptimizationService.getPerformanceMetrics();
   }
 }
 

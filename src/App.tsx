@@ -10,6 +10,7 @@ import IncentivesScreen from './components/IncentivesScreen';
 import ReportingScreen from './components/ReportingScreen';
 import MultiAgentManagement from './components/MultiAgentManagement';
 import MultiAgentDashboard from './components/MultiAgentDashboard';
+import OptimizedMultiAgentDashboard from './components/OptimizedMultiAgentDashboard';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/reporting" element={<ReportingScreen />} />
           <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
           <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
+          <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
         </Routes>
       </Container>
     </Box>
