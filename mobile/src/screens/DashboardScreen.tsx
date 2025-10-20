@@ -205,6 +205,13 @@ const DashboardScreen = ({ navigation }: any) => {
                 Incentives
               </Chip>
               <Chip
+                icon="leaf-circle"
+                onPress={() => navigation.navigate('CarbonTrading')}
+                style={styles.actionChip}
+              >
+                Carbon Trading
+              </Chip>
+              <Chip
                 icon="file-document"
                 onPress={() => navigation.navigate('Reporting')}
                 style={styles.actionChip}

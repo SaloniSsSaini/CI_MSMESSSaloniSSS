@@ -12,6 +12,7 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import TransactionScreen from './src/screens/TransactionScreen';
 import CarbonFootprintScreen from './src/screens/CarbonFootprintScreen';
+import CarbonTradingScreen from './src/screens/CarbonTradingScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SMSAnalysisScreen from './src/screens/SMSAnalysisScreen';
@@ -116,6 +117,11 @@ const App = () => {
                     name="CarbonFootprint" 
                     component={CarbonFootprintScreen}
                     options={{ title: 'Carbon Footprint' }}
+                  />
+                  <Stack.Screen 
+                    name="CarbonTrading" 
+                    component={CarbonTradingScreen}
+                    options={{ title: 'Carbon Trading' }}
                   />
                   <Stack.Screen 
                     name="Analytics" 

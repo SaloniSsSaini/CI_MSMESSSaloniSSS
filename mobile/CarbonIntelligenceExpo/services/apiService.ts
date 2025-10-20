@@ -181,6 +181,30 @@ class ApiService {
     return this.makeRequest('GET', '/msme/stats');
   }
 
+  // Carbon trading endpoints
+  async getCarbonTradingPortfolio() {
+    return this.makeRequest('GET', '/carbon/trading/portfolio');
+  }
+
+  async getCarbonOffsetOptions(params?: any) {
+    const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.makeRequest('GET', `/carbon/trading/offsets${queryString}`);
+  }
+
+  async purchaseCarbonOffset(data: any) {
+    return this.makeRequest('POST', '/carbon/trading/purchase', data);
+  }
+
+  async getCarbonTradingHistory(params?: any) {
+    const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.makeRequest('GET', `/carbon/trading/history${queryString}`);
+  }
+
+  async getCarbonMarketTrends(params?: any) {
+    const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.makeRequest('GET', `/carbon/trading/market-trends${queryString}`);
+  }
+
   // Utility methods
   async setToken(token: string) {
     this.token = token;

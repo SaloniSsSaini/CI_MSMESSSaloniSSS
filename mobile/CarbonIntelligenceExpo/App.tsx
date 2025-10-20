@@ -7,19 +7,20 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import screens
-import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
-import TransactionScreen from './src/screens/TransactionScreen';
-import CarbonFootprintScreen from './src/screens/CarbonFootprintScreen';
-import AnalyticsScreen from './src/screens/AnalyticsScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import SMSAnalysisScreen from './src/screens/SMSAnalysisScreen';
-import EmailAnalysisScreen from './src/screens/EmailAnalysisScreen';
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import TransactionScreen from './screens/TransactionScreen';
+import CarbonFootprintScreen from './screens/CarbonFootprintScreen';
+import CarbonTradingScreen from './screens/CarbonTradingScreen';
+import AnalyticsScreen from './screens/AnalyticsScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import SMSAnalysisScreen from './screens/SMSAnalysisScreen';
+import EmailAnalysisScreen from './screens/EmailAnalysisScreen';
 
 // Import theme
-import { theme } from './src/theme/theme';
-import { AuthContext } from './src/context/AuthContext';
+import { theme } from './theme/theme';
+import { AuthContext } from './context/AuthContext';
 
 const Stack = createStackNavigator();
 
@@ -114,6 +115,11 @@ const App = () => {
                     name="CarbonFootprint" 
                     component={CarbonFootprintScreen}
                     options={{ title: 'Carbon Footprint' }}
+                  />
+                  <Stack.Screen 
+                    name="CarbonTrading" 
+                    component={CarbonTradingScreen}
+                    options={{ title: 'Carbon Trading' }}
                   />
                   <Stack.Screen 
                     name="Analytics" 

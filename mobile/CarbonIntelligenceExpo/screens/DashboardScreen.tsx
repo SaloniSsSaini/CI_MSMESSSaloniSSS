@@ -197,6 +197,13 @@ const DashboardScreen = ({ navigation }: any) => {
               >
                 View Analytics
               </Chip>
+              <Chip
+                icon="leaf-circle"
+                onPress={() => navigation.navigate('CarbonTrading')}
+                style={styles.actionChip}
+              >
+                Carbon Trading
+              </Chip>
             </View>
           </Card.Content>
         </Card>
