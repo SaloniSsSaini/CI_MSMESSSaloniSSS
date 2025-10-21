@@ -4,30 +4,30 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#2E7D32', // Green
-    primaryContainer: '#C8E6C9',
-    secondary: '#FF6F00', // Orange
+    primary: '#1B5E20', // Deep Green
+    primaryContainer: '#A5D6A7',
+    secondary: '#FF8F00', // Amber
     secondaryContainer: '#FFE0B2',
-    tertiary: '#1976D2', // Blue
+    tertiary: '#1565C0', // Blue
     tertiaryContainer: '#BBDEFB',
     surface: '#FFFFFF',
-    surfaceVariant: '#F5F5F5',
-    background: '#FAFAFA',
+    surfaceVariant: '#F8F9FA',
+    background: '#FAFBFC',
     error: '#D32F2F',
     errorContainer: '#FFCDD2',
     onPrimary: '#FFFFFF',
     onSecondary: '#FFFFFF',
     onTertiary: '#FFFFFF',
-    onSurface: '#212121',
-    onSurfaceVariant: '#757575',
-    onBackground: '#212121',
+    onSurface: '#1A1A1A',
+    onSurfaceVariant: '#6B7280',
+    onBackground: '#1A1A1A',
     onError: '#FFFFFF',
-    outline: '#BDBDBD',
-    outlineVariant: '#E0E0E0',
+    outline: '#D1D5DB',
+    outlineVariant: '#E5E7EB',
     shadow: '#000000',
     scrim: '#000000',
-    inverseSurface: '#303030',
-    inverseOnSurface: '#FAFAFA',
+    inverseSurface: '#2D2D2D',
+    inverseOnSurface: '#F8F9FA',
     inversePrimary: '#81C784',
     elevation: {
       level0: 'transparent',
@@ -60,7 +60,7 @@ export const theme = {
       fontWeight: '100' as const,
     },
   },
-  roundness: 8,
+  roundness: 12,
 };
 
 export const colors = {

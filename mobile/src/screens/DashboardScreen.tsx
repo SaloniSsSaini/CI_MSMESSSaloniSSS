@@ -23,6 +23,9 @@ import { CarbonScoreCard } from '../components/CarbonScoreCard';
 import { QuickStatsCard } from '../components/QuickStatsCard';
 import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
 import { RecommendationsCard } from '../components/RecommendationsCard';
+import { LoadingScreen } from '../components/LoadingScreen';
+import { ErrorScreen } from '../components/ErrorScreen';
+import * as Animatable from 'react-native-animatable';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +34,7 @@ const DashboardScreen = ({ navigation }: any) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -39,12 +43,16 @@ const DashboardScreen = ({ navigation }: any) => {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await apiService.getDashboard();
       if (response.success) {
         setDashboardData(response.data);
+      } else {
+        setError(response.message || 'Failed to load dashboard data');
       }
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -73,11 +81,16 @@ const DashboardScreen = ({ navigation }: any) => {
   };
 
   if (isLoading) {
+    return <LoadingScreen message="Loading your dashboard..." />;
+  }
+
+  if (error) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
-      </View>
+      <ErrorScreen
+        title="Unable to load dashboard"
+        message={error}
+        onRetry={loadDashboardData}
+      />
     );
   }
 
@@ -90,16 +103,18 @@ const DashboardScreen = ({ navigation }: any) => {
         }
       >
         {/* Welcome Section */}
-        <Card style={styles.welcomeCard}>
-          <Card.Content>
-            <Title style={styles.welcomeTitle}>
-              Welcome back, {user?.msme?.companyName || 'User'}!
-            </Title>
-            <Paragraph style={styles.welcomeSubtitle}>
-              Track your carbon footprint and sustainable manufacturing progress
-            </Paragraph>
-          </Card.Content>
-        </Card>
+        <Animatable.View animation="fadeInDown" duration={800}>
+          <Card style={styles.welcomeCard} elevation={6}>
+            <Card.Content>
+              <Title style={styles.welcomeTitle}>
+                Welcome back, {user?.msme?.companyName || 'User'}!
+              </Title>
+              <Paragraph style={styles.welcomeSubtitle}>
+                Track your carbon footprint and sustainable manufacturing progress
+              </Paragraph>
+            </Card.Content>
+          </Card>
+        </Animatable.View>
 
         {/* Carbon Score Card */}
         {dashboardData?.currentScore !== undefined && (

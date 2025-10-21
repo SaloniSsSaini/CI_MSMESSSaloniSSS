@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Text, Icon } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import * as Animatable from 'react-native-animatable';
 
 interface QuickStatsCardProps {
   title: string;
@@ -28,27 +29,43 @@ export const QuickStatsCard: React.FC<QuickStatsCardProps> = ({
   };
 
   return (
-    <Card style={[styles.card, { flex: 1, marginHorizontal: 4 }]}>
-      <Card.Content style={styles.content}>
-        <View style={styles.header}>
-          <Icon source={icon} size={20} color={color} />
-          <Text style={styles.title}>{title}</Text>
-        </View>
-        
-        <View style={styles.valueContainer}>
-          <Text style={[styles.value, { color }]}>
-            {formatValue(value)}
-          </Text>
-          <Text style={styles.unit}>{unit}</Text>
-        </View>
-      </Card.Content>
-    </Card>
+    <Animatable.View 
+      animation="fadeInUp" 
+      duration={600} 
+      delay={Math.random() * 200}
+      style={{ flex: 1, marginHorizontal: 4 }}
+    >
+      <Card style={styles.card} elevation={4}>
+        <Card.Content style={styles.content}>
+          <View style={styles.header}>
+            <Animatable.View animation="bounceIn" duration={800} delay={200}>
+              <Icon source={icon} size={24} color={color} />
+            </Animatable.View>
+            <Text style={styles.title}>{title}</Text>
+          </View>
+          
+          <Animatable.View 
+            animation="zoomIn" 
+            duration={800} 
+            delay={400}
+            style={styles.valueContainer}
+          >
+            <Text style={[styles.value, { color }]}>
+              {formatValue(value)}
+            </Text>
+            <Text style={styles.unit}>{unit}</Text>
+          </Animatable.View>
+        </Card.Content>
+      </Card>
+    </Animatable.View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    elevation: 2,
+    elevation: 4,
+    borderRadius: theme.roundness,
+    backgroundColor: theme.colors.surface,
   },
   content: {
     padding: theme.spacing.md,
