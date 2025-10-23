@@ -32,7 +32,8 @@ import {
   DirectionsCar as CarIcon,
   Bolt as EnergyIcon,
   CheckCircle as CheckIcon,
-  Star as StarIcon
+  Star as StarIcon,
+  AccountBalance as BankIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -701,6 +702,32 @@ const Dashboard: React.FC = () => {
                 onClick={() => navigate('/reporting')}
               >
                 View Reports
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <BankIcon color="success" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Green Loans
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Apply for green loans based on your carbon score and savings
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button 
+                size="small" 
+                variant="contained"
+                color="success"
+                onClick={() => navigate('/green-loans')}
+              >
+                Apply for Loan
               </Button>
             </CardActions>
           </Card>

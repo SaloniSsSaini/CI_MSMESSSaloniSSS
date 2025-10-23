@@ -12,6 +12,7 @@ import ReportingScreen from './components/ReportingScreen';
 import MultiAgentManagement from './components/MultiAgentManagement';
 import MultiAgentDashboard from './components/MultiAgentDashboard';
 import OptimizedMultiAgentDashboard from './components/OptimizedMultiAgentDashboard';
+import GreenLoans from './components/GreenLoans';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
           <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
           <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
+          <Route path="/green-loans" element={<GreenLoans />} />
         </Routes>
       </Container>
     </Box>

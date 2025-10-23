@@ -1,0 +1,202 @@
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+class ApiService {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Auth endpoints
+  async login(email: string, password: string) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async register(userData: any) {
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  // MSME endpoints
+  async getMSMEProfile() {
+    return this.request('/msme/profile');
+  }
+
+  async updateMSMEProfile(data: any) {
+    return this.request('/msme/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerMSME(data: any) {
+    return this.request('/msme/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMSMEStats() {
+    return this.request('/msme/stats');
+  }
+
+  // Carbon endpoints
+  async getCarbonAssessment() {
+    return this.request('/carbon/assessment');
+  }
+
+  async submitCarbonAssessment(data: any) {
+    return this.request('/carbon/assessment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCarbonSavings() {
+    return this.request('/carbon/savings');
+  }
+
+  // Bank endpoints
+  async getBanks() {
+    return this.request('/banks');
+  }
+
+  async getBank(id: string) {
+    return this.request(`/banks/${id}`);
+  }
+
+  async getBankLoans(bankId: string, params?: { status?: string; page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const queryString = queryParams.toString();
+    return this.request(`/banks/${bankId}/loans${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getBankStatistics(bankId: string) {
+    return this.request(`/banks/${bankId}/statistics`);
+  }
+
+  // Green Loan endpoints
+  async checkLoanEligibility(data: any) {
+    return this.request('/green-loans/eligibility-check', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async applyForLoan(data: any) {
+    return this.request('/green-loans/apply', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyLoans(params?: { status?: string; page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const queryString = queryParams.toString();
+    return this.request(`/green-loans/my-loans${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getLoanDetails(loanId: string) {
+    return this.request(`/green-loans/${loanId}`);
+  }
+
+  async updateLoanStatus(loanId: string, data: any) {
+    return this.request(`/green-loans/${loanId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Transaction endpoints
+  async getTransactions(params?: { page?: number; limit?: number; category?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.category) queryParams.append('category', params.category);
+    
+    const queryString = queryParams.toString();
+    return this.request(`/transactions${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async createTransaction(data: any) {
+    return this.request('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTransaction(id: string, data: any) {
+    return this.request(`/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTransaction(id: string) {
+    return this.request(`/transactions/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Incentives endpoints
+  async getIncentives() {
+    return this.request('/incentives');
+  }
+
+  async claimIncentive(incentiveId: string) {
+    return this.request(`/incentives/${incentiveId}/claim`, {
+      method: 'POST',
+    });
+  }
+
+  // Reporting endpoints
+  async getReports() {
+    return this.request('/reporting');
+  }
+
+  async generateReport(type: string, params?: any) {
+    return this.request(`/reporting/${type}`, {
+      method: 'POST',
+      body: JSON.stringify(params || {}),
+    });
+  }
+}
+
+export default new ApiService();

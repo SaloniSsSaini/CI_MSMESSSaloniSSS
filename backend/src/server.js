@@ -25,6 +25,8 @@ const aiAgentRoutes = require('./routes/ai-agents');
 const aiWorkflowRoutes = require('./routes/ai-workflows');
 const multiAgentWorkflowRoutes = require('./routes/multi-agent-workflows');
 const optimizedAiAgentRoutes = require('./routes/optimized-ai-agents');
+const bankRoutes = require('./routes/banks');
+const greenLoanRoutes = require('./routes/greenLoans');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -90,6 +92,8 @@ app.use('/api/ai-agents', aiAgentRoutes);
 app.use('/api/ai-workflows', aiWorkflowRoutes);
 app.use('/api/multi-agent-workflows', multiAgentWorkflowRoutes);
 app.use('/api/optimized-ai-agents', optimizedAiAgentRoutes);
+app.use('/api/banks', bankRoutes);
+app.use('/api/green-loans', greenLoanRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
