@@ -528,6 +528,218 @@ class CarbonCalculationService {
     
     return recommendations;
   }
+
+  // Calculate carbon savings for MSMEs
+  calculateCarbonSavings(msmeData, currentAssessment, previousAssessment = null) {
+    const savings = {
+      totalSavings: 0,
+      periodSavings: 0,
+      categorySavings: {
+        energy: 0,
+        water: 0,
+        waste: 0,
+        transportation: 0,
+        materials: 0,
+        manufacturing: 0
+      },
+      implementedRecommendations: 0,
+      potentialSavings: 0,
+      savingsPercentage: 0,
+      benchmarkComparison: {
+        industryAverage: 0,
+        bestInClass: 0,
+        performance: 'average'
+      },
+      trends: {
+        monthly: [],
+        quarterly: [],
+        yearly: []
+      },
+      achievements: [],
+      nextMilestones: []
+    };
+
+    // Calculate period savings if previous assessment exists
+    if (previousAssessment) {
+      savings.periodSavings = previousAssessment.totalCO2Emissions - currentAssessment.totalCO2Emissions;
+      savings.savingsPercentage = previousAssessment.totalCO2Emissions > 0 ? 
+        (savings.periodSavings / previousAssessment.totalCO2Emissions) * 100 : 0;
+    }
+
+    // Calculate category-wise savings
+    if (previousAssessment) {
+      Object.keys(savings.categorySavings).forEach(category => {
+        const current = currentAssessment.breakdown[category]?.total || 0;
+        const previous = previousAssessment.breakdown[category]?.total || 0;
+        savings.categorySavings[category] = previous - current;
+      });
+    }
+
+    // Calculate total savings (sum of all category savings)
+    savings.totalSavings = Object.values(savings.categorySavings).reduce((sum, val) => sum + val, 0);
+
+    // Count implemented recommendations
+    savings.implementedRecommendations = currentAssessment.recommendations.filter(rec => rec.isImplemented).length;
+
+    // Calculate potential savings from unimplemented recommendations
+    savings.potentialSavings = currentAssessment.recommendations
+      .filter(rec => !rec.isImplemented)
+      .reduce((sum, rec) => sum + (rec.potentialCO2Reduction || 0), 0);
+
+    // Set industry benchmarks based on company type and industry
+    const industryBenchmarks = this.getIndustryBenchmarks(msmeData.industry, msmeData.companyType);
+    savings.benchmarkComparison = {
+      industryAverage: industryBenchmarks.average,
+      bestInClass: industryBenchmarks.bestInClass,
+      performance: this.calculatePerformanceLevel(currentAssessment.totalCO2Emissions, industryBenchmarks)
+    };
+
+    // Generate achievements based on savings
+    savings.achievements = this.generateAchievements(savings, currentAssessment, msmeData);
+
+    // Generate next milestones
+    savings.nextMilestones = this.generateNextMilestones(savings, currentAssessment, msmeData);
+
+    return savings;
+  }
+
+  getIndustryBenchmarks(industry, companyType) {
+    // Industry-specific CO2 emissions per unit of production (kg CO2 per ₹1000 turnover)
+    const industryFactors = {
+      manufacturing: { average: 2.5, bestInClass: 1.2 },
+      textiles: { average: 3.2, bestInClass: 1.8 },
+      food: { average: 1.8, bestInClass: 1.0 },
+      chemicals: { average: 4.5, bestInClass: 2.8 },
+      electronics: { average: 2.8, bestInClass: 1.5 },
+      automotive: { average: 3.8, bestInClass: 2.2 },
+      pharmaceuticals: { average: 3.5, bestInClass: 2.0 }
+    };
+
+    // Company size multipliers
+    const sizeMultipliers = {
+      micro: 1.2,
+      small: 1.0,
+      medium: 0.8
+    };
+
+    const baseBenchmark = industryFactors[industry] || industryFactors.manufacturing;
+    const sizeMultiplier = sizeMultipliers[companyType] || 1.0;
+
+    return {
+      average: baseBenchmark.average * sizeMultiplier,
+      bestInClass: baseBenchmark.bestInClass * sizeMultiplier
+    };
+  }
+
+  calculatePerformanceLevel(currentEmissions, benchmarks) {
+    const efficiency = currentEmissions / benchmarks.average;
+    
+    if (efficiency <= 0.6) return 'excellent';
+    if (efficiency <= 0.8) return 'good';
+    if (efficiency <= 1.0) return 'average';
+    if (efficiency <= 1.2) return 'below_average';
+    return 'poor';
+  }
+
+  generateAchievements(savings, assessment, msmeData) {
+    const achievements = [];
+
+    // Carbon reduction achievements
+    if (savings.savingsPercentage >= 20) {
+      achievements.push({
+        type: 'carbon_reduction',
+        title: 'Carbon Reduction Champion',
+        description: `Achieved ${savings.savingsPercentage.toFixed(1)}% reduction in carbon emissions`,
+        level: 'gold',
+        co2Saved: savings.periodSavings
+      });
+    } else if (savings.savingsPercentage >= 10) {
+      achievements.push({
+        type: 'carbon_reduction',
+        title: 'Green Progress',
+        description: `Achieved ${savings.savingsPercentage.toFixed(1)}% reduction in carbon emissions`,
+        level: 'silver',
+        co2Saved: savings.periodSavings
+      });
+    }
+
+    // Recommendation implementation achievements
+    if (savings.implementedRecommendations >= 5) {
+      achievements.push({
+        type: 'implementation',
+        title: 'Sustainability Leader',
+        description: `Implemented ${savings.implementedRecommendations} sustainability recommendations`,
+        level: 'gold'
+      });
+    } else if (savings.implementedRecommendations >= 3) {
+      achievements.push({
+        type: 'implementation',
+        title: 'Action Taker',
+        description: `Implemented ${savings.implementedRecommendations} sustainability recommendations`,
+        level: 'silver'
+      });
+    }
+
+    // Carbon score achievements
+    if (assessment.carbonScore >= 90) {
+      achievements.push({
+        type: 'score',
+        title: 'Carbon Excellence',
+        description: `Achieved carbon score of ${assessment.carbonScore}`,
+        level: 'gold'
+      });
+    } else if (assessment.carbonScore >= 80) {
+      achievements.push({
+        type: 'score',
+        title: 'Green Achiever',
+        description: `Achieved carbon score of ${assessment.carbonScore}`,
+        level: 'silver'
+      });
+    }
+
+    return achievements;
+  }
+
+  generateNextMilestones(savings, assessment, msmeData) {
+    const milestones = [];
+
+    // Carbon reduction milestones
+    const nextReductionTarget = Math.max(5, Math.ceil(savings.savingsPercentage / 5) * 5 + 5);
+    milestones.push({
+      type: 'carbon_reduction',
+      title: `${nextReductionTarget}% Carbon Reduction`,
+      description: `Aim for ${nextReductionTarget}% reduction in next assessment`,
+      targetValue: nextReductionTarget,
+      currentValue: savings.savingsPercentage,
+      priority: 'high'
+    });
+
+    // Recommendation implementation milestones
+    const nextRecTarget = savings.implementedRecommendations + 2;
+    milestones.push({
+      type: 'recommendations',
+      title: `Implement ${nextRecTarget} Recommendations`,
+      description: `Implement ${nextRecTarget} sustainability recommendations`,
+      targetValue: nextRecTarget,
+      currentValue: savings.implementedRecommendations,
+      priority: 'medium'
+    });
+
+    // Carbon score milestones
+    const nextScoreTarget = Math.min(100, assessment.carbonScore + 10);
+    if (nextScoreTarget > assessment.carbonScore) {
+      milestones.push({
+        type: 'score',
+        title: `Carbon Score ${nextScoreTarget}`,
+        description: `Achieve carbon score of ${nextScoreTarget}`,
+        targetValue: nextScoreTarget,
+        currentValue: assessment.carbonScore,
+        priority: 'medium'
+      });
+    }
+
+    return milestones;
+  }
 }
 
 module.exports = new CarbonCalculationService();

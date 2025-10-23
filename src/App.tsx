@@ -5,6 +5,7 @@ import { Nature as EcoIcon } from '@mui/icons-material';
 import MSMERegistration from './components/MSMERegistration';
 import Dashboard from './components/Dashboard';
 import CarbonFootprint from './components/CarbonFootprint';
+import CarbonSavings from './components/CarbonSavings';
 import Recommendations from './components/Recommendations';
 import IncentivesScreen from './components/IncentivesScreen';
 import ReportingScreen from './components/ReportingScreen';
@@ -29,6 +30,7 @@ function App() {
           <Route path="/" element={<MSMERegistration />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/carbon-footprint" element={<CarbonFootprint />} />
+          <Route path="/carbon-savings" element={<CarbonSavings />} />
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/incentives" element={<IncentivesScreen />} />
           <Route path="/reporting" element={<ReportingScreen />} />

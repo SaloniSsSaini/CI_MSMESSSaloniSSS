@@ -536,4 +536,201 @@ router.get('/ai-tasks/:taskId', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/carbon/savings
+// @desc    Get carbon savings data for MSME
+// @access  Private
+router.get('/savings', auth, async (req, res) => {
+  try {
+    const { period = 'monthly', includeTrends = true } = req.query;
+    const msmeId = req.user.msmeId;
+
+    // Get current and previous assessments
+    const currentAssessment = await CarbonAssessment.findOne({ msmeId })
+      .sort({ createdAt: -1 });
+
+    if (!currentAssessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'No carbon assessment found for this MSME'
+      });
+    }
+
+    // Get previous assessment based on period
+    let previousAssessment = null;
+    const periodDays = period === 'monthly' ? 30 : period === 'quarterly' ? 90 : 365;
+    const cutoffDate = new Date(currentAssessment.createdAt.getTime() - periodDays * 24 * 60 * 60 * 1000);
+    
+    previousAssessment = await CarbonAssessment.findOne({
+      msmeId,
+      createdAt: { $lt: cutoffDate }
+    }).sort({ createdAt: -1 });
+
+    // Get MSME data
+    const MSME = require('../models/MSME');
+    const msmeData = await MSME.findById(msmeId);
+
+    if (!msmeData) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME data not found'
+      });
+    }
+
+    // Calculate carbon savings
+    const savings = carbonCalculationService.calculateCarbonSavings(
+      msmeData, 
+      currentAssessment, 
+      previousAssessment
+    );
+
+    // Get trends if requested
+    if (includeTrends) {
+      const trendAssessments = await CarbonAssessment.find({ msmeId })
+        .sort({ createdAt: -1 })
+        .limit(12);
+
+      savings.trends.monthly = trendAssessments.map(assessment => ({
+        month: assessment.createdAt.toISOString().substring(0, 7),
+        totalCO2Emissions: assessment.totalCO2Emissions,
+        carbonScore: assessment.carbonScore,
+        savings: assessment.totalCO2Emissions // This would need historical comparison
+      }));
+
+      // Calculate quarterly trends
+      const quarterlyData = {};
+      trendAssessments.forEach(assessment => {
+        const quarter = Math.ceil((assessment.createdAt.getMonth() + 1) / 3);
+        const year = assessment.createdAt.getFullYear();
+        const key = `${year}-Q${quarter}`;
+        
+        if (!quarterlyData[key]) {
+          quarterlyData[key] = {
+            quarter: key,
+            totalCO2Emissions: 0,
+            carbonScore: 0,
+            count: 0
+          };
+        }
+        
+        quarterlyData[key].totalCO2Emissions += assessment.totalCO2Emissions;
+        quarterlyData[key].carbonScore += assessment.carbonScore;
+        quarterlyData[key].count += 1;
+      });
+
+      savings.trends.quarterly = Object.values(quarterlyData).map(data => ({
+        ...data,
+        carbonScore: data.carbonScore / data.count
+      })).sort((a, b) => a.quarter.localeCompare(b.quarter));
+    }
+
+    // Calculate additional metrics
+    const additionalMetrics = {
+      totalCO2Saved: savings.totalSavings,
+      averageMonthlySavings: savings.totalSavings / (periodDays / 30),
+      projectedAnnualSavings: savings.totalSavings * (365 / periodDays),
+      costSavings: savings.totalSavings * 0.05, // Assuming ₹0.05 per kg CO2 saved
+      environmentalImpact: {
+        treesEquivalent: Math.round(savings.totalSavings / 22), // 1 tree absorbs ~22kg CO2/year
+        carsOffRoad: Math.round(savings.totalSavings / 4600), // Average car emits ~4.6 tons CO2/year
+        energySaved: Math.round(savings.totalSavings / 0.8) // 1 kWh = 0.8kg CO2
+      }
+    };
+
+    const response = {
+      success: true,
+      data: {
+        savings,
+        additionalMetrics,
+        currentAssessment: {
+          id: currentAssessment._id,
+          totalCO2Emissions: currentAssessment.totalCO2Emissions,
+          carbonScore: currentAssessment.carbonScore,
+          createdAt: currentAssessment.createdAt
+        },
+        previousAssessment: previousAssessment ? {
+          id: previousAssessment._id,
+          totalCO2Emissions: previousAssessment.totalCO2Emissions,
+          carbonScore: previousAssessment.carbonScore,
+          createdAt: previousAssessment.createdAt
+        } : null,
+        period,
+        lastUpdated: new Date()
+      }
+    };
+
+    res.json(response);
+
+  } catch (error) {
+    logger.error('Get carbon savings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/carbon/savings/leaderboard
+// @desc    Get carbon savings leaderboard
+// @access  Private
+router.get('/savings/leaderboard', auth, async (req, res) => {
+  try {
+    const { limit = 10, period = 'monthly' } = req.query;
+
+    // Get all MSMEs with recent assessments
+    const periodDays = period === 'monthly' ? 30 : period === 'quarterly' ? 90 : 365;
+    const cutoffDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const assessments = await CarbonAssessment.find({
+      createdAt: { $gte: cutoffDate }
+    })
+    .populate('msmeId', 'companyName companyType industry')
+    .sort({ totalCO2Emissions: 1 }); // Lower emissions = better
+
+    // Group by MSME and calculate savings
+    const msmeSavings = {};
+    assessments.forEach(assessment => {
+      const msmeId = assessment.msmeId._id.toString();
+      if (!msmeSavings[msmeId]) {
+        msmeSavings[msmeId] = {
+          msme: assessment.msmeId,
+          assessments: [],
+          totalEmissions: 0,
+          averageScore: 0
+        };
+      }
+      msmeSavings[msmeId].assessments.push(assessment);
+      msmeSavings[msmeId].totalEmissions += assessment.totalCO2Emissions;
+    });
+
+    // Calculate average scores and sort
+    const leaderboard = Object.values(msmeSavings)
+      .map(msme => ({
+        ...msme,
+        averageScore: msme.assessments.reduce((sum, a) => sum + a.carbonScore, 0) / msme.assessments.length,
+        assessmentCount: msme.assessments.length
+      }))
+      .sort((a, b) => b.averageScore - a.averageScore)
+      .slice(0, parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        leaderboard,
+        period,
+        totalParticipants: Object.keys(msmeSavings).length,
+        lastUpdated: new Date()
+      }
+    });
+
+  } catch (error) {
+    logger.error('Get carbon savings leaderboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

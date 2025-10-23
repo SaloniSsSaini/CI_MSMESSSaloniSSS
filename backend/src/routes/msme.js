@@ -218,6 +218,25 @@ router.get('/stats', auth, async (req, res) => {
       { $limit: 12 }
     ]);
 
+    // Get carbon savings data
+    const carbonCalculationService = require('../services/carbonCalculationService');
+    const previousAssessment = await CarbonAssessment.findOne({ msmeId })
+      .sort({ createdAt: -1 })
+      .skip(1);
+
+    let carbonSavings = null;
+    if (latestAssessment) {
+      const MSME = require('../models/MSME');
+      const msmeData = await MSME.findById(msmeId);
+      if (msmeData) {
+        carbonSavings = carbonCalculationService.calculateCarbonSavings(
+          msmeData,
+          latestAssessment,
+          previousAssessment
+        );
+      }
+    }
+
     const stats = {
       transactions: {
         total: totalTransactions,
@@ -228,7 +247,16 @@ router.get('/stats', auth, async (req, res) => {
         currentScore: latestAssessment?.carbonScore || 0,
         totalAssessments,
         lastAssessment: latestAssessment?.createdAt,
-        totalCO2Emissions: latestAssessment?.totalCO2Emissions || 0
+        totalCO2Emissions: latestAssessment?.totalCO2Emissions || 0,
+        savings: carbonSavings ? {
+          totalSavings: carbonSavings.totalSavings,
+          periodSavings: carbonSavings.periodSavings,
+          savingsPercentage: carbonSavings.savingsPercentage,
+          implementedRecommendations: carbonSavings.implementedRecommendations,
+          potentialSavings: carbonSavings.potentialSavings,
+          achievements: carbonSavings.achievements.length,
+          performance: carbonSavings.benchmarkComparison.performance
+        } : null
       },
       profile: {
         isVerified: latestAssessment?.msmeId ? true : false,

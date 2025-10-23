@@ -434,7 +434,7 @@ router.post('/auto-optimize', auth, async (req, res) => {
 });
 
 // Helper Methods
-generateLoadBalancingRecommendations(agentLoads) {
+function generateLoadBalancingRecommendations(agentLoads) {
   const recommendations = [];
   
   const overloadedAgents = agentLoads.filter(agent => agent.load > 0.8);
@@ -461,7 +461,7 @@ generateLoadBalancingRecommendations(agentLoads) {
   return recommendations;
 }
 
-async performPredictiveAnalysis(systemState, performanceMetrics, timeWindow, predictionHorizon) {
+async function performPredictiveAnalysis(systemState, performanceMetrics, timeWindow, predictionHorizon) {
   // Placeholder for predictive analysis
   return {
     predictedLoad: systemState.activeTasks * 1.2,
@@ -477,7 +477,7 @@ async performPredictiveAnalysis(systemState, performanceMetrics, timeWindow, pre
   };
 }
 
-generateScalingRecommendations(predictions) {
+function generateScalingRecommendations(predictions) {
   const recommendations = [];
   
   if (predictions.scalingRecommendations.scaleUp) {
@@ -501,7 +501,7 @@ generateScalingRecommendations(predictions) {
   return recommendations;
 }
 
-calculateOverallPerformanceScore(optimizationMetrics) {
+function calculateOverallPerformanceScore(optimizationMetrics) {
   const cacheScore = optimizationMetrics.cache.hitRate * 0.3;
   const agentScore = Object.values(optimizationMetrics.agents).reduce((avg, agent) => 
     avg + (agent.successRate || 0.5), 0) / Object.keys(optimizationMetrics.agents).length * 0.7;
@@ -509,7 +509,7 @@ calculateOverallPerformanceScore(optimizationMetrics) {
   return Math.min((cacheScore + agentScore) * 100, 100);
 }
 
-generateOptimizationRecommendations(optimizationMetrics, multiAgentStatus) {
+function generateOptimizationRecommendations(optimizationMetrics, multiAgentStatus) {
   const recommendations = [];
   
   if (optimizationMetrics.cache.hitRate < 0.6) {
@@ -531,7 +531,7 @@ generateOptimizationRecommendations(optimizationMetrics, multiAgentStatus) {
   return recommendations;
 }
 
-async optimizePerformance() {
+async function optimizePerformance() {
   // Placeholder for performance optimization
   return {
     type: 'performance',
@@ -541,7 +541,7 @@ async optimizePerformance() {
   };
 }
 
-async optimizeResources() {
+async function optimizeResources() {
   // Placeholder for resource optimization
   return {
     type: 'resource',
@@ -551,7 +551,7 @@ async optimizeResources() {
   };
 }
 
-async optimizeQuality() {
+async function optimizeQuality() {
   // Placeholder for quality optimization
   return {
     type: 'quality',
