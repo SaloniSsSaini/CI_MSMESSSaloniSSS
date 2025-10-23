@@ -7,10 +7,12 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
+    "test:carbon-credits": "jest src/tests/carbonCredits.test.js",
     "lint": "eslint src --ext .js",
     "lint:fix": "eslint src --ext .js --fix",
     "init-ai-agents": "node src/scripts/initializeAIAgents.js",
-    "seed-banks": "node src/scripts/seedBanks.js"
+    "seed-banks": "node src/scripts/seedBanks.js",
+    "init-carbon-credits": "node src/scripts/initializeCarbonCredits.js"
   },
   "dependencies": {
     "axios": "^1.5.0",

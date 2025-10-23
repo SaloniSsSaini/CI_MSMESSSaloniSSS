@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const MSME = require('../models/MSME');
+const carbonCreditsService = require('../services/carbonCreditsService');
 const logger = require('../utils/logger');
 
 // @route   GET /api/msme/profile
@@ -237,6 +238,14 @@ router.get('/stats', auth, async (req, res) => {
       }
     }
 
+    // Get carbon credits data
+    let carbonCredits = null;
+    try {
+      carbonCredits = await carbonCreditsService.getMSMECredits(msmeId);
+    } catch (error) {
+      logger.warn(`Error getting carbon credits for MSME ${msmeId}:`, error);
+    }
+
     const stats = {
       transactions: {
         total: totalTransactions,
@@ -261,7 +270,17 @@ router.get('/stats', auth, async (req, res) => {
       profile: {
         isVerified: latestAssessment?.msmeId ? true : false,
         registrationDate: latestAssessment?.createdAt
-      }
+      },
+      carbonCredits: carbonCredits ? {
+        allocatedCredits: carbonCredits.allocatedCredits,
+        availableCredits: carbonCredits.availableCredits,
+        usedCredits: carbonCredits.usedCredits,
+        retiredCredits: carbonCredits.retiredCredits,
+        totalCO2Reduced: carbonCredits.totalCO2Reduced,
+        performanceScore: carbonCredits.performanceMetrics.participationScore,
+        lastAllocation: carbonCredits.allocationHistory.length > 0 ? 
+          carbonCredits.allocationHistory[carbonCredits.allocationHistory.length - 1].date : null
+      } : null
     };
 
     res.json({
@@ -271,6 +290,101 @@ router.get('/stats', auth, async (req, res) => {
 
   } catch (error) {
     logger.error('Get MSME stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/msme/carbon-credits
+// @desc    Get detailed carbon credits information for MSME
+// @access  Private
+router.get('/carbon-credits', auth, async (req, res) => {
+  try {
+    const msmeId = req.user.msmeId;
+    
+    if (!msmeId) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME profile not found'
+      });
+    }
+
+    const carbonCredits = await carbonCreditsService.getMSMECredits(msmeId);
+    
+    // Get recent allocation history
+    const recentAllocations = carbonCredits.allocationHistory
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+
+    // Get recent transactions
+    const recentTransactions = carbonCredits.transactions
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 10);
+
+    // Calculate performance metrics
+    const performanceMetrics = {
+      carbonEfficiency: carbonCredits.performanceMetrics.carbonEfficiency,
+      participationScore: carbonCredits.performanceMetrics.participationScore,
+      totalContributions: carbonCredits.allocationHistory.length,
+      averageContribution: carbonCredits.allocationHistory.length > 0 ?
+        carbonCredits.allocationHistory.reduce((sum, h) => sum + h.creditsAllocated, 0) / carbonCredits.allocationHistory.length : 0,
+      lastUpdated: carbonCredits.performanceMetrics.lastUpdated
+    };
+
+    res.json({
+      success: true,
+      data: {
+        credits: {
+          allocated: carbonCredits.allocatedCredits,
+          available: carbonCredits.availableCredits,
+          used: carbonCredits.usedCredits,
+          retired: carbonCredits.retiredCredits,
+          totalCO2Reduced: carbonCredits.totalCO2Reduced
+        },
+        performance: performanceMetrics,
+        recentAllocations,
+        recentTransactions,
+        poolId: carbonCredits.poolId,
+        lastContribution: carbonCredits.lastContributionDate
+      }
+    });
+
+  } catch (error) {
+    logger.error('Get MSME carbon credits details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/msme/carbon-credits/leaderboard
+// @desc    Get carbon credits leaderboard for MSMEs
+// @access  Private
+router.get('/carbon-credits/leaderboard', auth, async (req, res) => {
+  try {
+    const { limit = 10, period = 'all' } = req.query;
+
+    const leaderboard = await carbonCreditsService.getMSMELeaderboard(
+      parseInt(limit),
+      period
+    );
+
+    res.json({
+      success: true,
+      data: {
+        leaderboard,
+        period,
+        totalParticipants: leaderboard.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('Get MSME carbon credits leaderboard error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
