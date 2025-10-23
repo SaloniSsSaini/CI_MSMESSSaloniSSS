@@ -1,0 +1,412 @@
+const SMSService = require('../services/smsService');
+
+describe('SMS Service', () => {
+  let service;
+
+  beforeEach(() => {
+    service = SMSService;
+  });
+
+  describe('processSMS', () => {
+    test('should process valid SMS data successfully', async () => {
+      const smsData = {
+        body: 'Rs. 1000 debited from your account for electricity bill payment',
+        sender: 'BANK',
+        timestamp: new Date(),
+        messageId: 'msg_123'
+      };
+
+      const result = await service.processSMS(smsData);
+
+      expect(result.success).toBe(true);
+      expect(result.transaction).toBeDefined();
+      expect(result.transaction.amount).toBe(1000);
+      expect(result.transaction.category).toBe('energy');
+      expect(result.transaction.transactionType).toBe('expense');
+    });
+
+    test('should handle SMS processing errors gracefully', async () => {
+      const smsData = {
+        body: null,
+        sender: 'BANK',
+        timestamp: new Date(),
+        messageId: 'msg_123'
+      };
+
+      const result = await service.processSMS(smsData);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('extractTransactionData', () => {
+    test('should extract amount from SMS text', async () => {
+      const text = 'Rs. 2500 debited for fuel purchase';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.amount).toBe(2500);
+      expect(result.currency).toBe('INR');
+    });
+
+    test('should extract amount with different formats', async () => {
+      const text = '₹1,500 credited to your account';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.amount).toBe(1500);
+    });
+
+    test('should extract date from SMS text', async () => {
+      const text = 'Payment of Rs. 1000 on 15/12/2023';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.date).toBeDefined();
+    });
+
+    test('should classify transaction type correctly', async () => {
+      const text = 'Rs. 5000 received from customer ABC Ltd';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.transactionType).toBe('sale');
+    });
+
+    test('should determine category based on content', async () => {
+      const text = 'Rs. 2000 for electricity bill';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.category).toBe('energy');
+    });
+
+    test('should extract vendor name from SMS', async () => {
+      const text = 'Payment of Rs. 1000 to XYZ Suppliers';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.vendor.name).toBe('XYZ Suppliers');
+    });
+
+    test('should extract sustainability factors', async () => {
+      const text = 'Rs. 3000 for solar panel installation';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.sustainability.isGreen).toBe(true);
+      expect(result.sustainability.greenScore).toBeGreaterThan(0);
+    });
+
+    test('should calculate confidence score', async () => {
+      const text = 'Rs. 1000 debited for electricity bill payment on 15/12/2023';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+
+      expect(result.metadata.confidence).toBeGreaterThan(0.5);
+    });
+  });
+
+  describe('extractVendorName', () => {
+    test('should extract vendor name from "from" pattern', () => {
+      const text = 'Payment received from ABC Company';
+      const sender = 'BANK';
+      const result = service.extractVendorName(text, sender);
+
+      expect(result).toBe('ABC Company');
+    });
+
+    test('should extract vendor name from "to" pattern', () => {
+      const text = 'Payment made to XYZ Suppliers';
+      const sender = 'BANK';
+      const result = service.extractVendorName(text, sender);
+
+      expect(result).toBe('XYZ Suppliers');
+    });
+
+    test('should extract vendor name from "at" pattern', () => {
+      const text = 'Purchase at Amazon for Rs. 1000';
+      const sender = 'BANK';
+      const result = service.extractVendorName(text, sender);
+
+      expect(result).toBe('Amazon');
+    });
+
+    test('should return common merchant name when found', () => {
+      const text = 'Payment to Flipkart for Rs. 500';
+      const sender = 'BANK';
+      const result = service.extractVendorName(text, sender);
+
+      expect(result).toBe('flipkart');
+    });
+
+    test('should return sender when no pattern matches', () => {
+      const text = 'Some random message';
+      const sender = 'BANK';
+      const result = service.extractVendorName(text, sender);
+
+      expect(result).toBe('BANK');
+    });
+  });
+
+  describe('determineCategory', () => {
+    test('should categorize energy transactions', () => {
+      const text = 'Electricity bill payment of Rs. 1000';
+      const transactionType = 'expense';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('energy');
+    });
+
+    test('should categorize water transactions', () => {
+      const text = 'Water bill payment of Rs. 500';
+      const transactionType = 'expense';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('water');
+    });
+
+    test('should categorize transportation transactions', () => {
+      const text = 'Fuel purchase of Rs. 2000';
+      const transactionType = 'expense';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('transportation');
+    });
+
+    test('should categorize waste management transactions', () => {
+      const text = 'Waste disposal charges Rs. 300';
+      const transactionType = 'expense';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('waste_management');
+    });
+
+    test('should categorize equipment transactions', () => {
+      const text = 'Equipment purchase Rs. 5000';
+      const transactionType = 'purchase';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('equipment');
+    });
+
+    test('should use transaction type for unknown content', () => {
+      const text = 'Some random transaction';
+      const transactionType = 'purchase';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('raw_materials');
+    });
+  });
+
+  describe('extractSubcategory', () => {
+    test('should extract renewable energy subcategory', () => {
+      const text = 'Solar panel installation Rs. 10000';
+      const category = 'energy';
+      const result = service.extractSubcategory(text, category);
+
+      expect(result).toBe('renewable');
+    });
+
+    test('should extract grid energy subcategory', () => {
+      const text = 'Electricity bill Rs. 1000';
+      const category = 'energy';
+      const result = service.extractSubcategory(text, category);
+
+      expect(result).toBe('grid');
+    });
+
+    test('should extract diesel transportation subcategory', () => {
+      const text = 'Diesel purchase Rs. 2000';
+      const category = 'transportation';
+      const result = service.extractSubcategory(text, category);
+
+      expect(result).toBe('diesel');
+    });
+
+    test('should extract steel material subcategory', () => {
+      const text = 'Steel purchase Rs. 5000';
+      const category = 'raw_materials';
+      const result = service.extractSubcategory(text, category);
+
+      expect(result).toBe('steel');
+    });
+
+    test('should extract recycling waste subcategory', () => {
+      const text = 'Recycling service Rs. 500';
+      const category = 'waste_management';
+      const result = service.extractSubcategory(text, category);
+
+      expect(result).toBe('recycling');
+    });
+  });
+
+  describe('extractLocation', () => {
+    test('should extract location from "in" pattern', () => {
+      const text = 'Purchase in Mumbai for Rs. 1000';
+      const result = service.extractLocation(text);
+
+      expect(result).toBe('Mumbai');
+    });
+
+    test('should extract location from "at" pattern', () => {
+      const text = 'Payment at Delhi office';
+      const result = service.extractLocation(text);
+
+      expect(result).toBe('Delhi office');
+    });
+
+    test('should return null when no location found', () => {
+      const text = 'Some random message';
+      const result = service.extractLocation(text);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('categorizeVendor', () => {
+    test('should categorize energy vendors', () => {
+      const vendorName = 'Electricity Board';
+      const result = service.categorizeVendor(vendorName);
+
+      expect(result).toBe('energy');
+    });
+
+    test('should categorize transport vendors', () => {
+      const vendorName = 'Fuel Station';
+      const result = service.categorizeVendor(vendorName);
+
+      expect(result).toBe('transport');
+    });
+
+    test('should categorize material vendors', () => {
+      const vendorName = 'Steel Suppliers';
+      const result = service.categorizeVendor(vendorName);
+
+      expect(result).toBe('materials');
+    });
+
+    test('should categorize utility vendors', () => {
+      const vendorName = 'Water Board';
+      const result = service.categorizeVendor(vendorName);
+
+      expect(result).toBe('utilities');
+    });
+
+    test('should return other for unknown vendors', () => {
+      const vendorName = 'Unknown Company';
+      const result = service.categorizeVendor(vendorName);
+
+      expect(result).toBe('other');
+    });
+  });
+
+  describe('extractSustainabilityFactors', () => {
+    test('should extract green keywords', () => {
+      const text = 'Solar panel installation with renewable energy';
+      const result = service.extractSustainabilityFactors(text);
+
+      expect(result).toContain('solar');
+      expect(result).toContain('renewable');
+    });
+
+    test('should extract eco-friendly keywords', () => {
+      const text = 'Eco-friendly and sustainable materials';
+      const result = service.extractSustainabilityFactors(text);
+
+      expect(result).toContain('eco');
+      expect(result).toContain('sustainable');
+    });
+
+    test('should return empty array for non-green text', () => {
+      const text = 'Regular diesel fuel purchase';
+      const result = service.extractSustainabilityFactors(text);
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('calculateGreenScore', () => {
+    test('should calculate green score based on factors', () => {
+      const factors = ['solar', 'renewable', 'eco'];
+      const result = service.calculateGreenScore(factors);
+
+      expect(result).toBe(60); // 3 * 20
+    });
+
+    test('should cap green score at 100', () => {
+      const factors = ['solar', 'renewable', 'eco', 'sustainable', 'green', 'biodegradable'];
+      const result = service.calculateGreenScore(factors);
+
+      expect(result).toBe(100);
+    });
+
+    test('should return 0 for no factors', () => {
+      const factors = [];
+      const result = service.calculateGreenScore(factors);
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('extractTags', () => {
+    test('should extract urgent tag', () => {
+      const text = 'Urgent payment required';
+      const result = service.extractTags(text);
+
+      expect(result).toContain('urgent');
+    });
+
+    test('should extract recurring tag', () => {
+      const text = 'Recurring monthly payment';
+      const result = service.extractTags(text);
+
+      expect(result).toContain('recurring');
+    });
+
+    test('should extract bulk tag', () => {
+      const text = 'Bulk purchase order';
+      const result = service.extractTags(text);
+
+      expect(result).toContain('bulk');
+    });
+
+    test('should extract discount tag', () => {
+      const text = 'Payment with discount applied';
+      const result = service.extractTags(text);
+
+      expect(result).toContain('discount');
+    });
+  });
+
+  describe('calculateConfidence', () => {
+    test('should increase confidence for valid amount', () => {
+      const text = 'Rs. 1000 payment';
+      const amount = 1000;
+      const transactionType = 'expense';
+      const result = service.calculateConfidence(text, amount, transactionType);
+
+      expect(result).toBeGreaterThan(0.5);
+    });
+
+    test('should increase confidence for clear transaction type', () => {
+      const text = 'Payment made';
+      const amount = 0;
+      const transactionType = 'expense';
+      const result = service.calculateConfidence(text, amount, transactionType);
+
+      expect(result).toBeGreaterThan(0.5);
+    });
+
+    test('should decrease confidence for short text', () => {
+      const text = 'Rs. 100';
+      const amount = 100;
+      const transactionType = 'other';
+      const result = service.calculateConfidence(text, amount, transactionType);
+
+      expect(result).toBeLessThan(0.8);
+    });
+
+    test('should increase confidence for structured messages', () => {
+      const text = 'Rs. 1000 debited for electricity bill';
+      const amount = 1000;
+      const transactionType = 'expense';
+      const result = service.calculateConfidence(text, amount, transactionType);
+
+      expect(result).toBeGreaterThan(0.7);
+    });
+  });
+});

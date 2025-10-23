@@ -198,6 +198,33 @@ npm test
 - **Utils**: 100% coverage for utility functions
 - **Integration**: End-to-end testing for critical user flows
 
+### Test Structure
+
+**Frontend Tests**
+- **Component Tests**: Comprehensive testing for all React components including:
+  - MSMERegistration: Multi-step form validation, navigation, and submission
+  - CarbonFootprint: Assessment form validation and calculation flow
+  - Dashboard: Data display and navigation functionality
+  - Recommendations: Filtering, display, and interaction features
+- **Service Tests**: API integration and data handling
+- **Utility Tests**: Helper functions and data processing
+
+**Backend Tests**
+- **Service Tests**: Core business logic testing including:
+  - CarbonCalculationService: Emission calculations, ESG scope analysis, and recommendations
+  - SMSService: SMS parsing, transaction extraction, and categorization
+  - CarbonCreditsService: Credit allocation, trading, and market operations
+  - AIAgentService: Agent management and task execution
+- **API Tests**: Endpoint functionality and error handling
+- **Integration Tests**: Database operations and external service integration
+
+**Test Features**
+- **Mocking**: Comprehensive mocking of external dependencies
+- **Data Validation**: Input validation and error handling
+- **Edge Cases**: Boundary conditions and error scenarios
+- **Performance**: Load testing and optimization validation
+- **Security**: Authentication and authorization testing
+
 ## 📱 Building APK
 
 ### Prerequisites
