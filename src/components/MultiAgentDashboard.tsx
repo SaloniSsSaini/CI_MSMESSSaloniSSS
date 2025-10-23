@@ -110,15 +110,16 @@ const MultiAgentDashboard: React.FC = () => {
       // Process agent activities
       const activities: AgentActivity[] = [];
       for (const [agentId, agentState] of Object.entries(status.agentStates)) {
-        if (agentState.lastActivity) {
+        const typedAgentState = agentState as any;
+        if (typedAgentState.lastActivity) {
           activities.push({
             agentId,
-            agentName: agentState.name,
+            agentName: typedAgentState.name,
             taskId: `task_${Date.now()}`,
-            status: agentState.status === 'active' ? 'running' : 'completed',
-            startTime: agentState.lastActivity,
+            status: typedAgentState.status === 'active' ? 'running' : 'completed',
+            startTime: typedAgentState.lastActivity,
             progress: Math.random() * 100, // Mock progress
-            duration: agentState.averageResponseTime
+            duration: typedAgentState.averageResponseTime
           });
         }
       }

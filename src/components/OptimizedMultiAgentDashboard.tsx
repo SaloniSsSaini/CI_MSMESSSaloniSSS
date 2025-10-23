@@ -51,7 +51,7 @@ import {
   Info as InfoIcon,
   Speed as SpeedIcon,
   Memory as MemoryIcon,
-  Cpu as CpuIcon,
+  Computer as CpuIcon,
   NetworkCheck as NetworkIcon,
   AutoAwesome as AutoAwesomeIcon,
   TrendingUp as TrendingUpIcon,

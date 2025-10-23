@@ -26,7 +26,7 @@ import {
   Tooltip
 } from '@mui/material';
 import {
-  Eco as EcoIcon,
+  Nature as EcoIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Star as StarIcon,
@@ -393,7 +393,7 @@ const CarbonSavings: React.FC = () => {
                   <Chip
                     label={getPerformanceLabel(savingsData.benchmarkComparison.performance)}
                     color={getPerformanceColor(savingsData.benchmarkComparison.performance) as any}
-                    size="large"
+                    size="medium"
                   />
                 </Box>
                 <Box sx={{ mb: 2 }}>

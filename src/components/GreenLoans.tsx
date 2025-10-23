@@ -47,7 +47,7 @@ import {
   Cancel as CancelIcon,
   Pending as PendingIcon,
   Assessment as AssessmentIcon,
-  Eco as EcoIcon,
+  Nature as EcoIcon,
   AttachMoney as MoneyIcon,
   Schedule as ScheduleIcon,
   Add as AddIcon,
@@ -188,7 +188,7 @@ const GreenLoans: React.FC = () => {
 
   const loadBanks = async () => {
     try {
-      const data = await apiService.getBanks();
+      const data = await apiService.getBanks() as any;
       if (data.success) {
         setBanks(data.data);
       }
@@ -200,7 +200,7 @@ const GreenLoans: React.FC = () => {
   const loadLoans = async () => {
     setIsLoadingLoans(true);
     try {
-      const data = await apiService.getMyLoans();
+      const data = await apiService.getMyLoans() as any;
       if (data.success) {
         setLoans(data.data.loans);
       }
@@ -215,7 +215,7 @@ const GreenLoans: React.FC = () => {
   const checkEligibility = async (formData: LoanApplicationForm) => {
     setIsCheckingEligibility(true);
     try {
-      const data = await apiService.checkLoanEligibility(formData);
+      const data = await apiService.checkLoanEligibility(formData) as any;
       if (data.success) {
         setEligibilityResult(data.data);
       }
@@ -229,7 +229,7 @@ const GreenLoans: React.FC = () => {
   const submitLoanApplication = async (formData: LoanApplicationForm) => {
     setIsApplying(true);
     try {
-      const data = await apiService.applyForLoan(formData);
+      const data = await apiService.applyForLoan(formData) as any;
       if (data.success) {
         setOpenApplicationDialog(false);
         reset();

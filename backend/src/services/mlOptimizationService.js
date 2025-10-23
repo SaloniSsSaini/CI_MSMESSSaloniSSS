@@ -199,7 +199,7 @@ class MLOptimizationService {
 
     const featureCount = features[0].length;
     const weights = new Array(featureCount).fill(0);
-    const bias = 0;
+    let bias = 0;
     const learningRate = 0.01;
     const epochs = 100;
 
@@ -226,7 +226,7 @@ class MLOptimizationService {
 
     const featureCount = features[0].length;
     const weights = new Array(featureCount).fill(0);
-    const bias = 0;
+    let bias = 0;
     const learningRate = 0.01;
     const epochs = 100;
 

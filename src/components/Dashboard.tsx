@@ -26,7 +26,7 @@ import {
   EmojiEvents as TrophyIcon,
   Assessment as ReportIcon,
   TrendingUp as TrendingUpIcon,
-  Eco as EcoIcon,
+  Nature as EcoIcon,
   LocalFireDepartment as FireIcon,
   Park as TreeIcon,
   DirectionsCar as CarIcon,

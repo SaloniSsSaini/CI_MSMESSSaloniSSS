@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 
 // Mock data - in production, this would come from database
-let userStats = {
+const userStats = {
   totalPoints: 1250,
   level: 3,
   nextLevelPoints: 2000,
@@ -14,7 +14,7 @@ let userStats = {
   carbonSaved: 45.2
 };
 
-let achievements = [
+const achievements = [
   {
     id: '1',
     title: 'Carbon Warrior',
@@ -67,7 +67,7 @@ let achievements = [
   }
 ];
 
-let rewards = [
+const rewards = [
   {
     id: '1',
     title: 'Eco-Friendly Water Bottle',

@@ -58,7 +58,7 @@ class CarbonCalculationService {
     
     let co2Emissions = 0;
     let emissionFactor = 0;
-    let calculationMethod = 'transaction_analysis';
+    const calculationMethod = 'transaction_analysis';
     
     switch (category) {
       case 'energy':
