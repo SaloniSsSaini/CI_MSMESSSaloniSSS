@@ -13,6 +13,7 @@ import MultiAgentManagement from './components/MultiAgentManagement';
 import MultiAgentDashboard from './components/MultiAgentDashboard';
 import OptimizedMultiAgentDashboard from './components/OptimizedMultiAgentDashboard';
 import GreenLoans from './components/GreenLoans';
+import CarbonForecastingGraph from './components/CarbonForecastingGraph';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
           <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
           <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
           <Route path="/green-loans" element={<GreenLoans />} />
+          <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
         </Routes>
       </Container>
     </Box>

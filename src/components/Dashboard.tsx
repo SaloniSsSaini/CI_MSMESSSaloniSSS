@@ -711,6 +711,31 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <TimelineIcon color="primary" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Carbon Forecasting
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Predictive analysis of carbon footprint with past, current, and future projections
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button 
+                size="small" 
+                variant="contained"
+                onClick={() => navigate('/carbon-forecasting')}
+              >
+                View Forecast
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <BankIcon color="success" sx={{ mr: 1 }} />
                 <Typography variant="h6">
                   Green Loans
