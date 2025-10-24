@@ -1,0 +1,160 @@
+const mongoose = require('mongoose');
+
+const documentSchema = new mongoose.Schema({
+  msmeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MSME',
+    required: true
+  },
+  fileName: {
+    type: String,
+    required: true
+  },
+  originalName: {
+    type: String,
+    required: true
+  },
+  filePath: {
+    type: String,
+    required: true
+  },
+  fileSize: {
+    type: Number,
+    required: true
+  },
+  mimeType: {
+    type: String,
+    required: true
+  },
+  documentType: {
+    type: String,
+    enum: ['bill', 'receipt', 'invoice', 'statement', 'other'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['uploaded', 'processing', 'processed', 'failed', 'duplicate'],
+    default: 'uploaded'
+  },
+  extractedData: {
+    vendor: {
+      name: String,
+      address: String,
+      phone: String,
+      email: String
+    },
+    amount: Number,
+    currency: {
+      type: String,
+      default: 'INR'
+    },
+    date: Date,
+    description: String,
+    category: {
+      type: String,
+      enum: [
+        'raw_materials',
+        'energy',
+        'transportation',
+        'waste_management',
+        'water',
+        'equipment',
+        'maintenance',
+        'utilities',
+        'other'
+      ]
+    },
+    subcategory: String,
+    items: [{
+      name: String,
+      quantity: Number,
+      unit: String,
+      price: Number,
+      total: Number
+    }],
+    tax: {
+      cgst: Number,
+      sgst: Number,
+      igst: Number,
+      total: Number
+    },
+    paymentMethod: String,
+    referenceNumber: String
+  },
+  processingResults: {
+    confidence: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0
+    },
+    processingTime: Number, // in milliseconds
+    errors: [String],
+    warnings: [String]
+  },
+  duplicateDetection: {
+    isDuplicate: {
+      type: Boolean,
+      default: false
+    },
+    duplicateType: {
+      type: String,
+      enum: ['exact', 'near', 'fuzzy'],
+      default: null
+    },
+    similarityScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0
+    },
+    matchedDocumentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Document',
+      default: null
+    },
+    duplicateReasons: [String]
+  },
+  carbonFootprint: {
+    co2Emissions: {
+      type: Number,
+      default: 0
+    },
+    emissionFactor: {
+      type: Number,
+      default: 0
+    },
+    calculationMethod: String,
+    sustainabilityScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    }
+  },
+  metadata: {
+    uploadSource: {
+      type: String,
+      enum: ['web', 'mobile', 'api'],
+      default: 'web'
+    },
+    userAgent: String,
+    ipAddress: String,
+    processingVersion: String
+  },
+  tags: [String],
+  notes: String
+}, {
+  timestamps: true
+});
+
+// Indexes for efficient queries
+documentSchema.index({ msmeId: 1, createdAt: -1 });
+documentSchema.index({ documentType: 1, status: 1 });
+documentSchema.index({ 'extractedData.amount': -1 });
+documentSchema.index({ 'extractedData.date': -1 });
+documentSchema.index({ 'duplicateDetection.isDuplicate': 1, msmeId: 1 });
+documentSchema.index({ status: 1, msmeId: 1 });
+documentSchema.index({ fileName: 'text', 'extractedData.description': 'text' });
+
+module.exports = mongoose.model('Document', documentSchema);

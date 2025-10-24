@@ -14,6 +14,8 @@ import MultiAgentDashboard from './components/MultiAgentDashboard';
 import OptimizedMultiAgentDashboard from './components/OptimizedMultiAgentDashboard';
 import GreenLoans from './components/GreenLoans';
 import CarbonForecastingGraph from './components/CarbonForecastingGraph';
+import DocumentUpload from './components/DocumentUpload';
+import DocumentManagement from './components/DocumentManagement';
 
 function App() {
   return (
@@ -41,6 +43,8 @@ function App() {
           <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
           <Route path="/green-loans" element={<GreenLoans />} />
           <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
+          <Route path="/document-upload" element={<DocumentUpload />} />
+          <Route path="/document-management" element={<DocumentManagement />} />
         </Routes>
       </Container>
     </Box>

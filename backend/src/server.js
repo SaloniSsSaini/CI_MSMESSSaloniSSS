@@ -31,6 +31,7 @@ const carbonForecastingRoutes = require('./routes/carbonForecasting');
 const carbonCreditsRoutes = require('./routes/carbonCredits');
 const giftSchemeRoutes = require('./routes/giftSchemes');
 const giftApplicationRoutes = require('./routes/giftApplications');
+const documentRoutes = require('./routes/documents');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -102,6 +103,7 @@ app.use('/api/carbon-forecasting', carbonForecastingRoutes);
 app.use('/api/carbon-credits', carbonCreditsRoutes);
 app.use('/api/gift-schemes', giftSchemeRoutes);
 app.use('/api/gift-applications', giftApplicationRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

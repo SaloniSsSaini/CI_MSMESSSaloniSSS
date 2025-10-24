@@ -33,7 +33,9 @@ import {
   Bolt as EnergyIcon,
   CheckCircle as CheckIcon,
   Star as StarIcon,
-  AccountBalance as BankIcon
+  AccountBalance as BankIcon,
+  Description as DocumentIcon,
+  CloudUpload as UploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -748,11 +750,62 @@ const Dashboard: React.FC = () => {
             <CardActions>
               <Button 
                 size="small" 
-                variant="contained"
+                variant="contained" 
                 color="success"
                 onClick={() => navigate('/green-loans')}
               >
                 Apply for Loan
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <UploadIcon color="primary" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Upload Documents
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Upload bills, receipts, and invoices for automatic processing
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button 
+                size="small" 
+                variant="contained" 
+                onClick={() => navigate('/document-upload')}
+              >
+                Upload Now
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <DocumentIcon color="info" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Document Management
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Manage uploaded documents with duplicate detection and analysis
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button 
+                size="small" 
+                variant="contained" 
+                color="info"
+                onClick={() => navigate('/document-management')}
+              >
+                Manage Documents
               </Button>
             </CardActions>
           </Card>

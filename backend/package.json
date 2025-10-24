@@ -35,7 +35,9 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^6.9.4",
     "twilio": "^4.15.0",
-    "winston": "^3.10.0"
+    "winston": "^3.10.0",
+    "pdf-parse": "^1.1.1",
+    "pdf2pic": "^2.1.4"
   },
   "devDependencies": {
     "eslint": "^8.47.0",
