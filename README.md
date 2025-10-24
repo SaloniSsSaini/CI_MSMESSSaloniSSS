@@ -414,11 +414,21 @@ NODE_ENV=development
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 📚 Documentation
+
+All project documentation has been organized in the `docs/` directory:
+
+- **Main Documentation**: [docs/README.md](docs/README.md) - Overview of all documentation
+- **API Documentation**: [docs/root/API_DOCUMENTATION.md](docs/root/API_DOCUMENTATION.md)
+- **Backend Documentation**: [docs/backend/](docs/backend/) - Backend-specific documentation
+- **Mobile Documentation**: [docs/mobile/](docs/mobile/) - Mobile app documentation
+- **Project Summary**: [docs/root/PROJECT_SUMMARY.md](docs/root/PROJECT_SUMMARY.md)
+
 ## 🆘 Support
 
 For support and questions:
 - **Email**: support@carbonintelligence.com
-- **Documentation**: [docs.carbonintelligence.com](https://docs.carbonintelligence.com)
+- **Documentation**: See the `docs/` directory for comprehensive documentation
 - **Issues**: [GitHub Issues](https://github.com/your-org/carbon-intelligence/issues)
 
 ## 🗺️ Roadmap
