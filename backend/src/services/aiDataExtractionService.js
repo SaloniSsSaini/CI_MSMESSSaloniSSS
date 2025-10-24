@@ -7,7 +7,7 @@ class AIDataExtractionService {
     this.tokenizer = new natural.WordTokenizer();
     this.stemmer = natural.PorterStemmer;
     this.classifier = new natural.BayesClassifier();
-    this.sentimentAnalyzer = new natural.SentimentAnalyzer();
+    this.sentimentAnalyzer = new natural.SentimentAnalyzer('English', natural.PorterStemmer, 'pattern');
     
     // Advanced pattern recognition for carbon footprint data
     this.carbonPatterns = {

@@ -57,7 +57,32 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-// API service mocks will be handled in individual test files
+// Mock axios
+jest.mock('axios', () => {
+  const mockAxios = jest.fn((config) => {
+    return Promise.resolve({
+      data: { success: true, message: 'Mock response' },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    });
+  });
+
+  return {
+    default: mockAxios,
+    create: jest.fn(() => ({
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+      interceptors: {
+        request: { use: jest.fn() },
+        response: { use: jest.fn() },
+      },
+    })),
+  };
+});
 
 // Silence the warning: Animated: `useNativeDriver` is not supported
 jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');

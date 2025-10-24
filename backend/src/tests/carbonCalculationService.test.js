@@ -180,7 +180,7 @@ describe('Carbon Calculation Service', () => {
 
       const result = service.calculateMSMECarbonFootprint(msmeData, transactions);
 
-      expect(result.totalCO2Emissions).toBe(8054); // 800 + 2 + 50 + industry factor
+      expect(result.totalCO2Emissions).toBe(852); // 800 + 2 + 50 (no industry factor for manufacturing)
       expect(result.breakdown.energy.total).toBe(800);
       expect(result.breakdown.water.co2Emissions).toBe(2);
       expect(result.breakdown.waste.total).toBe(50);

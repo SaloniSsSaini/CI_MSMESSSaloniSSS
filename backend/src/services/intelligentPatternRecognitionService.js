@@ -7,7 +7,7 @@ class IntelligentPatternRecognitionService {
     this.tokenizer = new natural.WordTokenizer();
     this.stemmer = natural.PorterStemmer;
     this.classifier = new natural.BayesClassifier();
-    this.sentimentAnalyzer = new natural.SentimentAnalyzer();
+    this.sentimentAnalyzer = new natural.SentimentAnalyzer('English', natural.PorterStemmer, 'pattern');
     
     // Advanced business activity patterns
     this.businessPatterns = {

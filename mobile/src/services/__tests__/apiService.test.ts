@@ -1,27 +1,20 @@
-import { apiService } from '../apiService';
+// Mock axios before importing the service
+const mockAxios = jest.fn((config) => {
+  return Promise.resolve({
+    data: { success: true, message: 'Mock response' },
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config,
+  });
+});
 
-// Mock axios
 jest.mock('axios', () => ({
-  default: jest.fn((config) => {
-    return Promise.resolve({
-      data: { success: true, message: 'Mock response' },
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      config,
-    });
-  }),
-  create: jest.fn(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    delete: jest.fn(),
-    interceptors: {
-      request: { use: jest.fn() },
-      response: { use: jest.fn() },
-    },
-  })),
+  __esModule: true,
+  default: mockAxios,
 }));
+
+import { apiService } from '../apiService';
 
 describe('apiService', () => {
   beforeEach(() => {
@@ -30,7 +23,6 @@ describe('apiService', () => {
 
   describe('login', () => {
     it('should call login endpoint with correct parameters', async () => {
-      const mockAxios = require('axios').create();
       const mockResponse = {
         data: {
           success: true,
@@ -41,19 +33,25 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.post.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
       const result = await apiService.login('test@example.com', 'password123');
 
-      expect(mockAxios.post).toHaveBeenCalledWith('/auth/login', {
-        email: 'test@example.com',
-        password: 'password123',
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'POST',
+        url: 'http://localhost:5000/api/auth/login',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: {
+          email: 'test@example.com',
+          password: 'password123',
+        },
       });
       expect(result).toEqual(mockResponse.data);
     });
 
     it('should handle login errors', async () => {
-      const mockAxios = require('axios').create();
       const mockError = {
         response: {
           data: {
@@ -63,7 +61,7 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.post.mockRejectedValue(mockError);
+      mockAxios.mockRejectedValue(mockError);
 
       try {
         await apiService.login('test@example.com', 'wrongpassword');
@@ -75,7 +73,6 @@ describe('apiService', () => {
 
   describe('register', () => {
     it('should call register endpoint with correct parameters', async () => {
-      const mockAxios = require('axios').create();
       const mockResponse = {
         data: {
           success: true,
@@ -93,18 +90,24 @@ describe('apiService', () => {
         industry: 'Manufacturing',
       };
 
-      mockAxios.post.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
       const result = await apiService.register(userData);
 
-      expect(mockAxios.post).toHaveBeenCalledWith('/auth/register', userData);
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'POST',
+        url: 'http://localhost:5000/api/auth/register',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: userData,
+      });
       expect(result).toEqual(mockResponse.data);
     });
   });
 
   describe('getDashboard', () => {
     it('should call dashboard endpoint', async () => {
-      const mockAxios = require('axios').create();
       const mockResponse = {
         data: {
           success: true,
@@ -116,18 +119,24 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.get.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
       const result = await apiService.getDashboard();
 
-      expect(mockAxios.get).toHaveBeenCalledWith('/dashboard');
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'http://localhost:5000/api/carbon/dashboard',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: undefined,
+      });
       expect(result).toEqual(mockResponse.data);
     });
   });
 
   describe('getTransactions', () => {
     it('should call transactions endpoint with pagination', async () => {
-      const mockAxios = require('axios').create();
       const mockResponse = {
         data: {
           success: true,
@@ -140,18 +149,24 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.get.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
-      const result = await apiService.getTransactions(1, 10);
+      const result = await apiService.getTransactions({ page: 1, limit: 10 });
 
-      expect(mockAxios.get).toHaveBeenCalledWith('/transactions?page=1&limit=10');
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'http://localhost:5000/api/transactions?page=1&limit=10',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: undefined,
+      });
       expect(result).toEqual(mockResponse.data);
     });
   });
 
-  describe('getCarbonFootprint', () => {
-    it('should call carbon footprint endpoint', async () => {
-      const mockAxios = require('axios').create();
+  describe('performCarbonAssessment', () => {
+    it('should call carbon assessment endpoint', async () => {
       const mockResponse = {
         data: {
           success: true,
@@ -162,18 +177,24 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.get.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
-      const result = await apiService.getCarbonFootprint();
+      const result = await apiService.performCarbonAssessment();
 
-      expect(mockAxios.get).toHaveBeenCalledWith('/carbon-footprint');
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'POST',
+        url: 'http://localhost:5000/api/carbon/assess',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: undefined,
+      });
       expect(result).toEqual(mockResponse.data);
     });
   });
 
-  describe('getAnalytics', () => {
+  describe('getAnalyticsOverview', () => {
     it('should call analytics endpoint with date range', async () => {
-      const mockAxios = require('axios').create();
       const mockResponse = {
         data: {
           success: true,
@@ -184,14 +205,20 @@ describe('apiService', () => {
         },
       };
 
-      const startDate = '2024-01-01';
-      const endDate = '2024-01-31';
+      const params = { startDate: '2024-01-01', endDate: '2024-01-31' };
 
-      mockAxios.get.mockResolvedValue(mockResponse);
+      mockAxios.mockResolvedValue(mockResponse);
 
-      const result = await apiService.getAnalytics(startDate, endDate);
+      const result = await apiService.getAnalyticsOverview(params);
 
-      expect(mockAxios.get).toHaveBeenCalledWith(`/analytics?startDate=${startDate}&endDate=${endDate}`);
+      expect(mockAxios).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'http://localhost:5000/api/analytics/overview?startDate=2024-01-01&endDate=2024-01-31',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: undefined,
+      });
       expect(result).toEqual(mockResponse.data);
     });
   });

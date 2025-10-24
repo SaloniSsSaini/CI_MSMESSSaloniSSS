@@ -1399,6 +1399,22 @@ class CarbonCalculationService {
     return milestones;
   }
 
+  updateScope1Parameters(parameters, transaction, co2Emissions, type) {
+    if (!parameters[type]) {
+      parameters[type] = {
+        totalEmissions: 0,
+        transactionCount: 0,
+        averageAmount: 0,
+        totalAmount: 0
+      };
+    }
+    
+    parameters[type].totalEmissions += co2Emissions;
+    parameters[type].transactionCount += 1;
+    parameters[type].totalAmount += transaction.amount;
+    parameters[type].averageAmount = parameters[type].totalAmount / parameters[type].transactionCount;
+  }
+
   updateScope2Parameters(parameters, transaction, co2Emissions, type) {
     if (!parameters[type]) {
       parameters[type] = {
@@ -1432,6 +1448,22 @@ class CarbonCalculationService {
     }
     
     parameters[type].totalEmissions += co2Emissions;
+    parameters[type].transactionCount += 1;
+    parameters[type].totalAmount += transaction.amount;
+    parameters[type].averageAmount = parameters[type].totalAmount / parameters[type].transactionCount;
+  }
+
+  updateScope4Parameters(parameters, transaction, avoidedEmissions, type) {
+    if (!parameters[type]) {
+      parameters[type] = {
+        totalAvoidedEmissions: 0,
+        transactionCount: 0,
+        averageAmount: 0,
+        totalAmount: 0
+      };
+    }
+    
+    parameters[type].totalAvoidedEmissions += avoidedEmissions;
     parameters[type].transactionCount += 1;
     parameters[type].totalAmount += transaction.amount;
     parameters[type].averageAmount = parameters[type].totalAmount / parameters[type].transactionCount;

@@ -3,7 +3,12 @@ const logger = require('../utils/logger');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/carbon-intelligence', {
+    // Use in-memory database for tests
+    const mongoUri = process.env.NODE_ENV === 'test' 
+      ? 'mongodb://localhost:27017/carbon-intelligence-test'
+      : process.env.MONGODB_URI || 'mongodb://localhost:27017/carbon-intelligence';
+    
+    const conn = await mongoose.connect(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
@@ -11,7 +16,9 @@ const connectDB = async () => {
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     logger.error('Database connection error:', error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 };
 

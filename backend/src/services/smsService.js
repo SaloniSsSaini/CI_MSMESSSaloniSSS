@@ -148,7 +148,7 @@ class SMSService {
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) {
-        return match[1].trim();
+        return this.capitalizeWords(match[1].trim());
       }
     }
     
@@ -165,11 +165,15 @@ class SMSService {
     
     for (const merchant of merchants) {
       if (text.includes(merchant)) {
-        return merchant;
+        return this.capitalizeWords(merchant);
       }
     }
     
     return null;
+  }
+
+  capitalizeWords(str) {
+    return str.replace(/\b\w/g, l => l.toUpperCase());
   }
 
   determineCategory(text, transactionType) {
