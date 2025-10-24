@@ -49,7 +49,78 @@ class CarbonCalculationService {
       chemicals: 1.5,
       electronics: 1.1,
       automotive: 1.3,
-      pharmaceuticals: 1.4
+      pharmaceuticals: 1.4,
+      construction: 1.6,
+      agriculture: 0.9,
+      mining: 2.0,
+      energy: 1.8,
+      transportation: 1.7,
+      retail: 0.7,
+      services: 0.5
+    };
+
+    // Enhanced ESG parameters
+    this.esgParameters = {
+      // Location-based emission factors (kg CO2 per unit)
+      locationFactors: {
+        'north-india': { electricity: 0.85, transport: 1.1 },
+        'south-india': { electricity: 0.75, transport: 1.0 },
+        'east-india': { electricity: 0.90, transport: 1.2 },
+        'west-india': { electricity: 0.80, transport: 1.05 },
+        'northeast-india': { electricity: 0.70, transport: 1.3 }
+      },
+      
+      // Temporal factors (seasonal variations)
+      temporalFactors: {
+        summer: { cooling: 1.3, heating: 0.7 },
+        winter: { cooling: 0.7, heating: 1.4 },
+        monsoon: { transport: 1.2, energy: 1.1 },
+        dry: { energy: 0.9, transport: 0.95 }
+      },
+      
+      // Company size factors
+      sizeFactors: {
+        micro: { efficiency: 0.8, scale: 1.2 },
+        small: { efficiency: 0.9, scale: 1.1 },
+        medium: { efficiency: 1.0, scale: 1.0 },
+        large: { efficiency: 1.1, scale: 0.9 },
+        enterprise: { efficiency: 1.2, scale: 0.8 }
+      },
+      
+      // Technology factors
+      technologyFactors: {
+        traditional: 1.2,
+        modern: 1.0,
+        advanced: 0.8,
+        cutting_edge: 0.6
+      },
+      
+      // Scope 4 avoided emissions factors
+      avoidedEmissionFactors: {
+        renewableEnergy: {
+          solar: 0.8, // kg CO2 per kWh avoided
+          wind: 0.7,
+          hydro: 0.6,
+          biomass: 0.9
+        },
+        energyEfficiency: {
+          ledLighting: 0.1, // kg CO2 per kWh saved
+          efficientMotors: 0.15,
+          insulation: 0.2,
+          smartControls: 0.12
+        },
+        wasteReduction: {
+          recycling: 0.5, // kg CO2 per kg waste avoided
+          composting: 0.3,
+          wasteToEnergy: 0.4
+        },
+        sustainableTransport: {
+          electricVehicles: 0.3, // kg CO2 per km avoided
+          publicTransport: 0.6,
+          cycling: 0.1,
+          walking: 0.05
+        }
+      }
     };
   }
 
@@ -244,9 +315,18 @@ class CarbonCalculationService {
             directFuel: 0,
             directTransport: 0,
             directManufacturing: 0,
-            fugitiveEmissions: 0
+            fugitiveEmissions: 0,
+            processEmissions: 0,
+            stationaryCombustion: 0,
+            mobileCombustion: 0
           },
-          description: 'Direct emissions from owned or controlled sources'
+          description: 'Direct emissions from owned or controlled sources',
+          parameters: {
+            fuelTypes: {},
+            vehicleTypes: {},
+            processTypes: {},
+            emissionFactors: {}
+          }
         },
         scope2: {
           total: 0,
@@ -254,9 +334,17 @@ class CarbonCalculationService {
             electricity: 0,
             heating: 0,
             cooling: 0,
-            steam: 0
+            steam: 0,
+            districtHeating: 0,
+            districtCooling: 0
           },
-          description: 'Indirect emissions from purchased energy'
+          description: 'Indirect emissions from purchased energy',
+          parameters: {
+            energySources: {},
+            gridFactors: {},
+            renewablePercentage: 0,
+            locationFactors: {}
+          }
         },
         scope3: {
           total: 0,
@@ -268,9 +356,39 @@ class CarbonCalculationService {
             employeeCommuting: 0,
             leasedAssets: 0,
             investments: 0,
+            franchises: 0,
+            processingSoldProducts: 0,
+            useSoldProducts: 0,
+            endLifeDisposal: 0,
             other: 0
           },
-          description: 'All other indirect emissions in the value chain'
+          description: 'All other indirect emissions in the value chain',
+          parameters: {
+            supplyChainFactors: {},
+            transportationModes: {},
+            wasteTypes: {},
+            productLifecycle: {}
+          }
+        },
+        scope4: {
+          total: 0,
+          breakdown: {
+            avoidedEmissions: 0,
+            carbonOffsets: 0,
+            renewableEnergyCredits: 0,
+            energyEfficiency: 0,
+            wasteReduction: 0,
+            sustainableProducts: 0,
+            greenTransportation: 0,
+            carbonCapture: 0
+          },
+          description: 'Avoided emissions and positive climate impact',
+          parameters: {
+            offsetTypes: {},
+            renewableEnergyTypes: {},
+            efficiencyMeasures: {},
+            carbonCaptureMethods: {}
+          }
         }
       },
       carbonScore: 0,
@@ -356,12 +474,21 @@ class CarbonCalculationService {
       
       if (category === 'energy' && subcategory !== 'renewable' && subcategory !== 'grid') {
         esgScopes.scope1.breakdown.directFuel += co2Emissions;
+        this.updateScope1Parameters(esgScopes.scope1.parameters, transaction, co2Emissions, 'fuel');
       } else if (category === 'transportation') {
         esgScopes.scope1.breakdown.directTransport += co2Emissions;
+        this.updateScope1Parameters(esgScopes.scope1.parameters, transaction, co2Emissions, 'transport');
       } else if (category === 'equipment' || category === 'maintenance') {
         esgScopes.scope1.breakdown.directManufacturing += co2Emissions;
+        this.updateScope1Parameters(esgScopes.scope1.parameters, transaction, co2Emissions, 'manufacturing');
       } else if (description && description.toLowerCase().includes('fugitive')) {
         esgScopes.scope1.breakdown.fugitiveEmissions += co2Emissions;
+      } else if (description && description.toLowerCase().includes('process')) {
+        esgScopes.scope1.breakdown.processEmissions += co2Emissions;
+      } else if (description && description.toLowerCase().includes('stationary')) {
+        esgScopes.scope1.breakdown.stationaryCombustion += co2Emissions;
+      } else if (description && description.toLowerCase().includes('mobile')) {
+        esgScopes.scope1.breakdown.mobileCombustion += co2Emissions;
       }
     }
     
@@ -371,25 +498,36 @@ class CarbonCalculationService {
       
       if (category === 'energy' && (subcategory === 'grid' || subcategory === 'renewable')) {
         esgScopes.scope2.breakdown.electricity += co2Emissions;
+        this.updateScope2Parameters(esgScopes.scope2.parameters, transaction, co2Emissions, 'electricity');
       } else if (description && description.toLowerCase().includes('heating')) {
         esgScopes.scope2.breakdown.heating += co2Emissions;
+        this.updateScope2Parameters(esgScopes.scope2.parameters, transaction, co2Emissions, 'heating');
       } else if (description && description.toLowerCase().includes('cooling')) {
         esgScopes.scope2.breakdown.cooling += co2Emissions;
+        this.updateScope2Parameters(esgScopes.scope2.parameters, transaction, co2Emissions, 'cooling');
       } else if (description && description.toLowerCase().includes('steam')) {
         esgScopes.scope2.breakdown.steam += co2Emissions;
+        this.updateScope2Parameters(esgScopes.scope2.parameters, transaction, co2Emissions, 'steam');
+      } else if (description && description.toLowerCase().includes('district heating')) {
+        esgScopes.scope2.breakdown.districtHeating += co2Emissions;
+      } else if (description && description.toLowerCase().includes('district cooling')) {
+        esgScopes.scope2.breakdown.districtCooling += co2Emissions;
       }
     }
     
     // Scope 3: All other indirect emissions
-    else {
+    else if (!this.isScope4Emission(transaction)) {
       esgScopes.scope3.total += co2Emissions;
       
       if (category === 'raw_materials') {
         esgScopes.scope3.breakdown.purchasedGoods += co2Emissions;
+        this.updateScope3Parameters(esgScopes.scope3.parameters, transaction, co2Emissions, 'purchasedGoods');
       } else if (category === 'transportation' && !this.isScope1Emission(transaction)) {
         esgScopes.scope3.breakdown.transportation += co2Emissions;
+        this.updateScope3Parameters(esgScopes.scope3.parameters, transaction, co2Emissions, 'transportation');
       } else if (category === 'waste_management') {
         esgScopes.scope3.breakdown.wasteDisposal += co2Emissions;
+        this.updateScope3Parameters(esgScopes.scope3.parameters, transaction, co2Emissions, 'wasteDisposal');
       } else if (description && description.toLowerCase().includes('travel')) {
         esgScopes.scope3.breakdown.businessTravel += co2Emissions;
       } else if (description && description.toLowerCase().includes('commuting')) {
@@ -398,8 +536,43 @@ class CarbonCalculationService {
         esgScopes.scope3.breakdown.leasedAssets += co2Emissions;
       } else if (description && description.toLowerCase().includes('investment')) {
         esgScopes.scope3.breakdown.investments += co2Emissions;
+      } else if (description && description.toLowerCase().includes('franchise')) {
+        esgScopes.scope3.breakdown.franchises += co2Emissions;
+      } else if (description && description.toLowerCase().includes('processing')) {
+        esgScopes.scope3.breakdown.processingSoldProducts += co2Emissions;
+      } else if (description && description.toLowerCase().includes('use of sold')) {
+        esgScopes.scope3.breakdown.useSoldProducts += co2Emissions;
+      } else if (description && description.toLowerCase().includes('end life')) {
+        esgScopes.scope3.breakdown.endLifeDisposal += co2Emissions;
       } else {
         esgScopes.scope3.breakdown.other += co2Emissions;
+      }
+    }
+    
+    // Scope 4: Avoided emissions and positive climate impact
+    else if (this.isScope4Emission(transaction)) {
+      const avoidedEmissions = this.calculateAvoidedEmissions(transaction);
+      esgScopes.scope4.total += avoidedEmissions;
+      
+      if (description && description.toLowerCase().includes('renewable')) {
+        esgScopes.scope4.breakdown.renewableEnergyCredits += avoidedEmissions;
+        this.updateScope4Parameters(esgScopes.scope4.parameters, transaction, avoidedEmissions, 'renewableEnergy');
+      } else if (description && description.toLowerCase().includes('efficiency')) {
+        esgScopes.scope4.breakdown.energyEfficiency += avoidedEmissions;
+        this.updateScope4Parameters(esgScopes.scope4.parameters, transaction, avoidedEmissions, 'energyEfficiency');
+      } else if (description && description.toLowerCase().includes('waste reduction')) {
+        esgScopes.scope4.breakdown.wasteReduction += avoidedEmissions;
+        this.updateScope4Parameters(esgScopes.scope4.parameters, transaction, avoidedEmissions, 'wasteReduction');
+      } else if (description && description.toLowerCase().includes('sustainable transport')) {
+        esgScopes.scope4.breakdown.greenTransportation += avoidedEmissions;
+        this.updateScope4Parameters(esgScopes.scope4.parameters, transaction, avoidedEmissions, 'sustainableTransport');
+      } else if (description && description.toLowerCase().includes('carbon capture')) {
+        esgScopes.scope4.breakdown.carbonCapture += avoidedEmissions;
+        this.updateScope4Parameters(esgScopes.scope4.parameters, transaction, avoidedEmissions, 'carbonCapture');
+      } else if (description && description.toLowerCase().includes('offset')) {
+        esgScopes.scope4.breakdown.carbonOffsets += avoidedEmissions;
+      } else {
+        esgScopes.scope4.breakdown.avoidedEmissions += avoidedEmissions;
       }
     }
   }
