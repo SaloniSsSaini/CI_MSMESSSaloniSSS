@@ -59,6 +59,150 @@ class CarbonCalculationService {
       services: 0.5
     };
 
+    // MSME Business domain-specific factors (based on official MSME classifications)
+    this.domainFactors = {
+      manufacturing: {
+        // Manufacturing has high energy consumption and material usage
+        transportation: 1.2,
+        energy: 1.4,
+        materials: 1.5,
+        waste: 1.3
+      },
+      trading: {
+        // Trading focuses on logistics and distribution
+        transportation: 1.3,
+        energy: 0.8,
+        materials: 1.1,
+        waste: 0.9
+      },
+      services: {
+        // Services typically have lower material and energy consumption
+        transportation: 1.0,
+        energy: 0.9,
+        materials: 0.7,
+        waste: 0.8
+      },
+      export_import: {
+        // Export/Import has high transportation emissions
+        transportation: 1.6,
+        energy: 1.0,
+        materials: 1.2,
+        waste: 1.1
+      },
+      retail: {
+        // Retail has moderate transportation and packaging emissions
+        transportation: 1.2,
+        energy: 0.9,
+        materials: 1.2,
+        waste: 1.1
+      },
+      wholesale: {
+        // Wholesale has higher transportation but lower packaging
+        transportation: 1.4,
+        energy: 0.8,
+        materials: 1.0,
+        waste: 0.9
+      },
+      e_commerce: {
+        // E-commerce has high last-mile delivery emissions
+        transportation: 1.5,
+        energy: 1.1,
+        materials: 1.3,
+        waste: 1.2
+      },
+      consulting: {
+        // Consulting has minimal physical resource consumption
+        transportation: 0.8,
+        energy: 0.7,
+        materials: 0.5,
+        waste: 0.6
+      },
+      logistics: {
+        // Logistics has very high transportation emissions
+        transportation: 1.8,
+        energy: 1.2,
+        materials: 1.1,
+        waste: 1.0
+      },
+      agriculture: {
+        // Agriculture has moderate emissions with seasonal variations
+        transportation: 1.1,
+        energy: 0.9,
+        materials: 1.0,
+        waste: 0.8
+      },
+      handicrafts: {
+        // Handicrafts have low energy but moderate material usage
+        transportation: 1.0,
+        energy: 0.8,
+        materials: 1.2,
+        waste: 0.9
+      },
+      food_processing: {
+        // Food processing has high energy and water consumption
+        transportation: 1.1,
+        energy: 1.3,
+        materials: 1.1,
+        waste: 1.2
+      },
+      textiles: {
+        // Textiles have high water and energy consumption
+        transportation: 1.0,
+        energy: 1.4,
+        materials: 1.3,
+        waste: 1.1
+      },
+      electronics: {
+        // Electronics have moderate energy and material consumption
+        transportation: 1.1,
+        energy: 1.2,
+        materials: 1.2,
+        waste: 1.0
+      },
+      automotive: {
+        // Automotive has high material and energy consumption
+        transportation: 1.2,
+        energy: 1.5,
+        materials: 1.6,
+        waste: 1.2
+      },
+      construction: {
+        // Construction has very high material consumption
+        transportation: 1.3,
+        energy: 1.2,
+        materials: 1.8,
+        waste: 1.4
+      },
+      healthcare: {
+        // Healthcare has moderate energy and material consumption
+        transportation: 1.0,
+        energy: 1.1,
+        materials: 1.1,
+        waste: 1.2
+      },
+      education: {
+        // Education has low material consumption
+        transportation: 0.9,
+        energy: 0.9,
+        materials: 0.8,
+        waste: 0.8
+      },
+      tourism: {
+        // Tourism has moderate transportation and energy consumption
+        transportation: 1.2,
+        energy: 1.0,
+        materials: 0.9,
+        waste: 1.0
+      },
+      other: {
+        // Other domain types use default factors
+        transportation: 1.0,
+        energy: 1.0,
+        materials: 1.0,
+        waste: 1.0
+      }
+    };
+
     // Enhanced ESG parameters
     this.esgParameters = {
       // Location-based emission factors (kg CO2 per unit)
@@ -165,6 +309,27 @@ class CarbonCalculationService {
     // Apply industry factor
     const industryFactor = this.industryFactors[transaction.industry] || 1.0;
     co2Emissions *= industryFactor;
+
+    // Apply business domain factor if available
+    if (transaction.businessDomain) {
+      const domainFactor = this.domainFactors[transaction.businessDomain];
+      if (domainFactor) {
+        switch (category) {
+          case 'transportation':
+            co2Emissions *= domainFactor.transportation;
+            break;
+          case 'energy':
+            co2Emissions *= domainFactor.energy;
+            break;
+          case 'raw_materials':
+            co2Emissions *= domainFactor.materials;
+            break;
+          case 'waste_management':
+            co2Emissions *= domainFactor.waste;
+            break;
+        }
+      }
+    }
     
     emissionFactor = amount > 0 ? co2Emissions / amount : 0;
     
@@ -312,6 +477,9 @@ class CarbonCalculationService {
         materials: { consumption: 0, co2Emissions: 0, type: 'mixed', supplierDistance: 0 },
         manufacturing: { productionVolume: 0, co2Emissions: 0, efficiency: 0, equipmentAge: 0 }
       },
+      // Add business domain information
+      businessDomain: msmeData.businessDomain || 'other',
+      domainFactors: msmeData.businessDomain ? this.domainFactors[msmeData.businessDomain] : null,
       // ESG Scope breakdown
       esgScopes: {
         scope1: {
@@ -625,6 +793,10 @@ class CarbonCalculationService {
   calculateCarbonScore(assessment, msmeData) {
     let score = 100; // Start with perfect score
     
+    // Apply business domain-specific scoring adjustments
+    const domainAdjustments = this.getDomainScoreAdjustments(msmeData.businessDomain, assessment);
+    score += domainAdjustments;
+    
     // Penalize high emissions
     const emissionPenalty = Math.min(50, assessment.totalCO2Emissions / 100);
     score -= emissionPenalty;
@@ -643,14 +815,61 @@ class CarbonCalculationService {
     const recyclingRatio = assessment.breakdown.waste.solid / assessment.breakdown.waste.total;
     if (recyclingRatio > 0.7) score += 5;
     
-    // Penalty for high transportation emissions
-    if (assessment.breakdown.transportation.co2Emissions > 100) score -= 10;
+    // Domain-specific penalties and bonuses
+    if (msmeData.businessDomain === 'logistics' && assessment.breakdown.transportation.co2Emissions > 300) {
+      score -= 20; // Logistics companies should optimize transport
+    } else if (msmeData.businessDomain === 'export_import' && assessment.breakdown.transportation.co2Emissions > 250) {
+      score -= 15; // Export/Import should optimize international shipping
+    } else if (msmeData.businessDomain === 'e_commerce' && assessment.breakdown.transportation.co2Emissions > 200) {
+      score -= 15; // E-commerce should optimize last-mile delivery
+    } else if (msmeData.businessDomain === 'manufacturing' && assessment.breakdown.energy.total > 800) {
+      score -= 15; // Manufacturing should focus on energy efficiency
+    } else if (msmeData.businessDomain === 'construction' && assessment.breakdown.materials.co2Emissions > 500) {
+      score -= 20; // Construction should use sustainable materials
+    } else if (msmeData.businessDomain === 'automotive' && assessment.breakdown.materials.co2Emissions > 400) {
+      score -= 18; // Automotive should use lightweight materials
+    } else if (msmeData.businessDomain === 'textiles' && assessment.breakdown.energy.total > 600) {
+      score -= 12; // Textiles should optimize water and energy use
+    } else if (msmeData.businessDomain === 'consulting' && assessment.breakdown.transportation.co2Emissions > 50) {
+      score -= 10; // Consulting should minimize travel
+    }
     
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
+  getDomainScoreAdjustments(businessDomain, assessment) {
+    const adjustments = {
+      manufacturing: -5, // Manufacturing typically has higher emissions
+      trading: 0, // Neutral for trading
+      services: 5, // Bonus for service-based low emissions
+      export_import: -3, // Slightly penalized for high transport emissions
+      retail: 0, // Neutral for retail
+      wholesale: 0, // Neutral for wholesale
+      e_commerce: -2, // Slightly penalized for last-mile delivery
+      consulting: 10, // Bonus for minimal resource consumption
+      logistics: -8, // Penalized for high transport emissions
+      agriculture: 3, // Bonus for natural processes
+      handicrafts: 5, // Bonus for traditional, low-impact methods
+      food_processing: -3, // Penalized for high energy/water use
+      textiles: -5, // Penalized for high water/energy consumption
+      electronics: -2, // Slightly penalized for material intensity
+      automotive: -8, // Heavily penalized for high material/energy use
+      construction: -10, // Heavily penalized for very high material consumption
+      healthcare: 2, // Slight bonus for essential services
+      education: 8, // Bonus for low resource consumption
+      tourism: 0, // Neutral for tourism
+      other: 0 // Neutral for other
+    };
+    
+    return adjustments[businessDomain] || 0;
+  }
+
   generateRecommendations(assessment, msmeData) {
     const recommendations = [];
+    
+    // Domain-specific recommendations
+    const domainRecommendations = this.getDomainSpecificRecommendations(msmeData.businessDomain, assessment);
+    recommendations.push(...domainRecommendations);
     
     // Energy recommendations
     if (assessment.breakdown.energy.total > 500) {
@@ -702,6 +921,267 @@ class CarbonCalculationService {
         implementationCost: 5000,
         paybackPeriod: 6
       });
+    }
+    
+    return recommendations;
+  }
+
+  getDomainSpecificRecommendations(businessDomain, assessment) {
+    const recommendations = [];
+    
+    switch (businessDomain) {
+      case 'manufacturing':
+        if (assessment.breakdown.energy.total > 500) {
+          recommendations.push({
+            category: 'energy',
+            title: 'Manufacturing Energy Efficiency',
+            description: 'Implement energy-efficient manufacturing processes and equipment upgrades',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.energy.total * 0.3,
+            implementationCost: 75000,
+            paybackPeriod: 24
+          });
+        }
+        if (assessment.breakdown.materials.co2Emissions > 200) {
+          recommendations.push({
+            category: 'materials',
+            title: 'Sustainable Material Sourcing',
+            description: 'Source eco-friendly raw materials and implement circular economy practices',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.25,
+            implementationCost: 50000,
+            paybackPeriod: 18
+          });
+        }
+        break;
+        
+      case 'trading':
+        if (assessment.breakdown.transportation.co2Emissions > 100) {
+          recommendations.push({
+            category: 'transportation',
+            title: 'Trading Logistics Optimization',
+            description: 'Optimize supply chain routes and implement consolidated shipping',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.3,
+            implementationCost: 25000,
+            paybackPeriod: 12
+          });
+        }
+        break;
+        
+      case 'services':
+        if (assessment.breakdown.energy.total > 200) {
+          recommendations.push({
+            category: 'energy',
+            title: 'Service Industry Energy Efficiency',
+            description: 'Implement smart office solutions and remote work policies',
+            priority: 'medium',
+            potentialCO2Reduction: assessment.breakdown.energy.total * 0.4,
+            implementationCost: 20000,
+            paybackPeriod: 15
+          });
+        }
+        break;
+        
+      case 'export_import':
+        recommendations.push({
+          category: 'transportation',
+          title: 'Green Export/Import Operations',
+          description: 'Use carbon-neutral shipping options and optimize international logistics',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.35,
+          implementationCost: 40000,
+          paybackPeriod: 18
+        });
+        break;
+        
+      case 'retail':
+        if (assessment.breakdown.materials.co2Emissions > 150) {
+          recommendations.push({
+            category: 'materials',
+            title: 'Sustainable Retail Packaging',
+            description: 'Switch to biodegradable packaging and reduce single-use plastics',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.4,
+            implementationCost: 30000,
+            paybackPeriod: 12
+          });
+        }
+        break;
+        
+      case 'wholesale':
+        if (assessment.breakdown.transportation.co2Emissions > 150) {
+          recommendations.push({
+            category: 'transportation',
+            title: 'Wholesale Distribution Optimization',
+            description: 'Implement bulk shipping and route optimization for wholesale operations',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.25,
+            implementationCost: 35000,
+            paybackPeriod: 15
+          });
+        }
+        break;
+        
+      case 'e_commerce':
+        if (assessment.breakdown.transportation.co2Emissions > 120) {
+          recommendations.push({
+            category: 'transportation',
+            title: 'E-commerce Last-Mile Optimization',
+            description: 'Implement electric delivery vehicles and carbon-neutral shipping options',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.3,
+            implementationCost: 45000,
+            paybackPeriod: 20
+          });
+        }
+        break;
+        
+      case 'consulting':
+        recommendations.push({
+          category: 'energy',
+          title: 'Digital-First Consulting',
+          description: 'Maximize virtual meetings and digital document management',
+          priority: 'medium',
+          potentialCO2Reduction: assessment.breakdown.energy.total * 0.5,
+          implementationCost: 10000,
+          paybackPeriod: 6
+        });
+        break;
+        
+      case 'logistics':
+        recommendations.push({
+          category: 'transportation',
+          title: 'Green Logistics Fleet',
+          description: 'Transition to electric or hybrid vehicles and optimize delivery routes',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.4,
+          implementationCost: 100000,
+          paybackPeriod: 30
+        });
+        break;
+        
+      case 'agriculture':
+        recommendations.push({
+          category: 'energy',
+          title: 'Sustainable Agriculture Practices',
+          description: 'Implement solar irrigation and organic farming techniques',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.energy.total * 0.3,
+          implementationCost: 60000,
+          paybackPeriod: 24
+        });
+        break;
+        
+      case 'handicrafts':
+        recommendations.push({
+          category: 'materials',
+          title: 'Traditional Craft Sustainability',
+          description: 'Use locally sourced, sustainable materials and traditional techniques',
+          priority: 'medium',
+          potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.2,
+          implementationCost: 15000,
+          paybackPeriod: 12
+        });
+        break;
+        
+      case 'food_processing':
+        if (assessment.breakdown.energy.total > 300) {
+          recommendations.push({
+            category: 'energy',
+            title: 'Food Processing Energy Efficiency',
+            description: 'Implement energy-efficient processing equipment and waste-to-energy systems',
+            priority: 'high',
+            potentialCO2Reduction: assessment.breakdown.energy.total * 0.35,
+            implementationCost: 80000,
+            paybackPeriod: 20
+          });
+        }
+        break;
+        
+      case 'textiles':
+        recommendations.push({
+          category: 'materials',
+          title: 'Sustainable Textile Production',
+          description: 'Use organic cotton and implement water recycling systems',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.3,
+          implementationCost: 70000,
+          paybackPeriod: 24
+        });
+        break;
+        
+      case 'electronics':
+        recommendations.push({
+          category: 'materials',
+          title: 'Electronics Circular Economy',
+          description: 'Implement e-waste recycling and sustainable component sourcing',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.25,
+          implementationCost: 50000,
+          paybackPeriod: 18
+        });
+        break;
+        
+      case 'automotive':
+        recommendations.push({
+          category: 'materials',
+          title: 'Green Automotive Manufacturing',
+          description: 'Use lightweight materials and implement electric vehicle components',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.4,
+          implementationCost: 150000,
+          paybackPeriod: 36
+        });
+        break;
+        
+      case 'construction':
+        recommendations.push({
+          category: 'materials',
+          title: 'Sustainable Construction Materials',
+          description: 'Use green building materials and implement waste reduction practices',
+          priority: 'high',
+          potentialCO2Reduction: assessment.breakdown.materials.co2Emissions * 0.35,
+          implementationCost: 100000,
+          paybackPeriod: 30
+        });
+        break;
+        
+      case 'healthcare':
+        recommendations.push({
+          category: 'energy',
+          title: 'Healthcare Energy Efficiency',
+          description: 'Implement energy-efficient medical equipment and smart building systems',
+          priority: 'medium',
+          potentialCO2Reduction: assessment.breakdown.energy.total * 0.25,
+          implementationCost: 60000,
+          paybackPeriod: 24
+        });
+        break;
+        
+      case 'education':
+        recommendations.push({
+          category: 'energy',
+          title: 'Green Campus Initiative',
+          description: 'Implement solar power and digital learning platforms',
+          priority: 'medium',
+          potentialCO2Reduction: assessment.breakdown.energy.total * 0.4,
+          implementationCost: 40000,
+          paybackPeriod: 18
+        });
+        break;
+        
+      case 'tourism':
+        recommendations.push({
+          category: 'transportation',
+          title: 'Sustainable Tourism Practices',
+          description: 'Promote eco-tourism and carbon-neutral travel options',
+          priority: 'medium',
+          potentialCO2Reduction: assessment.breakdown.transportation.co2Emissions * 0.2,
+          implementationCost: 25000,
+          paybackPeriod: 15
+        });
+        break;
     }
     
     return recommendations;

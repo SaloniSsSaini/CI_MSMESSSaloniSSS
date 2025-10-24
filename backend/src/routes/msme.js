@@ -43,6 +43,7 @@ router.put('/profile', [
   body('companyName').optional().notEmpty().withMessage('Company name cannot be empty'),
   body('companyType').optional().isIn(['micro', 'small', 'medium']).withMessage('Invalid company type'),
   body('industry').optional().notEmpty().withMessage('Industry cannot be empty'),
+  body('businessDomain').optional().isIn(['manufacturing', 'trading', 'services', 'export_import', 'retail', 'wholesale', 'e_commerce', 'consulting', 'logistics', 'agriculture', 'handicrafts', 'food_processing', 'textiles', 'electronics', 'automotive', 'construction', 'healthcare', 'education', 'tourism', 'other']).withMessage('Invalid business domain'),
   body('contact.email').optional().isEmail().withMessage('Valid email is required'),
   body('contact.phone').optional().notEmpty().withMessage('Phone cannot be empty')
 ], async (req, res) => {
@@ -67,7 +68,7 @@ router.put('/profile', [
 
     // Update fields
     const allowedFields = [
-      'companyName', 'companyType', 'industry', 'establishmentYear',
+      'companyName', 'companyType', 'industry', 'businessDomain', 'establishmentYear',
       'contact', 'business', 'environmentalCompliance'
     ];
 
@@ -112,6 +113,7 @@ router.post('/register', [
   body('companyName').notEmpty().withMessage('Company name is required'),
   body('companyType').isIn(['micro', 'small', 'medium']).withMessage('Valid company type is required'),
   body('industry').notEmpty().withMessage('Industry is required'),
+  body('businessDomain').isIn(['manufacturing', 'trading', 'services', 'export_import', 'retail', 'wholesale', 'e_commerce', 'consulting', 'logistics', 'agriculture', 'handicrafts', 'food_processing', 'textiles', 'electronics', 'automotive', 'construction', 'healthcare', 'education', 'tourism', 'other']).withMessage('Valid business domain is required'),
   body('udyogAadharNumber').matches(/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/).withMessage('Invalid Udyog Aadhar Number format'),
   body('gstNumber').matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/).withMessage('Invalid GST Number format'),
   body('panNumber').matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).withMessage('Invalid PAN Number format'),

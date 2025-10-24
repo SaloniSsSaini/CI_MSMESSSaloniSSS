@@ -20,6 +20,32 @@ const msmeSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  businessDomain: {
+    type: String,
+    required: true,
+    enum: [
+      'manufacturing',
+      'trading',
+      'services',
+      'export_import',
+      'retail',
+      'wholesale',
+      'e_commerce',
+      'consulting',
+      'logistics',
+      'agriculture',
+      'handicrafts',
+      'food_processing',
+      'textiles',
+      'electronics',
+      'automotive',
+      'construction',
+      'healthcare',
+      'education',
+      'tourism',
+      'other'
+    ]
+  },
   establishmentYear: {
     type: Number,
     required: true

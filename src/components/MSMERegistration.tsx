@@ -29,6 +29,7 @@ const msmeRegistrationSchema = yup.object({
   companyName: yup.string().required('Company name is required'),
   companyType: yup.string().required('Company type is required'),
   industry: yup.string().required('Industry is required'),
+  businessDomain: yup.string().required('Business domain is required'),
   establishmentYear: yup.number()
     .required('Establishment year is required')
     .min(1900, 'Invalid year')
@@ -114,6 +115,7 @@ const MSMERegistration: React.FC = () => {
       companyName: '',
       companyType: '',
       industry: '',
+      businessDomain: '',
       establishmentYear: undefined,
       udyogAadharNumber: '',
       gstNumber: '',
@@ -153,7 +155,7 @@ const MSMERegistration: React.FC = () => {
   const getFieldsForStep = (step: number): (keyof MSMERegistrationForm)[] => {
     switch (step) {
       case 0:
-        return ['companyName', 'companyType', 'industry', 'establishmentYear'];
+        return ['companyName', 'companyType', 'industry', 'businessDomain', 'establishmentYear'];
       case 1:
         return ['udyogAadharNumber', 'gstNumber', 'panNumber'];
       case 2:
@@ -240,6 +242,39 @@ const MSMERegistration: React.FC = () => {
                       <MenuItem value="electronics">Electronics</MenuItem>
                       <MenuItem value="automotive">Automotive</MenuItem>
                       <MenuItem value="pharmaceuticals">Pharmaceuticals</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="businessDomain"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.businessDomain}>
+                    <InputLabel>Business Domain</InputLabel>
+                    <Select {...field} label="Business Domain">
+                      <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                      <MenuItem value="trading">Trading</MenuItem>
+                      <MenuItem value="services">Services</MenuItem>
+                      <MenuItem value="export_import">Export/Import</MenuItem>
+                      <MenuItem value="retail">Retail</MenuItem>
+                      <MenuItem value="wholesale">Wholesale</MenuItem>
+                      <MenuItem value="e_commerce">E-Commerce</MenuItem>
+                      <MenuItem value="consulting">Consulting</MenuItem>
+                      <MenuItem value="logistics">Logistics & Transportation</MenuItem>
+                      <MenuItem value="agriculture">Agriculture & Allied</MenuItem>
+                      <MenuItem value="handicrafts">Handicrafts & Artisans</MenuItem>
+                      <MenuItem value="food_processing">Food Processing</MenuItem>
+                      <MenuItem value="textiles">Textiles & Garments</MenuItem>
+                      <MenuItem value="electronics">Electronics & IT</MenuItem>
+                      <MenuItem value="automotive">Automotive & Engineering</MenuItem>
+                      <MenuItem value="construction">Construction & Real Estate</MenuItem>
+                      <MenuItem value="healthcare">Healthcare & Pharmaceuticals</MenuItem>
+                      <MenuItem value="education">Education & Training</MenuItem>
+                      <MenuItem value="tourism">Tourism & Hospitality</MenuItem>
                       <MenuItem value="other">Other</MenuItem>
                     </Select>
                   </FormControl>
