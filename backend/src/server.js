@@ -106,6 +106,7 @@ app.use('/api/gift-schemes', giftSchemeRoutes);
 app.use('/api/gift-applications', giftApplicationRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/data-privacy', dataPrivacyRoutes);
+app.use("/api/ai-carbon-analysis", require("./routes/ai-carbon-analysis"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
