@@ -2,6 +2,15 @@ import { apiService } from '../apiService';
 
 // Mock axios
 jest.mock('axios', () => ({
+  default: jest.fn((config) => {
+    return Promise.resolve({
+      data: { success: true, message: 'Mock response' },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    });
+  }),
   create: jest.fn(() => ({
     get: jest.fn(),
     post: jest.fn(),

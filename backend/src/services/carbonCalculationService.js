@@ -166,11 +166,11 @@ class CarbonCalculationService {
     const industryFactor = this.industryFactors[transaction.industry] || 1.0;
     co2Emissions *= industryFactor;
     
-    emissionFactor = co2Emissions / (amount || 1);
+    emissionFactor = amount > 0 ? co2Emissions / amount : 0;
     
     return {
       co2Emissions: Math.round(co2Emissions * 100) / 100,
-      emissionFactor: Math.round(emissionFactor * 1000) / 1000,
+      emissionFactor: Math.round(emissionFactor * 10000) / 10000,
       calculationMethod
     };
   }
@@ -184,7 +184,7 @@ class CarbonCalculationService {
       return amount * this.emissionFactors.electricity.grid;
     } else {
       // Estimate based on description
-      if (description.toLowerCase().includes('solar') || description.toLowerCase().includes('wind')) {
+      if (description && description.toLowerCase().includes('solar') || description && description.toLowerCase().includes('wind')) {
         return amount * this.emissionFactors.electricity.renewable;
       }
       return amount * this.emissionFactors.electricity.grid;
@@ -202,7 +202,7 @@ class CarbonCalculationService {
     if (subcategory === 'recycling') {
       // Recycling reduces emissions by 70%
       return amount * this.emissionFactors.solidWaste * 0.3;
-    } else if (description.toLowerCase().includes('hazardous')) {
+    } else if (description && description.toLowerCase().includes('hazardous')) {
       return amount * this.emissionFactors.hazardousWaste;
     } else {
       return amount * this.emissionFactors.solidWaste;
@@ -216,9 +216,12 @@ class CarbonCalculationService {
     if (subcategory === 'petrol') fuelType = 'petrol';
     if (subcategory === 'cng') fuelType = 'cng';
     
-    // Estimate fuel consumption based on amount (assuming fuel cost)
-    const fuelPrice = 80; // Average diesel price per liter
-    const fuelConsumption = amount / fuelPrice;
+    // If amount is in liters, use directly; otherwise estimate from cost
+    let fuelConsumption = amount;
+    if (description && description.toLowerCase().includes('cost') || description && description.toLowerCase().includes('price')) {
+      const fuelPrice = 80; // Average diesel price per liter
+      fuelConsumption = amount / fuelPrice;
+    }
     
     return fuelConsumption * this.emissionFactors.transport[fuelType];
   }
@@ -242,11 +245,13 @@ class CarbonCalculationService {
     const baseEmissions = amount * this.emissionFactors.materials[materialType];
     
     // Add transportation factor if supplier distance is mentioned
-    const distanceMatch = description.match(/(\d+)\s*km/i);
-    if (distanceMatch) {
-      const distance = parseInt(distanceMatch[1]);
-      const transportFactor = distance * 0.0001; // 0.1 kg CO2 per km per kg
-      return baseEmissions + (amount * transportFactor);
+    if (description) {
+      const distanceMatch = description.match(/(\d+)\s*km/i);
+      if (distanceMatch) {
+        const distance = parseInt(distanceMatch[1]);
+        const transportFactor = distance * 0.0001; // 0.1 kg CO2 per km per kg
+        return baseEmissions + (amount * transportFactor);
+      }
     }
     
     return baseEmissions;
@@ -912,6 +917,44 @@ class CarbonCalculationService {
     }
 
     return milestones;
+  }
+
+  updateScope2Parameters(parameters, transaction, co2Emissions, type) {
+    if (!parameters[type]) {
+      parameters[type] = {
+        totalEmissions: 0,
+        transactionCount: 0,
+        averageAmount: 0,
+        totalAmount: 0
+      };
+    }
+    
+    parameters[type].totalEmissions += co2Emissions;
+    parameters[type].transactionCount += 1;
+    parameters[type].totalAmount += transaction.amount;
+    parameters[type].averageAmount = parameters[type].totalAmount / parameters[type].transactionCount;
+  }
+
+  isScope4Emission(transaction) {
+    // Scope 4 emissions are typically avoided emissions or carbon credits
+    // For now, return false as we don't have scope 4 emissions in our system
+    return false;
+  }
+
+  updateScope3Parameters(parameters, transaction, co2Emissions, type) {
+    if (!parameters[type]) {
+      parameters[type] = {
+        totalEmissions: 0,
+        transactionCount: 0,
+        averageAmount: 0,
+        totalAmount: 0
+      };
+    }
+    
+    parameters[type].totalEmissions += co2Emissions;
+    parameters[type].transactionCount += 1;
+    parameters[type].totalAmount += transaction.amount;
+    parameters[type].averageAmount = parameters[type].totalAmount / parameters[type].transactionCount;
   }
 }
 

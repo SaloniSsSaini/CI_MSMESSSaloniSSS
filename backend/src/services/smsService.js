@@ -69,6 +69,9 @@ class SMSService {
 
   async extractTransactionData(text, sender, timestamp, messageId) {
     // Clean and normalize text
+    if (!text) {
+      throw new Error('SMS text is required');
+    }
     const cleanText = text.toLowerCase().trim();
     
     // Extract amount using regex
@@ -135,11 +138,11 @@ class SMSService {
   extractVendorName(text, sender) {
     // Common patterns for vendor names in SMS
     const patterns = [
-      /from\s+([a-z\s]+)/i,
-      /to\s+([a-z\s]+)/i,
-      /at\s+([a-z\s]+)/i,
-      /merchant:\s*([a-z\s]+)/i,
-      /vendor:\s*([a-z\s]+)/i
+      /from\s+([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /to\s+([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /at\s+([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /merchant:\s*([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /vendor:\s*([a-z\s]+?)(?:\s+for\s+rs|$)/i
     ];
     
     for (const pattern of patterns) {
@@ -189,22 +192,46 @@ class SMSService {
   }
 
   extractSubcategory(text, category) {
-    const subcategoryMap = {
-      'energy': text.includes('solar') ? 'renewable' : 'grid',
-      'transportation': text.includes('diesel') ? 'diesel' : 'petrol',
-      'raw_materials': text.includes('steel') ? 'steel' : 'general',
-      'waste_management': text.includes('recycling') ? 'recycling' : 'disposal'
-    };
+    if (category === 'energy') {
+      if (text.includes('solar') || text.includes('wind') || text.includes('renewable')) {
+        return 'renewable';
+      }
+      return 'grid';
+    }
     
-    return subcategoryMap[category] || 'general';
+    if (category === 'transportation') {
+      if (text.includes('diesel')) {
+        return 'diesel';
+      }
+      if (text.includes('petrol')) {
+        return 'petrol';
+      }
+      return 'diesel'; // default
+    }
+    
+    if (category === 'raw_materials') {
+      if (text.includes('steel')) {
+        return 'steel';
+      }
+      return 'general';
+    }
+    
+    if (category === 'waste_management') {
+      if (text.includes('recycling')) {
+        return 'recycling';
+      }
+      return 'disposal';
+    }
+    
+    return 'general';
   }
 
   extractLocation(text) {
     // Simple location extraction - can be enhanced with NLP
     const locationPatterns = [
-      /in\s+([a-z\s]+)/i,
-      /at\s+([a-z\s]+)/i,
-      /location:\s*([a-z\s]+)/i
+      /in\s+([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /at\s+([a-z\s]+?)(?:\s+for\s+rs|$)/i,
+      /location:\s*([a-z\s]+?)(?:\s+for\s+rs|$)/i
     ];
     
     for (const pattern of locationPatterns) {
@@ -244,7 +271,7 @@ class SMSService {
     ];
     
     greenKeywords.forEach(keyword => {
-      if (text.includes(keyword)) {
+      if (text.toLowerCase().includes(keyword)) {
         factors.push(keyword);
       }
     });

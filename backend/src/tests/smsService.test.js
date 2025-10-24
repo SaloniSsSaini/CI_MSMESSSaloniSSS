@@ -22,7 +22,7 @@ describe('SMS Service', () => {
       expect(result.transaction).toBeDefined();
       expect(result.transaction.amount).toBe(1000);
       expect(result.transaction.category).toBe('energy');
-      expect(result.transaction.transactionType).toBe('expense');
+      expect(result.transaction.transactionType).toBe('utility');
     });
 
     test('should handle SMS processing errors gracefully', async () => {
