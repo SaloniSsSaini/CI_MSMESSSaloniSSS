@@ -3,17 +3,19 @@
 
 ---
 
-## 🎯 **App Overview**
+## 🎯 **Platform Overview**
 
-**Carbon Intelligence** is a comprehensive mobile application designed for MSMEs (Micro, Small, and Medium Enterprises) to track, analyze, and optimize their carbon footprint and sustainable manufacturing practices.
+**Carbon Intelligence** is a comprehensive AI-powered platform designed for MSMEs (Micro, Small, and Medium Enterprises) to track, analyze, and optimize their carbon footprint and sustainable manufacturing practices. The platform includes web applications, mobile apps, and advanced AI multi-agent systems.
 
 ### **Key Value Propositions:**
-- 📱 **Smart Transaction Analysis** - AI-powered SMS and Email analysis
-- 🌱 **Carbon Footprint Tracking** - Real-time CO₂ emissions monitoring
-- 📊 **Advanced Analytics** - Comprehensive sustainability insights
-- 💰 **Carbon Trading** - Offset emissions through verified carbon credits
+- 🤖 **AI Multi-Agent System** - Advanced AI agents for comprehensive sustainability management
+- 📱 **Smart Transaction Analysis** - AI-powered SMS and Email analysis with pattern recognition
+- 🌱 **Carbon Intelligence Scoring** - Real-time 0-100 scoring system for sustainability performance
+- 📊 **Advanced Analytics** - ML-powered insights and predictive carbon forecasting
+- 💰 **Green Finance Access** - Direct access to green loans and carbon credit trading
 - 🏆 **Gamification** - Rewards and incentives for sustainable practices
-- 📈 **ESG Reporting** - Professional sustainability reports
+- 📈 **ESG Compliance** - Automated ESG reporting and regulatory compliance
+- 🔄 **Carbon Trading** - Integrated carbon credit marketplace and offset mechanisms
 
 ---
 
@@ -216,26 +218,34 @@
 ## 🚀 **Key Features Summary**
 
 ### **Core Functionality**
-1. **AI-Powered Analysis**: SMS and Email transaction processing
-2. **Carbon Tracking**: Real-time CO₂ emissions monitoring
-3. **Advanced Analytics**: Comprehensive data visualization
-4. **Carbon Trading**: Offset emissions through verified credits
-5. **Gamification**: Rewards and achievement system
-6. **Professional Reporting**: ESG-compliant sustainability reports
+1. **AI Multi-Agent System**: Advanced AI agents for carbon monitoring, green finance, and ESG compliance
+2. **Carbon Intelligence Scoring**: Real-time 0-100 scoring with industry benchmarking
+3. **Smart Transaction Analysis**: AI-powered SMS and Email processing with pattern recognition
+4. **Green Finance Integration**: Direct access to green loans and carbon credit trading
+5. **Advanced Analytics**: ML-powered insights and predictive carbon forecasting
+6. **ESG Compliance**: Automated reporting and regulatory compliance monitoring
+7. **Gamification**: Rewards and achievement system for sustainable practices
+8. **Professional Reporting**: Comprehensive sustainability and ESG reports
 
 ### **Technical Features**
-- **Offline Support**: Data synchronization
-- **Real-time Updates**: Live data refresh
-- **Security**: Secure authentication and data protection
-- **Scalability**: Enterprise-ready architecture
-- **Cross-platform**: React Native for iOS and Android
+- **AI Multi-Agent Architecture**: Advanced AI agents for different sustainability functions
+- **Real-time Processing**: Live data analysis and carbon scoring
+- **Machine Learning**: Predictive analytics and pattern recognition
+- **API Integration**: Seamless integration with banking and financial systems
+- **Security**: Enterprise-grade authentication and data protection
+- **Scalability**: Cloud-native architecture supporting thousands of MSMEs
+- **Cross-platform**: React web app and React Native mobile applications
+- **Document Processing**: AI-powered document upload and analysis
 
 ### **Business Value**
-- **Compliance**: ESG reporting and sustainability compliance
-- **Cost Savings**: Identify cost optimization opportunities
-- **Sustainability**: Reduce carbon footprint and environmental impact
-- **Competitive Advantage**: Industry benchmarking and performance tracking
+- **Green Finance Access**: Direct access to green loans with lower interest rates
+- **Carbon Credit Trading**: Additional revenue streams through carbon credit sales
+- **Cost Savings**: 20-40% reduction in operational costs through AI insights
+- **ESG Compliance**: Automated reporting and regulatory compliance
+- **Competitive Advantage**: Industry benchmarking and sustainability scoring
+- **Risk Reduction**: Lower default rates and improved creditworthiness
 - **Stakeholder Engagement**: Professional reporting for investors and customers
+- **Market Reputation**: Enhanced brand value through sustainability credentials
 
 ---
 
