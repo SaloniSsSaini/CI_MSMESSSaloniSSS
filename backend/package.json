@@ -12,7 +12,7 @@
     "lint:fix": "eslint src --ext .js --fix",
     "init-ai-agents": "node src/scripts/initializeAIAgents.js",
     "seed-banks": "node src/scripts/seedBanks.js",
-    "init-carbon-credits": "node src/scripts/initializeCarbonCredits.js"
+    "init-carbon-credits": "node src/scripts/initializeCarbonCredits.js",
     "seed-gift-schemes": "node src/scripts/seedGIFTSchemes.js"
   },
   "dependencies": {

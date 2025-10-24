@@ -251,6 +251,44 @@ class ApiService {
       body: JSON.stringify(params || {}),
     });
   }
+
+  // Data Privacy endpoints
+  async getPrivacySettings() {
+    return this.request('/data-privacy/settings');
+  }
+
+  async updatePrivacySettings(data: any) {
+    return this.request('/data-privacy/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getDataRequests() {
+    return this.request('/data-privacy/requests');
+  }
+
+  async submitDataRequest(data: any) {
+    return this.request('/data-privacy/requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getDataActivities() {
+    return this.request('/data-privacy/activities');
+  }
+
+  async downloadPersonalData() {
+    return this.request('/data-privacy/download');
+  }
+
+  async updateConsentPreferences(data: any) {
+    return this.request('/data-privacy/consent', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export default new ApiService();

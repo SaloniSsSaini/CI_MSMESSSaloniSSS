@@ -26,6 +26,7 @@ import {
   AccountBalance as LoansIcon,
   CloudUpload as UploadIcon,
   Folder as DocumentsIcon,
+  Security as PrivacyIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -61,6 +62,7 @@ const Header: React.FC = () => {
     { path: '/green-loans', label: 'Green Loans', icon: <LoansIcon /> },
     { path: '/document-upload', label: 'Upload', icon: <UploadIcon /> },
     { path: '/document-management', label: 'Documents', icon: <DocumentsIcon /> },
+    { path: '/data-privacy', label: 'Data Privacy', icon: <PrivacyIcon /> },
   ];
 
   return (

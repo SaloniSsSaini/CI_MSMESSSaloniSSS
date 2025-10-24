@@ -18,6 +18,7 @@ import GreenLoans from './components/GreenLoans';
 import CarbonForecastingGraph from './components/CarbonForecastingGraph';
 import DocumentUpload from './components/DocumentUpload';
 import DocumentManagement from './components/DocumentManagement';
+import DataPrivacy from './components/DataPrivacy';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
               <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
               <Route path="/document-upload" element={<DocumentUpload />} />
               <Route path="/document-management" element={<DocumentManagement />} />
+              <Route path="/data-privacy" element={<DataPrivacy />} />
             </Routes>
           </Container>
         </Box>
