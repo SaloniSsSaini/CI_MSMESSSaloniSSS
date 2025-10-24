@@ -28,7 +28,7 @@ import {
   EmojiEvents as TrophyIcon,
   Star as StarIcon,
   LocalFireDepartment as FireIcon,
-  Nature as EcoIcon,
+  Park as EcoIcon,
   TrendingUp as TrendingUpIcon,
   CheckCircle as CheckCircleIcon,
   Add as AddIcon,

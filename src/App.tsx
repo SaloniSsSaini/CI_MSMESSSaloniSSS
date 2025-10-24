@@ -1,7 +1,9 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { Container, AppBar, Toolbar, Typography, Box } from '@mui/material';
-import { Nature as EcoIcon } from '@mui/icons-material';
+import { ThemeProvider, Container, Box, CssBaseline } from '@mui/material';
+import theme from './theme';
+import Header from './components/Header';
+import ErrorBoundary from './components/ErrorBoundary';
 import MSMERegistration from './components/MSMERegistration';
 import Dashboard from './components/Dashboard';
 import CarbonFootprint from './components/CarbonFootprint';
@@ -19,35 +21,33 @@ import DocumentManagement from './components/DocumentManagement';
 
 function App() {
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <EcoIcon sx={{ mr: 2 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Carbon Intelligence - MSME
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Routes>
-          <Route path="/" element={<MSMERegistration />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/carbon-footprint" element={<CarbonFootprint />} />
-          <Route path="/carbon-savings" element={<CarbonSavings />} />
-          <Route path="/recommendations" element={<Recommendations />} />
-          <Route path="/incentives" element={<IncentivesScreen />} />
-          <Route path="/reporting" element={<ReportingScreen />} />
-          <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
-          <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
-          <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
-          <Route path="/green-loans" element={<GreenLoans />} />
-          <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
-          <Route path="/document-upload" element={<DocumentUpload />} />
-          <Route path="/document-management" element={<DocumentManagement />} />
-        </Routes>
-      </Container>
-    </Box>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <ErrorBoundary>
+        <Box sx={{ flexGrow: 1, minHeight: '100vh', backgroundColor: 'background.default' }}>
+          <Header />
+          
+          <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+            <Routes>
+              <Route path="/" element={<MSMERegistration />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/carbon-footprint" element={<CarbonFootprint />} />
+              <Route path="/carbon-savings" element={<CarbonSavings />} />
+              <Route path="/recommendations" element={<Recommendations />} />
+              <Route path="/incentives" element={<IncentivesScreen />} />
+              <Route path="/reporting" element={<ReportingScreen />} />
+              <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
+              <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
+              <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
+              <Route path="/green-loans" element={<GreenLoans />} />
+              <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
+              <Route path="/document-upload" element={<DocumentUpload />} />
+              <Route path="/document-management" element={<DocumentManagement />} />
+            </Routes>
+          </Container>
+        </Box>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 

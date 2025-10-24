@@ -26,7 +26,7 @@ import {
   EmojiEvents as TrophyIcon,
   Assessment as ReportIcon,
   TrendingUp as TrendingUpIcon,
-  Nature as EcoIcon,
+  Park as EcoIcon,
   LocalFireDepartment as FireIcon,
   Park as TreeIcon,
   DirectionsCar as CarIcon,
@@ -255,19 +255,38 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Welcome back, {msmeData.companyName}! Here's your carbon footprint overview.
-      </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ 
+          fontWeight: 700,
+          background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          Dashboard
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ 
+          maxWidth: 600,
+          lineHeight: 1.6
+        }}>
+          Welcome back, <strong>{msmeData.companyName}</strong>! Here's your carbon footprint overview.
+        </Typography>
+      </Box>
 
       <Grid container spacing={3}>
         {/* Company Overview */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card sx={{ 
+            height: '100%',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            border: '1px solid rgba(76, 175, 80, 0.1)'
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 600,
+                color: 'primary.main',
+                mb: 3
+              }}>
                 Company Overview
               </Typography>
               <Box sx={{ mb: 2 }}>
@@ -318,9 +337,17 @@ const Dashboard: React.FC = () => {
 
         {/* Carbon Footprint Score */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card sx={{ 
+            height: '100%',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            border: '1px solid rgba(76, 175, 80, 0.1)'
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 600,
+                color: 'primary.main',
+                mb: 3
+              }}>
                 Carbon Footprint Score
               </Typography>
               {isLoading ? (
@@ -362,26 +389,48 @@ const Dashboard: React.FC = () => {
         {/* Carbon Savings Overview */}
         {carbonSavings && (
           <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                  <EcoIcon color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="h6">
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              border: '1px solid rgba(76, 175, 80, 0.1)'
+            }}>
+              <CardContent sx={{ p: 4 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  mb: 4,
+                  p: 2,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(46, 125, 50, 0.05) 100%)'
+                }}>
+                  <EcoIcon color="primary" sx={{ mr: 2, fontSize: 28 }} />
+                  <Typography variant="h5" sx={{ fontWeight: 600 }}>
                     Carbon Savings Overview
                   </Typography>
                   {isLoadingSavings && (
-                    <CircularProgress size={20} sx={{ ml: 2 }} />
+                    <CircularProgress size={24} sx={{ ml: 2 }} />
                   )}
                 </Box>
                 
                 <Grid container spacing={3}>
                   {/* Total Savings */}
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.light', color: 'white' }}>
-                      <Typography variant="h4" component="div">
+                    <Paper sx={{ 
+                      p: 3, 
+                      textAlign: 'center', 
+                      background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+                      color: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }
+                    }}>
+                      <Typography variant="h3" component="div" sx={{ fontWeight: 700, mb: 1 }}>
                         {carbonSavings.totalSavings.toFixed(1)}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         Total CO₂ Saved (kg)
                       </Typography>
                     </Paper>
@@ -389,11 +438,23 @@ const Dashboard: React.FC = () => {
 
                   {/* Period Savings */}
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.light', color: 'white' }}>
-                      <Typography variant="h4" component="div">
+                    <Paper sx={{ 
+                      p: 3, 
+                      textAlign: 'center', 
+                      background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
+                      color: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 6px 16px rgba(33, 150, 243, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }
+                    }}>
+                      <Typography variant="h3" component="div" sx={{ fontWeight: 700, mb: 1 }}>
                         {carbonSavings.periodSavings.toFixed(1)}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         This Period (kg)
                       </Typography>
                     </Paper>
@@ -401,11 +462,23 @@ const Dashboard: React.FC = () => {
 
                   {/* Savings Percentage */}
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'warning.light', color: 'white' }}>
-                      <Typography variant="h4" component="div">
+                    <Paper sx={{ 
+                      p: 3, 
+                      textAlign: 'center', 
+                      background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                      color: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }
+                    }}>
+                      <Typography variant="h3" component="div" sx={{ fontWeight: 700, mb: 1 }}>
                         {carbonSavings.savingsPercentage.toFixed(1)}%
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         Reduction Achieved
                       </Typography>
                     </Paper>
@@ -413,11 +486,23 @@ const Dashboard: React.FC = () => {
 
                   {/* Performance Level */}
                   <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'info.light', color: 'white' }}>
-                      <Typography variant="h4" component="div">
+                    <Paper sx={{ 
+                      p: 3, 
+                      textAlign: 'center', 
+                      background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)',
+                      color: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 4px 12px rgba(156, 39, 176, 0.3)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 6px 16px rgba(156, 39, 176, 0.4)',
+                        transition: 'all 0.3s ease'
+                      }
+                    }}>
+                      <Typography variant="h5" component="div" sx={{ fontWeight: 700, mb: 1 }}>
                         {getPerformanceLabel(carbonSavings.benchmarkComparison.performance)}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         Performance Level
                       </Typography>
                     </Paper>
@@ -563,23 +648,48 @@ const Dashboard: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssessmentIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">
+          <Card sx={{ 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            border: '1px solid rgba(76, 175, 80, 0.1)',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
+              transition: 'all 0.3s ease'
+            }
+          }}>
+            <CardContent sx={{ flexGrow: 1, p: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2,
+                p: 2,
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(21, 101, 192, 0.1) 100%)'
+              }}>
+                <AssessmentIcon color="primary" sx={{ mr: 1.5, fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   Carbon Assessment
                 </Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
                 Measure your current carbon footprint across all manufacturing processes
               </Typography>
             </CardContent>
-            <CardActions>
+            <CardActions sx={{ p: 3, pt: 0 }}>
               <Button 
-                size="small" 
+                fullWidth
                 variant="contained"
                 onClick={() => navigate('/carbon-footprint')}
+                sx={{
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+                  }
+                }}
               >
                 Start Assessment
               </Button>

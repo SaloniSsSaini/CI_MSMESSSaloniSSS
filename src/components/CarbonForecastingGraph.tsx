@@ -29,7 +29,7 @@ import {
   Refresh as RefreshIcon,
   Assessment as AssessmentIcon,
   Timeline as TimelineIcon,
-  Nature as EcoIcon
+  Park as EcoIcon
 } from '@mui/icons-material';
 import {
   LineChart,

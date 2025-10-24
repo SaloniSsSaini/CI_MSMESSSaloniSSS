@@ -140,8 +140,8 @@ const GIFTApplicationForm: React.FC = () => {
         projectValue: 0,
         expectedCarbonReduction: 0,
         projectDuration: 1,
-        startDate: '',
-        endDate: ''
+        startDate: new Date(),
+        endDate: new Date()
       },
       financialDetails: {
         totalProjectCost: 0,

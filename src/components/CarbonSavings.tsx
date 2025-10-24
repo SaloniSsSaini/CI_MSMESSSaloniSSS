@@ -26,7 +26,7 @@ import {
   Tooltip
 } from '@mui/material';
 import {
-  Nature as EcoIcon,
+  Park as EcoIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Star as StarIcon,

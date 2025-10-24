@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
-  Nature as EcoIcon,
+  Park as EcoIcon,
   EnergySavingsLeaf as EnergySavingsLeafIcon,
   Water as WaterIcon,
   Recycling as RecyclingIcon,

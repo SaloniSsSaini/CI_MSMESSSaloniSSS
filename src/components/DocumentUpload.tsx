@@ -49,6 +49,8 @@ interface Document {
   documentType: string;
   status: 'uploaded' | 'processing' | 'processed' | 'failed' | 'duplicate';
   createdAt: string;
+  notes?: string;
+  tags?: string[];
   extractedData?: {
     amount: number;
     vendor: {
@@ -124,7 +126,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onDocumentUploaded }) =
         // Validate file before upload
         const validation = documentService.validateFile(file);
         if (!validation.valid) {
-          setError(validation.error);
+          setError(validation.error || 'Invalid file');
           continue;
         }
 

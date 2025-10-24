@@ -38,7 +38,7 @@ import {
   Share as ShareIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  Nature as EcoIcon,
+  Park as EcoIcon,
   Business as BusinessIcon,
   CalendarToday as CalendarIcon,
   Close as CloseIcon

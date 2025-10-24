@@ -619,15 +619,49 @@ const MSMERegistration: React.FC = () => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom align="center">
-        MSME Registration
-      </Typography>
-      <Typography variant="body1" color="text.secondary" align="center" paragraph>
-        Register your MSME company to measure carbon footprint and get sustainable manufacturing recommendations
-      </Typography>
+    <Paper elevation={2} sx={{ 
+      p: 6, 
+      borderRadius: 3,
+      background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+      border: '1px solid rgba(76, 175, 80, 0.1)'
+    }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ 
+          fontWeight: 700,
+          background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          mb: 2
+        }}>
+          MSME Registration
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ 
+          maxWidth: 600, 
+          mx: 'auto',
+          lineHeight: 1.6
+        }}>
+          Register your MSME company to measure carbon footprint and get sustainable manufacturing recommendations
+        </Typography>
+      </Box>
 
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+      <Stepper activeStep={activeStep} sx={{ 
+        mb: 4,
+        '& .MuiStepLabel-root': {
+          '& .MuiStepLabel-label': {
+            fontWeight: 500,
+            fontSize: '0.875rem'
+          }
+        },
+        '& .MuiStepIcon-root': {
+          '&.Mui-completed': {
+            color: 'success.main'
+          },
+          '&.Mui-active': {
+            color: 'primary.main'
+          }
+        }
+      }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -646,11 +680,22 @@ const MSMERegistration: React.FC = () => {
           {renderStepContent(activeStep)}
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          pt: 3,
+          borderTop: '1px solid',
+          borderColor: 'divider'
+        }}>
           <Button
             disabled={activeStep === 0}
             onClick={handleBack}
-            sx={{ mr: 1 }}
+            variant="outlined"
+            sx={{ 
+              mr: 1,
+              minWidth: 120,
+              py: 1.5
+            }}
           >
             Back
           </Button>
@@ -661,6 +706,14 @@ const MSMERegistration: React.FC = () => {
                 variant="contained"
                 disabled={isSubmitting}
                 startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+                sx={{
+                  minWidth: 180,
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
+                  }
+                }}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Registration'}
               </Button>
@@ -668,6 +721,14 @@ const MSMERegistration: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={handleNext}
+                sx={{
+                  minWidth: 120,
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+                  }
+                }}
               >
                 Next
               </Button>

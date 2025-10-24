@@ -23,7 +23,7 @@ import {
   Chip
 } from '@mui/material';
 import {
-  Nature as EcoIcon,
+  Park as EcoIcon,
   Factory as FactoryIcon,
   LocalShipping as LocalShippingIcon,
   ElectricalServices as ElectricalServicesIcon,

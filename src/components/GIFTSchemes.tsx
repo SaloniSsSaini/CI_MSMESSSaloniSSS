@@ -34,7 +34,7 @@ import {
   Cancel as CancelIcon,
   Schedule as ScheduleIcon,
   AttachMoney as MoneyIcon,
-  Eco as EcoIcon,
+  Park as EcoIcon,
   Engineering as EngineeringIcon,
   Computer as ComputerIcon,
   Lightbulb as LightbulbIcon,

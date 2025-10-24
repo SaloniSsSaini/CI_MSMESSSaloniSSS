@@ -187,7 +187,7 @@ class ApiService {
   }
 
   // Reporting endpoints
-n  // GIFT Scheme endpoints
+  // GIFT Scheme endpoints
   async getGIFTSchemes(params?: { category?: string; status?: string; page?: number; limit?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.category) queryParams.append("category", params.category);

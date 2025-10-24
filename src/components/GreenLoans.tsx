@@ -47,7 +47,7 @@ import {
   Cancel as CancelIcon,
   Pending as PendingIcon,
   Assessment as AssessmentIcon,
-  Nature as EcoIcon,
+  Park as EcoIcon,
   AttachMoney as MoneyIcon,
   Schedule as ScheduleIcon,
   Add as AddIcon,

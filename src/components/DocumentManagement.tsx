@@ -50,7 +50,7 @@ import {
   Search as SearchIcon,
   ExpandMore as ExpandMoreIcon,
   TrendingUp as TrendingUpIcon,
-  Eco as EcoIcon,
+  Park as EcoIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
@@ -65,6 +65,8 @@ interface Document {
   documentType: string;
   status: 'uploaded' | 'processing' | 'processed' | 'failed' | 'duplicate';
   createdAt: string;
+  notes?: string;
+  tags?: string[];
   extractedData?: {
     amount: number;
     vendor: {
@@ -112,8 +114,6 @@ interface Document {
     calculationMethod: string;
     sustainabilityScore: number;
   };
-  notes?: string;
-  tags?: string[];
 }
 
 interface TabPanelProps {
