@@ -6,6 +6,7 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import {
   Text,
@@ -18,9 +19,14 @@ import {
   Chip,
   List,
   Divider,
+  ProgressBar,
+  Badge,
+  Surface,
+  IconButton,
 } from 'react-native-paper';
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
+import PrivacyFocusedSMSReader from '../services/PrivacyFocusedSMSReader';
 
 const SMSAnalysisScreen = ({ navigation }: any) => {
   const [smsData, setSmsData] = useState<any[]>([]);
@@ -28,18 +34,51 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [manualSms, setManualSms] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
+  const [esgMetrics, setEsgMetrics] = useState<any>(null);
+  const [privacyStatus, setPrivacyStatus] = useState<any>(null);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [dataRetentionStatus, setDataRetentionStatus] = useState<any>(null);
 
   useEffect(() => {
-    loadSMSData();
-    loadAnalytics();
+    initializeSMSAnalysis();
   }, []);
+
+  const initializeSMSAnalysis = async () => {
+    await checkConsentStatus();
+    await loadSMSData();
+    await loadAnalytics();
+    await loadESGMetrics();
+    await checkDataRetentionStatus();
+  };
+
+  const checkConsentStatus = async () => {
+    try {
+      const consentData = await PrivacyFocusedSMSReader.getConsentStatus();
+      setConsentGiven(consentData?.consent || false);
+      setPrivacyStatus(consentData);
+    } catch (error) {
+      console.error('Error checking consent status:', error);
+    }
+  };
 
   const loadSMSData = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.getSMSTransactions({ limit: 50 });
-      if (response.success) {
-        setSmsData(response.data.transactions);
+      
+      if (consentGiven) {
+        // Read SMS using privacy-focused reader
+        const smsMessages = await PrivacyFocusedSMSReader.readSMSMessages({
+          limit: 50,
+          filterKeywords: ['bank', 'payment', 'transaction', 'purchase', 'sale', 'invoice', 'receipt', 'electricity', 'fuel', 'water']
+        });
+        setSmsData(smsMessages);
+      } else {
+        // Fallback to API service
+        const response = await apiService.getSMSTransactions({ limit: 50 });
+        if (response.success) {
+          setSmsData(response.data.transactions);
+        }
       }
     } catch (error) {
       console.error('Error loading SMS data:', error);
@@ -59,26 +98,69 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
     }
   };
 
-  const requestSMSPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_SMS,
-          {
-            title: 'SMS Permission',
-            message: 'This app needs access to SMS to analyze transactions.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
+  const loadESGMetrics = async () => {
+    try {
+      const response = await apiService.getESGMetrics();
+      if (response.success) {
+        setEsgMetrics(response.data);
       }
+    } catch (error) {
+      console.error('Error loading ESG metrics:', error);
     }
-    return true;
+  };
+
+  const checkDataRetentionStatus = async () => {
+    try {
+      const status = await PrivacyFocusedSMSReader.getDataRetentionStatus();
+      setDataRetentionStatus(status);
+    } catch (error) {
+      console.error('Error checking data retention status:', error);
+    }
+  };
+
+  const requestSMSPermission = async () => {
+    try {
+      const permissionGranted = await PrivacyFocusedSMSReader.requestPermissions();
+      if (permissionGranted) {
+        const consentGranted = await PrivacyFocusedSMSReader.requestConsent();
+        if (consentGranted) {
+          setConsentGiven(true);
+          await loadSMSData();
+          await loadESGMetrics();
+        }
+      }
+      return permissionGranted;
+    } catch (error) {
+      console.error('Error requesting SMS permission:', error);
+      return false;
+    }
+  };
+
+  const revokeConsent = async () => {
+    Alert.alert(
+      'Revoke Consent',
+      'Are you sure you want to revoke SMS processing consent? This will delete all stored SMS data.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revoke',
+          style: 'destructive',
+          onPress: async () => {
+            await PrivacyFocusedSMSReader.revokeConsent();
+            setConsentGiven(false);
+            setSmsData([]);
+            setEsgMetrics(null);
+            setDataRetentionStatus(null);
+          }
+        }
+      ]
+    );
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await initializeSMSAnalysis();
+    setRefreshing(false);
   };
 
   const processManualSMS = async () => {
@@ -89,20 +171,24 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
 
     setIsProcessing(true);
     try {
-      const response = await apiService.processSMS({
+      // Process using privacy-focused reader
+      const mockSMS = {
+        id: `manual_${Date.now()}`,
         body: manualSms,
         sender: 'Manual Entry',
-        timestamp: new Date().toISOString(),
-        messageId: `manual_${Date.now()}`,
-      });
+        timestamp: new Date().toISOString()
+      };
 
-      if (response.success) {
+      const processedMessages = await PrivacyFocusedSMSReader.processSMSMessages([mockSMS]);
+      
+      if (processedMessages.length > 0) {
         Alert.alert('Success', 'SMS processed successfully');
         setManualSms('');
-        loadSMSData();
-        loadAnalytics();
+        await loadSMSData();
+        await loadAnalytics();
+        await loadESGMetrics();
       } else {
-        Alert.alert('Error', response.message || 'Failed to process SMS');
+        Alert.alert('Error', 'Failed to process SMS');
       }
     } catch (error) {
       console.error('Error processing SMS:', error);
@@ -136,6 +222,13 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
     return colors.error;
   };
 
+  const getESGColor = (score: number) => {
+    if (score >= 80) return colors.success;
+    if (score >= 60) return colors.warning;
+    if (score >= 40) return colors.error;
+    return colors.error;
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -147,7 +240,117 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Privacy Status */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <View style={styles.privacyHeader}>
+              <Title style={styles.cardTitle}>Privacy & Consent</Title>
+              <IconButton
+                icon={consentGiven ? "shield-check" : "shield-alert"}
+                iconColor={consentGiven ? colors.success : colors.warning}
+                size={24}
+              />
+            </View>
+            <View style={styles.privacyStatus}>
+              <Chip
+                icon={consentGiven ? "check-circle" : "alert-circle"}
+                mode="outlined"
+                style={[
+                  styles.consentChip,
+                  { borderColor: consentGiven ? colors.success : colors.warning }
+                ]}
+                textStyle={{ color: consentGiven ? colors.success : colors.warning }}
+              >
+                {consentGiven ? "Consent Given" : "Consent Required"}
+              </Chip>
+              {dataRetentionStatus && (
+                <Text style={styles.retentionText}>
+                  Data expires in {dataRetentionStatus.daysRemaining} days
+                </Text>
+              )}
+            </View>
+            <View style={styles.privacyActions}>
+              {!consentGiven ? (
+                <Button
+                  mode="contained"
+                  onPress={requestSMSPermission}
+                  style={styles.consentButton}
+                >
+                  Grant SMS Access
+                </Button>
+              ) : (
+                <Button
+                  mode="outlined"
+                  onPress={revokeConsent}
+                  style={styles.revokeButton}
+                  textColor={colors.error}
+                >
+                  Revoke Consent
+                </Button>
+              )}
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* ESG Metrics Overview */}
+        {esgMetrics && (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Title style={styles.cardTitle}>ESG Sustainability Metrics</Title>
+              <View style={styles.esgGrid}>
+                <View style={styles.esgItem}>
+                  <Text style={styles.esgScore}>{esgMetrics.overall?.score || 0}</Text>
+                  <Text style={styles.esgLabel}>Overall Score</Text>
+                  <Chip
+                    mode="outlined"
+                    compact
+                    style={[
+                      styles.esgChip,
+                      { borderColor: getESGColor(esgMetrics.overall?.score || 0) }
+                    ]}
+                    textStyle={{ color: getESGColor(esgMetrics.overall?.score || 0) }}
+                  >
+                    {esgMetrics.overall?.grade || 'N/A'}
+                  </Chip>
+                </View>
+                <View style={styles.esgItem}>
+                  <Text style={styles.esgScore}>{esgMetrics.environmental?.score || 0}</Text>
+                  <Text style={styles.esgLabel}>Environmental</Text>
+                  <ProgressBar
+                    progress={(esgMetrics.environmental?.score || 0) / 100}
+                    color={getESGColor(esgMetrics.environmental?.score || 0)}
+                    style={styles.progressBar}
+                  />
+                </View>
+                <View style={styles.esgItem}>
+                  <Text style={styles.esgScore}>{esgMetrics.social?.score || 0}</Text>
+                  <Text style={styles.esgLabel}>Social</Text>
+                  <ProgressBar
+                    progress={(esgMetrics.social?.score || 0) / 100}
+                    color={getESGColor(esgMetrics.social?.score || 0)}
+                    style={styles.progressBar}
+                  />
+                </View>
+                <View style={styles.esgItem}>
+                  <Text style={styles.esgScore}>{esgMetrics.governance?.score || 0}</Text>
+                  <Text style={styles.esgLabel}>Governance</Text>
+                  <ProgressBar
+                    progress={(esgMetrics.governance?.score || 0) / 100}
+                    color={getESGColor(esgMetrics.governance?.score || 0)}
+                    style={styles.progressBar}
+                  />
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         {/* Analytics Overview */}
         {analytics && (
           <Card style={styles.card}>
