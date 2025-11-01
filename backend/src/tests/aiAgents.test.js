@@ -37,12 +37,12 @@ describe('AI Agents API', () => {
 
     // Mock authentication token
     authToken = 'mock_jwt_token';
-  });
+  }, 30000);
 
   afterAll(async () => {
     await AIAgent.deleteMany({});
     await AITask.deleteMany({});
-  });
+  }, 30000);
 
   describe('GET /api/ai-agents', () => {
     test('should get all AI agents', async () => {

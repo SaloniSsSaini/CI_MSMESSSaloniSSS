@@ -1,4 +1,50 @@
 const aiAgentService = require('../services/aiAgentService');
+
+// Mock the models
+jest.mock('../models/AIAgent', () => {
+  return jest.fn().mockImplementation(() => ({
+    save: jest.fn().mockResolvedValue(true),
+    findById: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn()
+  }));
+});
+
+jest.mock('../models/AITask', () => {
+  return jest.fn().mockImplementation(() => ({
+    save: jest.fn().mockResolvedValue(true),
+    findById: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn()
+  }));
+});
+
+jest.mock('../models/AIWorkflow', () => {
+  return jest.fn().mockImplementation(() => ({
+    save: jest.fn().mockResolvedValue(true),
+    findById: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn()
+  }));
+});
+
+jest.mock('../models/AIExecution', () => {
+  return jest.fn().mockImplementation(() => ({
+    save: jest.fn().mockResolvedValue(true),
+    findById: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn()
+  }));
+});
+
 const AIAgent = require('../models/AIAgent');
 const AITask = require('../models/AITask');
 const AIWorkflow = require('../models/AIWorkflow');
@@ -39,19 +85,19 @@ describe('AI Agent Service', () => {
   });
 
   describe('Task Creation', () => {
-    test('should create task successfully', async () => {
+    test("should create task successfully", async () => {
       const taskData = {
-        agentId: '507f1f77bcf86cd799439011',
-        msmeId: '507f1f77bcf86cd799439012',
-        taskType: 'carbon_analysis',
-        input: { test: 'data' }
+        agentId: "507f1f77bcf86cd799439011",
+        msmeId: "507f1f77bcf86cd799439012",
+        taskType: "carbon_analysis",
+        input: { test: "data" }
       };
 
       // Mock AITask constructor and save
       const mockTask = {
-        taskId: 'test_task_id',
+        taskId: "test_task_id",
         ...taskData,
-        status: 'pending',
+        status: "pending",
         save: jest.fn().mockResolvedValue(true)
       };
 
@@ -60,8 +106,8 @@ describe('AI Agent Service', () => {
       const result = await aiAgentService.createTask(taskData);
 
       expect(result).toBeDefined();
-      expect(result.taskId).toBe('test_task_id');
-      expect(result.status).toBe('pending');
+      expect(result.taskId).toBe("test_task_id");
+      expect(result.status).toBe("pending");
       expect(mockTask.save).toHaveBeenCalled();
     });
   });

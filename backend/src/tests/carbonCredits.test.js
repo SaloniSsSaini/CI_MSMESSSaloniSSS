@@ -58,7 +58,7 @@ describe('Carbon Credits Service', () => {
     // Connect to test database
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/carbon_intelligence_test';
     await mongoose.connect(mongoUri);
-  });
+  }, 30000);
 
   afterAll(async () => {
     // Clean up test data
@@ -69,7 +69,7 @@ describe('Carbon Credits Service', () => {
     await MSME.deleteMany({});
     await User.deleteMany({});
     await mongoose.connection.close();
-  });
+  }, 30000);
 
   beforeEach(async () => {
     // Clean up before each test

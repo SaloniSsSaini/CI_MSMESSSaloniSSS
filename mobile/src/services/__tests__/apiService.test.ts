@@ -1,18 +1,5 @@
-// Mock axios before importing the service
-const mockAxios = jest.fn((config) => {
-  return Promise.resolve({
-    data: { success: true, message: 'Mock response' },
-    status: 200,
-    statusText: 'OK',
-    headers: {},
-    config,
-  });
-});
-
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: mockAxios,
-}));
+// Import the mocked axios from setupTests
+import axios from 'axios';
 
 import { apiService } from '../apiService';
 
@@ -33,11 +20,11 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.login('test@example.com', 'password123');
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'POST',
         url: 'http://localhost:5000/api/auth/login',
         headers: {
@@ -61,7 +48,7 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.mockRejectedValue(mockError);
+      (axios as jest.Mock).mockRejectedValue(mockError);
 
       try {
         await apiService.login('test@example.com', 'wrongpassword');
@@ -90,11 +77,11 @@ describe('apiService', () => {
         industry: 'Manufacturing',
       };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.register(userData);
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'POST',
         url: 'http://localhost:5000/api/auth/register',
         headers: {
@@ -119,11 +106,11 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.getDashboard();
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'GET',
         url: 'http://localhost:5000/api/carbon/dashboard',
         headers: {
@@ -149,11 +136,11 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.getTransactions({ page: 1, limit: 10 });
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'GET',
         url: 'http://localhost:5000/api/transactions?page=1&limit=10',
         headers: {
@@ -177,11 +164,11 @@ describe('apiService', () => {
         },
       };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.performCarbonAssessment();
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'POST',
         url: 'http://localhost:5000/api/carbon/assess',
         headers: {
@@ -207,11 +194,11 @@ describe('apiService', () => {
 
       const params = { startDate: '2024-01-01', endDate: '2024-01-31' };
 
-      mockAxios.mockResolvedValue(mockResponse);
+      (axios as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await apiService.getAnalyticsOverview(params);
 
-      expect(mockAxios).toHaveBeenCalledWith({
+      expect(axios).toHaveBeenCalledWith({
         method: 'GET',
         url: 'http://localhost:5000/api/analytics/overview?startDate=2024-01-01&endDate=2024-01-31',
         headers: {
