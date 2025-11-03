@@ -1,5 +1,4 @@
 const ESGAnalyzerAgent = require('./agents/esgAnalyzerAgent');
-const carbonCalculationService = require('./carbonCalculationService');
 const logger = require('../utils/logger');
 
 class ESGMetricsService {
@@ -7,75 +6,152 @@ class ESGMetricsService {
     this.esgAnalyzer = ESGAnalyzerAgent;
     this.metricsCache = new Map();
     this.cacheExpiry = 30 * 60 * 1000; // 30 minutes
+    this.defaultDataSourceMode = 'standard';
+    this.dataSourceDisclaimers = {
+      documents: 'Uploaded sustainability documents are the default ESG data source and are used to derive carbon insights.',
+      sms: 'Advanced-only source: mobile application SMS messages are analysed only after the user accepts the in-app disclaimer and grants explicit consent.',
+      email: 'Advanced-only source: email ingestion requires mailbox access consent and a privacy disclaimer advising users to avoid personal data.'
+    };
   }
 
   async calculateComprehensiveESGMetrics(msmeId, options = {}) {
     try {
       const {
-        includeSMSData = true,
+        dataSourceMode = this.defaultDataSourceMode,
+        includeSMSData,
         includeTransactionData = true,
-        includeDocumentData = false,
+        includeDocumentData,
+        includeEmailData,
         timeRange = '12months',
         granularity = 'monthly'
       } = options;
 
-      // Get MSME data
+      const useDocuments = includeDocumentData ?? true;
+      const useSMS = includeSMSData ?? (dataSourceMode === 'advanced');
+      const useEmails = includeEmailData ?? (dataSourceMode === 'advanced');
+      const useTransactionData = includeTransactionData;
+
       const msmeData = await this.getMSMEData(msmeId);
       if (!msmeData) {
         throw new Error('MSME not found');
       }
 
-      // Get transaction data
-      const transactions = includeTransactionData ? 
-        await this.getTransactionData(msmeId, timeRange) : [];
+      const baseTransactions = [];
+      let emailSourceRecords = [];
 
-      // Get SMS data
-      const smsData = includeSMSData ? 
-        await this.getSMSData(msmeId, timeRange) : [];
+      if (useTransactionData) {
+        const rawTransactions = await this.getTransactionData(msmeId, timeRange);
 
-      // Get document data if requested
-      const documentData = includeDocumentData ? 
-        await this.getDocumentData(msmeId, timeRange) : [];
+        rawTransactions.forEach(rawTransaction => {
+          const normalized = this.normalizeTransactionForAnalysis(rawTransaction);
 
-      // Calculate ESG metrics
+          if (normalized.source === 'sms') {
+            return;
+          }
+
+          if (!useEmails && normalized.source === 'email') {
+            return;
+          }
+
+          if (useEmails && normalized.source === 'email') {
+            emailSourceRecords.push(normalized);
+            return;
+          }
+
+          baseTransactions.push(normalized);
+        });
+      }
+
+      if (useEmails && emailSourceRecords.length === 0) {
+        const emailData = await this.getEmailData(msmeId, timeRange);
+        emailSourceRecords = emailData.map(email => 
+          this.normalizeTransactionForAnalysis(email, { dataSource: 'email' })
+        );
+      }
+
+      const emailTransactions = useEmails
+        ? emailSourceRecords.map(tx =>
+            this.normalizeTransactionForAnalysis(tx, {
+              dataSource: 'email',
+              disclaimer: this.dataSourceDisclaimers.email,
+              consentRequired: true
+            })
+          )
+        : [];
+
+      const documentRecords = useDocuments
+        ? await this.getDocumentData(msmeId, timeRange)
+        : [];
+
+      const documentTransactions = useDocuments
+        ? this.transformDocumentsToTransactions(documentRecords)
+        : [];
+
+      const smsData = useSMS
+        ? await this.getSMSData(msmeId, timeRange)
+        : [];
+
+      const aggregatedTransactions = [
+        ...baseTransactions,
+        ...documentTransactions,
+        ...emailTransactions
+      ];
+
       const esgMetrics = await this.esgAnalyzer.analyzeESGMetrics(
-        msmeData, 
-        transactions, 
+        msmeData,
+        aggregatedTransactions,
         smsData
       );
 
-      // Add time-series analysis
       const timeSeriesMetrics = await this.calculateTimeSeriesMetrics(
-        msmeId, 
-        timeRange, 
-        granularity
+        msmeId,
+        timeRange,
+        granularity,
+        {
+          transactions: aggregatedTransactions,
+          smsData
+        }
       );
 
-      // Add benchmarking
       const benchmarking = await this.calculateBenchmarking(esgMetrics, msmeData);
-
-      // Add predictive analytics
       const predictions = await this.calculatePredictiveAnalytics(esgMetrics, timeSeriesMetrics);
 
-      // Generate comprehensive report
+      const dataSourcesSummary = this.buildDataSourcesSummary(dataSourceMode, {
+        documents: {
+          included: useDocuments,
+          records: documentTransactions.length,
+          uploads: documentRecords.length
+        },
+        sms: {
+          included: useSMS,
+          messages: smsData.length
+        },
+        emails: {
+          included: useEmails,
+          records: emailTransactions.length
+        },
+        transactions: {
+          included: useTransactionData,
+          records: baseTransactions.length
+        }
+      });
+
       const comprehensiveReport = {
         msmeId,
         generatedAt: new Date().toISOString(),
         timeRange,
         granularity,
+        dataSourceMode,
+        advancedSourcesEnabled: dataSourceMode === 'advanced',
+        aggregatedTransactionCount: aggregatedTransactions.length,
         esgMetrics,
         timeSeriesMetrics,
         benchmarking,
         predictions,
-        dataSources: {
-          transactions: transactions.length,
-          smsMessages: smsData.length,
-          documents: documentData.length
-        },
-        confidence: this.calculateOverallConfidence(esgMetrics, transactions, smsData)
+        dataSources: dataSourcesSummary,
+        confidence: this.calculateOverallConfidence(esgMetrics, aggregatedTransactions, smsData)
       };
 
-      // Cache the results
       this.cacheResults(msmeId, comprehensiveReport);
 
       return comprehensiveReport;
@@ -204,6 +280,7 @@ class ESGMetricsService {
 
       const documents = await Document.find({
         msmeId,
+        status: 'processed',
         uploadedAt: { $gte: startDate, $lte: endDate },
         category: { $in: ['environmental', 'social', 'governance', 'compliance'] }
       }).sort({ uploadedAt: -1 });
@@ -211,6 +288,28 @@ class ESGMetricsService {
       return documents;
     } catch (error) {
       logger.error('Error getting document data:', error);
+      throw error;
+    }
+  }
+
+  async getEmailData(msmeId, timeRange) {
+    try {
+      const Transaction = require('../models/Transaction');
+
+      const startDate = this.calculateStartDate(timeRange);
+      const endDate = new Date();
+
+      const emailTransactions = await Transaction.find({
+        msmeId,
+        source: 'email',
+        isSpam: { $ne: true },
+        isDuplicate: { $ne: true },
+        date: { $gte: startDate, $lte: endDate }
+      }).sort({ date: -1 });
+
+      return emailTransactions;
+    } catch (error) {
+      logger.error('Error getting email data:', error);
       throw error;
     }
   }
@@ -233,10 +332,37 @@ class ESGMetricsService {
     }
   }
 
-  async calculateTimeSeriesMetrics(msmeId, timeRange, granularity) {
+  async calculateTimeSeriesMetrics(msmeId, timeRange, granularity, sourceData = {}) {
     try {
-      const transactions = await this.getTransactionData(msmeId, timeRange);
-      const smsData = await this.getSMSData(msmeId, timeRange);
+      const transactionsInput = Array.isArray(sourceData.transactions)
+        ? sourceData.transactions
+        : await this.getTransactionData(msmeId, timeRange);
+
+      const smsDataInput = Array.isArray(sourceData.smsData)
+        ? sourceData.smsData
+        : await this.getSMSData(msmeId, timeRange);
+
+      const transactions = transactionsInput.map(transaction => {
+        const plainTransaction = transaction && typeof transaction.toObject === 'function'
+          ? transaction.toObject()
+          : { ...transaction };
+        const normalized = { ...plainTransaction };
+        normalized.date = normalized.date ? new Date(normalized.date) : new Date();
+        return normalized;
+      });
+
+      const smsData = smsDataInput.map(sms => {
+        if (!sms || typeof sms !== 'object') {
+          return sms;
+        }
+
+        const plainSMS = typeof sms.toObject === 'function' ? sms.toObject() : sms;
+        const normalized = { ...plainSMS };
+        if (normalized.timestamp) {
+          normalized.timestamp = new Date(normalized.timestamp).toISOString();
+        }
+        return normalized;
+      });
 
       const timeSeries = {
         environmental: [],
@@ -770,6 +896,255 @@ class ESGMetricsService {
     }
 
     return opportunities;
+  }
+
+  buildDataSourcesSummary(mode, summary) {
+    return {
+      mode,
+      defaultSource: 'documents',
+      advanced: mode === 'advanced',
+      sources: {
+        documents: {
+          included: summary.documents.included,
+          records: summary.documents.records,
+          uploads: summary.documents.uploads,
+          disclaimer: this.dataSourceDisclaimers.documents
+        },
+        sms: {
+          included: summary.sms.included,
+          messages: summary.sms.messages,
+          disclaimer: summary.sms.included ? this.dataSourceDisclaimers.sms : undefined,
+          consentRequired: summary.sms.included
+        },
+        emails: {
+          included: summary.emails.included,
+          records: summary.emails.records,
+          disclaimer: summary.emails.included ? this.dataSourceDisclaimers.email : undefined,
+          consentRequired: summary.emails.included
+        },
+        transactions: {
+          included: summary.transactions.included,
+          records: summary.transactions.records
+        }
+      },
+      breakdown: {
+        documents: summary.documents.records,
+        documentUploads: summary.documents.uploads,
+        smsMessages: summary.sms.messages,
+        emailTransactions: summary.emails.records,
+        baseTransactions: summary.transactions.records
+      }
+    };
+  }
+
+  transformDocumentsToTransactions(documents = []) {
+    return documents
+      .filter(doc => doc)
+      .map(doc => {
+        const plainDoc = doc.toObject ? doc.toObject() : doc;
+        const extracted = plainDoc.extractedData || {};
+        const category = this.normalizeCategory(extracted.category);
+        const subcategory = extracted.subcategory || this.deriveDocumentSubcategory(category, extracted);
+        const transactionType = this.mapCategoryToTransactionType(category);
+
+        const baseTransaction = {
+          source: 'document',
+          dataSource: 'document',
+          sourceId: plainDoc._id ? plainDoc._id.toString() : plainDoc.fileName || plainDoc.originalName,
+          transactionType,
+          amount: Number(extracted.amount) || 0,
+          currency: extracted.currency || 'INR',
+          description: extracted.description || `Document: ${plainDoc.originalName}`,
+          vendor: extracted.vendor || {},
+          category,
+          subcategory,
+          date: extracted.date ? new Date(extracted.date) : new Date(plainDoc.uploadedAt || plainDoc.createdAt || Date.now()),
+          carbonFootprint: plainDoc.carbonFootprint && Object.keys(plainDoc.carbonFootprint).length > 0
+            ? plainDoc.carbonFootprint
+            : {
+                co2Emissions: 0,
+                emissionFactor: 0,
+                calculationMethod: 'document_extraction'
+              },
+          sustainability: {
+            isGreen: (plainDoc.carbonFootprint?.sustainabilityScore || 0) >= 60,
+            greenScore: plainDoc.carbonFootprint?.sustainabilityScore || 0,
+            sustainabilityFactors: this.extractDocumentSustainabilityFactors(extracted)
+          },
+          metadata: {
+            documentId: plainDoc._id ? plainDoc._id.toString() : undefined,
+            documentType: plainDoc.documentType,
+            processingConfidence: plainDoc.processingResults?.confidence || 0,
+            processingWarnings: plainDoc.processingResults?.warnings || [],
+            processingErrors: plainDoc.processingResults?.errors || [],
+            extractedData: extracted,
+            dataSourceDisclaimer: this.dataSourceDisclaimers.documents
+          },
+          tags: Array.isArray(plainDoc.tags) ? plainDoc.tags : []
+        };
+
+        return this.normalizeTransactionForAnalysis(baseTransaction, { dataSource: 'document' });
+      });
+  }
+
+  extractDocumentSustainabilityFactors(extracted = {}) {
+    const factors = new Set();
+
+    if (Array.isArray(extracted.sustainabilityFactors)) {
+      extracted.sustainabilityFactors.filter(Boolean).forEach(factor => factors.add(factor));
+    }
+
+    if (Array.isArray(extracted.items)) {
+      extracted.items
+        .filter(item => item && item.name)
+        .forEach(item => factors.add(item.name));
+    }
+
+    const description = (extracted.description || '').toLowerCase();
+    ['solar', 'wind', 'renewable', 'recycled', 'eco', 'green', 'low carbon', 'carbon neutral'].forEach(keyword => {
+      if (description.includes(keyword)) {
+        factors.add(keyword);
+      }
+    });
+
+    return Array.from(factors);
+  }
+
+  deriveDocumentSubcategory(category, extracted = {}) {
+    if (extracted.subcategory) {
+      return extracted.subcategory;
+    }
+
+    const description = (extracted.description || '').toLowerCase();
+
+    switch (category) {
+      case 'energy':
+        if (description.includes('solar') || description.includes('renewable')) return 'renewable';
+        if (description.includes('grid') || description.includes('utility')) return 'grid';
+        break;
+      case 'transportation':
+        if (description.includes('diesel')) return 'diesel';
+        if (description.includes('petrol')) return 'petrol';
+        if (description.includes('cng')) return 'cng';
+        break;
+      case 'waste_management':
+        if (description.includes('hazard')) return 'hazardous';
+        if (description.includes('recycl')) return 'recycling';
+        break;
+      case 'raw_materials':
+        if (description.includes('steel')) return 'steel';
+        if (description.includes('aluminum')) return 'aluminum';
+        if (description.includes('plastic')) return 'plastic';
+        break;
+      default:
+        break;
+    }
+
+    return 'general';
+  }
+
+  normalizeTransactionForAnalysis(transaction, options = {}) {
+    const { dataSource, disclaimer, consentRequired = false } = options;
+    const plain = transaction && typeof transaction.toObject === 'function'
+      ? transaction.toObject()
+      : { ...transaction };
+
+    const normalizedCategory = this.normalizeCategory(plain.category);
+    const normalized = {
+      ...plain,
+      source: plain.source || dataSource || 'manual',
+      dataSource: dataSource || plain.dataSource || plain.source || 'manual',
+      amount: Number(plain.amount) || 0,
+      currency: plain.currency || 'INR',
+      description: plain.description || '',
+      category: normalizedCategory,
+      subcategory: plain.subcategory || 'general',
+      transactionType: plain.transactionType || plain.type || this.mapCategoryToTransactionType(normalizedCategory),
+      date: plain.date ? new Date(plain.date) : new Date(),
+      vendor: plain.vendor || {},
+      carbonFootprint: plain.carbonFootprint || {
+        co2Emissions: 0,
+        emissionFactor: 0,
+        calculationMethod: `${dataSource || plain.source || 'unknown'}_ingestion`
+      },
+      sustainability: plain.sustainability || {
+        isGreen: false,
+        greenScore: 0,
+        sustainabilityFactors: []
+      },
+      metadata: {
+        ...(plain.metadata || {})
+      },
+      tags: Array.isArray(plain.tags) ? plain.tags : []
+    };
+
+    if (!normalized.carbonFootprint.calculationMethod) {
+      normalized.carbonFootprint.calculationMethod = `${normalized.dataSource}_ingestion`;
+    }
+
+    if (disclaimer) {
+      normalized.metadata.dataSourceDisclaimer = disclaimer;
+    }
+
+    if (consentRequired) {
+      normalized.metadata.dataSourceConsentRequired = true;
+    }
+
+    return normalized;
+  }
+
+  normalizeCategory(category) {
+    if (!category || typeof category !== 'string') {
+      return 'other';
+    }
+
+    const normalized = category.toLowerCase();
+    const allowed = new Set([
+      'raw_materials',
+      'energy',
+      'transportation',
+      'waste_management',
+      'water',
+      'equipment',
+      'maintenance',
+      'utilities',
+      'other'
+    ]);
+
+    if (allowed.has(normalized)) {
+      return normalized;
+    }
+
+    if (normalized.includes('energy') || normalized.includes('electric')) return 'energy';
+    if (normalized.includes('fuel') || normalized.includes('transport')) return 'transportation';
+    if (normalized.includes('waste')) return 'waste_management';
+    if (normalized.includes('water')) return 'water';
+    if (normalized.includes('mainten')) return 'maintenance';
+    if (normalized.includes('equip') || normalized.includes('machin')) return 'equipment';
+    if (normalized.includes('material')) return 'raw_materials';
+    if (normalized.includes('utility')) return 'utilities';
+
+    return 'other';
+  }
+
+  mapCategoryToTransactionType(category) {
+    switch (category) {
+      case 'raw_materials':
+        return 'purchase';
+      case 'energy':
+      case 'utilities':
+      case 'water':
+        return 'utility';
+      case 'transportation':
+        return 'transport';
+      case 'equipment':
+        return 'investment';
+      case 'maintenance':
+      case 'waste_management':
+        return 'expense';
+      default:
+        return 'expense';
+    }
   }
 
   calculateOverallConfidence(esgMetrics, transactions, smsData) {

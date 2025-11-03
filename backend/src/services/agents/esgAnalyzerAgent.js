@@ -226,11 +226,71 @@ class ESGAnalyzerAgent {
     
     for (const sms of smsData) {
       if (sms.processedData && sms.processedData.transaction) {
-        transactions.push(sms.processedData.transaction);
+        const smsTransaction = sms.processedData.transaction;
+        const category = smsTransaction.category || 'other';
+        const transactionType = smsTransaction.transactionType || smsTransaction.type || this.getTransactionTypeFromCategory(category);
+
+        const normalized = {
+          source: 'sms',
+          dataSource: 'sms',
+          sourceId: sms.id || sms.messageId || smsTransaction.id || `sms_${transactions.length + 1}`,
+          transactionType,
+          amount: Number(smsTransaction.amount) || 0,
+          currency: smsTransaction.currency || 'INR',
+          description: smsTransaction.description || sms.body || '',
+          category,
+          subcategory: smsTransaction.subcategory || 'general',
+          date: smsTransaction.date ? new Date(smsTransaction.date) : new Date(sms.timestamp || Date.now()),
+          vendor: smsTransaction.vendor || {},
+          carbonFootprint: smsTransaction.carbonFootprint || {
+            co2Emissions: 0,
+            emissionFactor: 0,
+            calculationMethod: 'sms_inference'
+          },
+          sustainability: smsTransaction.sustainability || {
+            isGreen: false,
+            greenScore: 0,
+            sustainabilityFactors: []
+          },
+          metadata: {
+            ...(smsTransaction.metadata || {}),
+            dataSourceDisclaimer: this.getSMSDataDisclaimer(),
+            sentiment: sms.processedData.sentiment,
+            carbonRelevance: sms.processedData.carbonRelevance,
+            originalText: sms.body || sms.message || ''
+          },
+          tags: Array.isArray(smsTransaction.tags) ? smsTransaction.tags : []
+        };
+
+        transactions.push(normalized);
       }
     }
     
     return transactions;
+  }
+
+  getSMSDataDisclaimer() {
+    return 'Advanced-only source: mobile application SMS messages are analysed only after the in-app disclaimer is accepted and explicit user consent is captured.';
+  }
+
+  getTransactionTypeFromCategory(category) {
+    switch (category) {
+      case 'raw_materials':
+        return 'purchase';
+      case 'energy':
+      case 'utilities':
+      case 'water':
+        return 'utility';
+      case 'transportation':
+        return 'transport';
+      case 'equipment':
+        return 'investment';
+      case 'maintenance':
+      case 'waste_management':
+        return 'expense';
+      default:
+        return 'expense';
+    }
   }
 
   isScope1Emission(transaction) {
