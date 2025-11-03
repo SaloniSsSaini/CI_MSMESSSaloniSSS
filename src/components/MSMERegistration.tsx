@@ -36,9 +36,9 @@ const msmeRegistrationSchema = yup.object({
     .max(new Date().getFullYear(), 'Year cannot be in the future'),
   
   // MSME Registration Details
-  udyogAadharNumber: yup.string()
-    .required('Udyog Aadhar Number is required')
-    .matches(/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/, 'Invalid Udyog Aadhar Number format'),
+  udyamRegistrationNumber: yup.string()
+    .required('UDYAM Registration Number is required')
+    .matches(/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/, 'Invalid UDYAM Registration Number format'),
   gstNumber: yup.string()
     .required('GST Number is required')
     .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST Number format'),
@@ -117,7 +117,7 @@ const MSMERegistration: React.FC = () => {
       industry: '',
       businessDomain: '',
       establishmentYear: undefined,
-      udyogAadharNumber: '',
+      udyamRegistrationNumber: '',
       gstNumber: '',
       panNumber: '',
       email: '',
@@ -157,7 +157,7 @@ const MSMERegistration: React.FC = () => {
       case 0:
         return ['companyName', 'companyType', 'industry', 'businessDomain', 'establishmentYear'];
       case 1:
-        return ['udyogAadharNumber', 'gstNumber', 'panNumber'];
+        return ['udyamRegistrationNumber', 'gstNumber', 'panNumber'];
       case 2:
         return ['email', 'phone', 'address', 'city', 'state', 'pincode', 'country'];
       case 3:
@@ -310,16 +310,16 @@ const MSMERegistration: React.FC = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <Controller
-                name="udyogAadharNumber"
+                name="udyamRegistrationNumber"
                 control={control}
                 render={({ field }) => (
                   <TextField
                     {...field}
                     fullWidth
-                    label="Udyog Aadhar Number"
-                    placeholder="XX00XX0000"
-                    error={!!errors.udyogAadharNumber}
-                    helperText={errors.udyogAadharNumber?.message || "Format: XX00XX0000"}
+                    label="UDYAM Registration Number"
+                    placeholder="UDYAM-XX-00-0000000"
+                    error={!!errors.udyamRegistrationNumber}
+                    helperText={errors.udyamRegistrationNumber?.message || "Format: UDYAM-XX-00-0000000"}
                   />
                 )}
               />
@@ -496,7 +496,7 @@ const MSMERegistration: React.FC = () => {
                     {...field}
                     fullWidth
                     type="number"
-                    label="Annual Turnover (₹)"
+                    label="Annual Turnover (?)"
                     error={!!errors.annualTurnover}
                     helperText={errors.annualTurnover?.message}
                   />

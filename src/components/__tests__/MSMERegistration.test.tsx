@@ -7,6 +7,8 @@ import { act } from '@testing-library/react';
 
 const theme = createTheme();
 
+const validUdyamNumber = 'UDYAM-KR-03-0593459';
+
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
@@ -76,7 +78,7 @@ describe('MSMERegistration', () => {
     fireEvent.click(screen.getByText('Next'));
     
     await waitFor(() => {
-      expect(screen.getByText('Udyog Aadhar Number is required')).toBeInTheDocument();
+      expect(screen.getByText('UDYAM Registration Number is required')).toBeInTheDocument();
       expect(screen.getByText('GST Number is required')).toBeInTheDocument();
       expect(screen.getByText('PAN Number is required')).toBeInTheDocument();
     });
@@ -94,7 +96,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -127,7 +129,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -166,7 +168,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -179,7 +181,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Pincode'), { target: { value: '400001' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Annual Turnover (₹)'), { target: { value: '1000000' } });
+    fireEvent.change(screen.getByLabelText('Annual Turnover (?)'), { target: { value: '1000000' } });
     fireEvent.change(screen.getByLabelText('Number of Employees'), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText('Number of Manufacturing Units'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Primary Products/Services'), { target: { value: 'Test Products' } });
@@ -209,7 +211,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -222,7 +224,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Pincode'), { target: { value: '400001' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Annual Turnover (₹)'), { target: { value: '1000000' } });
+    fireEvent.change(screen.getByLabelText('Annual Turnover (?)'), { target: { value: '1000000' } });
     fireEvent.change(screen.getByLabelText('Number of Employees'), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText('Number of Manufacturing Units'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Primary Products/Services'), { target: { value: 'Test Products' } });
@@ -255,7 +257,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -268,7 +270,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Pincode'), { target: { value: '400001' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Annual Turnover (₹)'), { target: { value: '1000000' } });
+    fireEvent.change(screen.getByLabelText('Annual Turnover (?)'), { target: { value: '1000000' } });
     fireEvent.change(screen.getByLabelText('Number of Employees'), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText('Number of Manufacturing Units'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Primary Products/Services'), { target: { value: 'Test Products' } });
@@ -356,7 +358,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -382,7 +384,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -408,7 +410,7 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
     fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
     fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
     fireEvent.click(screen.getByText('Next'));
@@ -434,7 +436,7 @@ describe('MSMERegistration', () => {
     });
   });
 
-  test('validates Udyog Aadhar Number format', async () => {
+  test('validates UDYAM Registration Number format', async () => {
     renderWithProviders(<MSMERegistration />);
     
     // Fill company information
@@ -446,12 +448,12 @@ describe('MSMERegistration', () => {
     fireEvent.change(screen.getByLabelText('Establishment Year'), { target: { value: '2020' } });
     fireEvent.click(screen.getByText('Next'));
     
-    // Enter invalid Udyog Aadhar Number
-    fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'INVALID' } });
+    // Enter invalid UDYAM Registration Number
+    fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: 'INVALID' } });
     fireEvent.click(screen.getByText('Next'));
     
     await waitFor(() => {
-      expect(screen.getByText('Invalid Udyog Aadhar Number format')).toBeInTheDocument();
+      expect(screen.getByText('Invalid UDYAM Registration Number format')).toBeInTheDocument();
     });
   });
 

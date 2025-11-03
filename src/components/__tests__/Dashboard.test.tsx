@@ -6,6 +6,8 @@ import Dashboard from '../Dashboard';
 
 const theme = createTheme();
 
+const validUdyamNumber = 'UDYAM-KR-03-0593459';
+
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
@@ -41,7 +43,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,
@@ -56,7 +58,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Test Company')).toBeInTheDocument();
     expect(screen.getByText('MICRO')).toBeInTheDocument();
     expect(screen.getByText('manufacturing')).toBeInTheDocument();
-    expect(screen.getByText('AB12CD3456')).toBeInTheDocument();
+    expect(screen.getByText(validUdyamNumber)).toBeInTheDocument();
     expect(screen.getByText('12ABCDE1234F1Z5')).toBeInTheDocument();
   });
 
@@ -65,7 +67,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,
@@ -86,7 +88,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,
@@ -105,7 +107,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,
@@ -127,7 +129,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,
@@ -149,7 +151,7 @@ describe('Dashboard', () => {
       companyName: 'Test Company',
       companyType: 'micro',
       industry: 'manufacturing',
-      udyogAadharNumber: 'AB12CD3456',
+      udyamRegistrationNumber: validUdyamNumber,
       gstNumber: '12ABCDE1234F1Z5',
       annualTurnover: 1000000,
       numberOfEmployees: 50,

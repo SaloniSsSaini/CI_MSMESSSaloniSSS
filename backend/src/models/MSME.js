@@ -50,11 +50,11 @@ const msmeSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  udyogAadharNumber: {
+  udyamRegistrationNumber: {
     type: String,
     required: true,
     unique: true,
-    match: /^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/
+    match: /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/
   },
   gstNumber: {
     type: String,
@@ -139,7 +139,7 @@ const msmeSchema = new mongoose.Schema({
 
 // Index for efficient queries
 msmeSchema.index({ userId: 1 });
-msmeSchema.index({ udyogAadharNumber: 1 });
+msmeSchema.index({ udyamRegistrationNumber: 1 });
 msmeSchema.index({ gstNumber: 1 });
 msmeSchema.index({ companyName: 'text' });
 

@@ -6,6 +6,8 @@ import App from '../../App';
 
 const theme = createTheme();
 
+const validUdyamNumber = 'UDYAM-KR-03-0593459';
+
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
@@ -50,7 +52,7 @@ describe('App Integration Tests', () => {
         expect(screen.getByText('MSME Registration Details')).toBeInTheDocument();
       });
       
-      fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+      fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
       fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
       fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
       fireEvent.click(screen.getByText('Next'));
@@ -126,7 +128,7 @@ describe('App Integration Tests', () => {
         companyName: 'Test Company',
         companyType: 'micro',
         industry: 'manufacturing',
-        udyogAadharNumber: 'AB12CD3456',
+        udyamRegistrationNumber: validUdyamNumber,
         gstNumber: '12ABCDE1234F1Z5',
         annualTurnover: 1000000,
         numberOfEmployees: 50,
@@ -298,7 +300,7 @@ describe('App Integration Tests', () => {
       fireEvent.click(screen.getByText('Next'));
       
       // Fill remaining steps quickly
-      fireEvent.change(screen.getByLabelText('Udyog Aadhar Number'), { target: { value: 'MH12AB1234' } });
+      fireEvent.change(screen.getByLabelText('UDYAM Registration Number'), { target: { value: validUdyamNumber } });
       fireEvent.change(screen.getByLabelText('GST Number'), { target: { value: '12ABCDE1234F1Z5' } });
       fireEvent.change(screen.getByLabelText('PAN Number'), { target: { value: 'ABCDE1234F' } });
       fireEvent.click(screen.getByText('Next'));

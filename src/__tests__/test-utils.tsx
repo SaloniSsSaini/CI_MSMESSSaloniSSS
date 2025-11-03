@@ -47,7 +47,7 @@ export const mockMSMEData = {
   companyName: 'Test Company',
   companyType: 'micro',
   industry: 'manufacturing',
-  udyogAadharNumber: 'AB12CD3456',
+  udyamRegistrationNumber: 'UDYAM-KR-03-0593459',
   gstNumber: '12ABCDE1234F1Z5',
   panNumber: 'ABCDE1234F',
   email: 'test@example.com',

@@ -420,7 +420,7 @@ class AICarbonScoringService {
     let score = 0.5; // Base score
     
     // Add points for proper registration
-    if (msmeProfile.udyogAadharNumber) score += 0.2;
+    if (msmeProfile.udyamRegistrationNumber || msmeProfile.udyogAadharNumber) score += 0.2;
     if (msmeProfile.gstNumber) score += 0.2;
     if (msmeProfile.panNumber) score += 0.1;
     
@@ -469,7 +469,7 @@ class AICarbonScoringService {
     if (msmeProfile.contact?.website) adoption += 0.2;
     
     // Add points for modern business practices
-    if (msmeProfile.udyogAadharNumber) adoption += 0.1;
+    if (msmeProfile.udyamRegistrationNumber || msmeProfile.udyogAadharNumber) adoption += 0.1;
     if (msmeProfile.gstNumber) adoption += 0.1;
     
     return Math.min(1, adoption);
@@ -480,7 +480,7 @@ class AICarbonScoringService {
     let compliance = 0.5; // Base score
     
     // Add points for each compliance document
-    if (msmeProfile.udyogAadharNumber) compliance += 0.2;
+    if (msmeProfile.udyamRegistrationNumber || msmeProfile.udyogAadharNumber) compliance += 0.2;
     if (msmeProfile.gstNumber) compliance += 0.2;
     if (msmeProfile.panNumber) compliance += 0.1;
     

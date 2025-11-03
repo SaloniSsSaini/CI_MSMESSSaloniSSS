@@ -43,7 +43,8 @@ interface MSMEData {
   companyName: string;
   companyType: string;
   industry: string;
-  udyogAadharNumber: string;
+  udyamRegistrationNumber?: string;
+  udyogAadharNumber?: string;
   gstNumber: string;
   annualTurnover: number;
   numberOfEmployees: number;
@@ -317,10 +318,10 @@ const Dashboard: React.FC = () => {
               </Box>
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Udyog Aadhar Number
+                  UDYAM Registration Number
                 </Typography>
                 <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
-                  {msmeData.udyogAadharNumber}
+                  {msmeData.udyamRegistrationNumber || msmeData.udyogAadharNumber || 'Not provided'}
                 </Typography>
               </Box>
               <Box sx={{ mb: 2 }}>
@@ -431,7 +432,7 @@ const Dashboard: React.FC = () => {
                         {carbonSavings.totalSavings.toFixed(1)}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                        Total CO₂ Saved (kg)
+                        Total CO? Saved (kg)
                       </Typography>
                     </Paper>
                   </Grid>
@@ -932,7 +933,7 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
-                      ₹{msmeData.annualTurnover.toLocaleString()}
+                      ?{msmeData.annualTurnover.toLocaleString()}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Annual Turnover

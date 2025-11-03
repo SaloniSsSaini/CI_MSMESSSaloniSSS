@@ -19,7 +19,7 @@ const mockMSME = {
   companyName: 'Test MSME',
   companyType: 'small',
   industry: 'Manufacturing',
-  udyogAadharNumber: 'MH12AB1234',
+  udyamRegistrationNumber: 'UDYAM-KR-03-0593459',
   gstNumber: '12ABCDE1234F1Z5',
   panNumber: 'ABCDE1234F',
   contact: {
