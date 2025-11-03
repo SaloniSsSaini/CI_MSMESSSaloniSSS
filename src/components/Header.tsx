@@ -35,7 +35,7 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const { isRegistered, setIsRegistered } = useRegistration();
+  const { isRegistered, hasCompletedRegistration, logout } = useRegistration();
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -60,10 +60,16 @@ const Header: React.FC = () => {
     return location.pathname === path;
   };
 
-  const handleLogout = () => {
-    setIsRegistered(false);
-    navigate('/');
+  const handleAuthAction = () => {
     handleMenuClose();
+
+    if (isRegistered) {
+      logout();
+      navigate('/');
+      return;
+    }
+
+    navigate('/');
   };
 
   const navigationItems = [
@@ -228,11 +234,13 @@ const Header: React.FC = () => {
             
             <Divider />
             
-            <MenuItem onClick={handleLogout}>
+            <MenuItem onClick={handleAuthAction}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>{isRegistered ? 'Logout' : 'Back to Registration'}</ListItemText>
+              <ListItemText>
+                {isRegistered ? 'Logout' : hasCompletedRegistration ? 'Login' : 'Back to Registration'}
+              </ListItemText>
             </MenuItem>
           </Menu>
         </Box>

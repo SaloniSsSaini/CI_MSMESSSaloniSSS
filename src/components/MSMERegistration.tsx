@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -24,73 +24,127 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircleOutline as SuccessIcon } from '@mui/icons-material';
-import { useRegistration } from '../context/RegistrationContext';
+import ApiService from '../services/api';
+import { MSMERegistrationData, useRegistration } from '../context/RegistrationContext';
 
 // Validation schema for MSME registration
-const msmeRegistrationSchema = yup.object({
-  // Basic Company Information
-  companyName: yup.string().required('Company name is required'),
-  companyType: yup.string().required('Company type is required'),
-  industry: yup.string().required('Industry is required'),
-  businessDomain: yup.string().required('Business domain is required'),
-  establishmentYear: yup.number()
-    .required('Establishment year is required')
-    .min(1900, 'Invalid year')
-    .max(new Date().getFullYear(), 'Year cannot be in the future'),
-  
-  // MSME Registration Details
-  udyamRegistrationNumber: yup.string()
-    .required('UDYAM Registration Number is required')
-    .matches(/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/, 'Invalid UDYAM Registration Number format'),
-  gstNumber: yup.string()
-    .required('GST Number is required')
-    .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST Number format'),
-  panNumber: yup.string()
-    .required('PAN Number is required')
-    .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN Number format'),
-  
-  // Contact Information
-  email: yup.string().email('Invalid email format').required('Email is required'),
-  phone: yup.string()
-    .required('Phone number is required')
-    .matches(/^[6-9]\d{9}$/, 'Invalid phone number format'),
-  
-  // Address Information
-  address: yup.string().required('Address is required'),
-  city: yup.string().required('City is required'),
-  state: yup.string().required('State is required'),
-  pincode: yup.string()
-    .required('Pincode is required')
-    .matches(/^[1-9][0-9]{5}$/, 'Invalid pincode format'),
-  country: yup.string().required('Country is required'),
-  
-  // Business Details
-  annualTurnover: yup.number()
-    .required('Annual turnover is required')
-    .min(0, 'Turnover cannot be negative'),
-  numberOfEmployees: yup.number()
-    .required('Number of employees is required')
-    .min(1, 'Must have at least 1 employee'),
-  
-  // Manufacturing Details
-  manufacturingUnits: yup.number()
-    .required('Number of manufacturing units is required')
-    .min(1, 'Must have at least 1 unit'),
-  primaryProducts: yup.string().required('Primary products/services is required'),
-  
-  // Environmental Compliance
-  hasEnvironmentalClearance: yup.boolean(),
-  hasPollutionControlBoard: yup.boolean(),
-  hasWasteManagement: yup.boolean(),
-  
-  // Terms and Conditions
-  agreeToTerms: yup.boolean()
-    .oneOf([true], 'You must agree to the terms and conditions'),
-  agreeToDataProcessing: yup.boolean()
-    .oneOf([true], 'You must agree to data processing terms')
-});
+const createRegistrationSchema = () =>
+  yup.object({
+    // Basic Company Information
+    companyName: yup.string().required('Company name is required'),
+    companyType: yup.string().required('Company type is required'),
+    industry: yup.string().required('Industry is required'),
+    businessDomain: yup.string().required('Business domain is required'),
+    establishmentYear: yup
+      .number()
+      .typeError('Establishment year is required')
+      .required('Establishment year is required')
+      .min(1900, 'Invalid year')
+      .max(new Date().getFullYear(), 'Year cannot be in the future'),
 
-type MSMERegistrationForm = yup.InferType<typeof msmeRegistrationSchema>;
+    // MSME Registration Details
+    udyamRegistrationNumber: yup
+      .string()
+      .required('UDYAM Registration Number is required')
+      .matches(/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/, 'Invalid UDYAM Registration Number format'),
+    gstNumber: yup
+      .string()
+      .required('GST Number is required')
+      .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST Number format'),
+    panNumber: yup
+      .string()
+      .required('PAN Number is required')
+      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN Number format'),
+
+    // Contact Information
+    email: yup.string().email('Invalid email format').required('Email is required'),
+    phone: yup
+      .string()
+      .required('Phone number is required')
+      .matches(/^[6-9]\d{9}$/, 'Invalid phone number format'),
+
+    // Address Information
+    address: yup.string().required('Address is required'),
+    city: yup.string().required('City is required'),
+    state: yup.string().required('State is required'),
+    pincode: yup
+      .string()
+      .required('Pincode is required')
+      .matches(/^[1-9][0-9]{5}$/, 'Invalid pincode format'),
+    country: yup.string().required('Country is required'),
+
+    // Business Details
+    annualTurnover: yup
+      .number()
+      .typeError('Annual turnover is required')
+      .required('Annual turnover is required')
+      .min(0, 'Turnover cannot be negative'),
+    numberOfEmployees: yup
+      .number()
+      .typeError('Number of employees is required')
+      .required('Number of employees is required')
+      .min(1, 'Must have at least 1 employee'),
+
+    // Manufacturing Details
+    manufacturingUnits: yup
+      .number()
+      .typeError('Number of manufacturing units is required')
+      .required('Number of manufacturing units is required')
+      .min(1, 'Must have at least 1 unit'),
+    primaryProducts: yup.string().required('Primary products/services is required'),
+
+    // Environmental Compliance
+    hasEnvironmentalClearance: yup.boolean(),
+    hasPollutionControlBoard: yup.boolean(),
+    hasWasteManagement: yup.boolean(),
+
+    // Terms and Conditions
+    agreeToTerms: yup.boolean().oneOf([true], 'You must agree to the terms and conditions'),
+    agreeToDataProcessing: yup
+      .boolean()
+      .oneOf([true], 'You must agree to data processing terms'),
+
+    // Account Credentials
+    password: yup
+      .string()
+      .trim()
+      .when('$isEditing', {
+        is: true,
+        then: (schema) =>
+          schema
+            .transform((value) => (value === '' ? undefined : value))
+            .notRequired()
+            .min(6, 'Password must be at least 6 characters'),
+        otherwise: (schema) =>
+          schema.min(6, 'Password must be at least 6 characters').required('Password is required'),
+      }),
+    confirmPassword: yup
+      .string()
+      .trim()
+      .transform((value) => (value === '' ? undefined : value))
+      .when('$isEditing', {
+        is: true,
+        then: (schema) =>
+          schema.when('password', (password: string | undefined, confirmSchema: yup.StringSchema<string | undefined>) => {
+            if (!password) {
+              return confirmSchema.notRequired();
+            }
+
+            return confirmSchema
+              .oneOf([yup.ref('password')], 'Passwords must match')
+              .required('Confirm password is required when updating password');
+          }),
+        otherwise: (schema) =>
+          schema
+            .required('Confirm password is required')
+            .oneOf([yup.ref('password')], 'Passwords must match'),
+      }),
+  });
+
+type MSMERegistrationForm = MSMERegistrationData & {
+  password: string;
+  confirmPassword: string;
+};
 
 const steps = [
   'Company Information',
@@ -98,17 +152,28 @@ const steps = [
   'Contact & Address',
   'Business Details',
   'Environmental Compliance',
-  'Review & Submit'
+  'Account Setup & Review'
 ];
 
 const MSMERegistration: React.FC = () => {
   const navigate = useNavigate();
-  const { isRegistered, setIsRegistered } = useRegistration();
+  const {
+    isRegistered,
+    hasCompletedRegistration,
+    registrationData,
+    completeRegistration,
+    login,
+    logout,
+    resetRegistration,
+  } = useRegistration();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  const [successData, setSuccessData] = useState<MSMERegistrationForm | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const defaultValues = useMemo<Partial<MSMERegistrationForm>>(() => ({
     companyName: '',
@@ -134,8 +199,26 @@ const MSMERegistration: React.FC = () => {
     hasPollutionControlBoard: false,
     hasWasteManagement: false,
     agreeToTerms: false,
-    agreeToDataProcessing: false
+    agreeToDataProcessing: false,
+    password: '',
+    confirmPassword: ''
   }), []);
+
+  const isEditingRef = useRef(isEditing);
+
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
+
+  const resolver = useCallback(
+    (data: unknown, context: any, options: any) =>
+      yupResolver(createRegistrationSchema(), { context: { isEditing: isEditingRef.current } })(
+        data,
+        context,
+        options
+      ),
+    []
+  );
 
   const {
     control,
@@ -144,7 +227,7 @@ const MSMERegistration: React.FC = () => {
     trigger,
     reset
   } = useForm<MSMERegistrationForm>({
-    resolver: yupResolver(msmeRegistrationSchema),
+    resolver,
     defaultValues
   });
 
@@ -155,28 +238,59 @@ const MSMERegistration: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isRegistered) {
-      setRegistrationSuccess(false);
-      setSuccessData(null);
+    if (registrationData?.email) {
+      setLoginEmail(registrationData.email);
+    }
+  }, [registrationData]);
+
+  useEffect(() => {
+    if (!isRegistered && !isEditing) {
       setActiveStep(0);
       reset(defaultValues);
+    }
+
+    if (isRegistered && !isEditing) {
+      setActiveStep(steps.length);
+    }
+  }, [isRegistered, isEditing, reset, defaultValues]);
+
+  const registrationSuccess = isRegistered && Boolean(registrationData);
+  const shouldShowSuccess = registrationSuccess && !isEditing;
+  const showLoginForm = hasCompletedRegistration && !isRegistered;
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError(null);
+
+    if (!loginEmail || !loginPassword) {
+      setLoginError('Please enter both email and password.');
       return;
     }
 
-    try {
-      const savedData = localStorage.getItem('msmeRegistration');
+    setIsLoggingIn(true);
 
-      if (savedData) {
-        const parsedData = JSON.parse(savedData) as MSMERegistrationForm;
-        setSuccessData(parsedData);
-        setRegistrationSuccess(true);
-        setActiveStep(steps.length);
-        reset(parsedData);
-      }
+    try {
+      await login(loginEmail, loginPassword);
+      setLoginPassword('');
+      scrollToTop();
     } catch (error) {
-      console.error('Failed to load MSME registration data from storage.', error);
+      setLoginError(error instanceof Error ? error.message : 'Login failed. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
-  }, [isRegistered, reset, defaultValues]);
+  };
+
+  const handleResetStoredRegistration = () => {
+    setSubmitError(null);
+    resetRegistration();
+    setLoginEmail('');
+    setLoginPassword('');
+    setLoginError(null);
+    setIsEditing(false);
+    setActiveStep(0);
+    reset(defaultValues);
+    scrollToTop();
+  };
 
   const handleNext = async () => {
     const fieldsToValidate = getFieldsForStep(activeStep);
@@ -204,47 +318,152 @@ const MSMERegistration: React.FC = () => {
       case 4:
         return ['hasEnvironmentalClearance', 'hasPollutionControlBoard', 'hasWasteManagement'];
       case 5:
-        return ['agreeToTerms', 'agreeToDataProcessing'];
+      {
+        const fields: (keyof MSMERegistrationForm)[] = ['agreeToTerms', 'agreeToDataProcessing'];
+
+        if (!isEditing) {
+          fields.unshift('confirmPassword');
+          fields.unshift('password');
+        }
+
+        return fields;
+      }
       default:
         return [];
     }
   };
 
+  const sanitizeRegistrationData = (data: MSMERegistrationForm): MSMERegistrationData => {
+    const {
+      password,
+      confirmPassword,
+      ...rest
+    } = data;
+
+    return {
+      ...rest,
+    };
+  };
+
+  const buildMsmeProfilePayload = (data: MSMERegistrationData) => ({
+    companyName: data.companyName,
+    companyType: data.companyType,
+    industry: data.industry,
+    businessDomain: data.businessDomain,
+    establishmentYear: data.establishmentYear,
+    udyamRegistrationNumber: data.udyamRegistrationNumber,
+    gstNumber: data.gstNumber,
+    panNumber: data.panNumber,
+    contact: {
+      email: data.email,
+      phone: data.phone,
+      address: {
+        street: data.address,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        country: data.country,
+      },
+    },
+    business: {
+      annualTurnover: data.annualTurnover,
+      numberOfEmployees: data.numberOfEmployees,
+      manufacturingUnits: data.manufacturingUnits,
+      primaryProducts: data.primaryProducts,
+    },
+    environmentalCompliance: {
+      hasEnvironmentalClearance: data.hasEnvironmentalClearance,
+      hasPollutionControlBoard: data.hasPollutionControlBoard,
+      hasWasteManagement: data.hasWasteManagement,
+    },
+  });
+
   const onSubmit = async (data: MSMERegistrationForm) => {
     setIsSubmitting(true);
     setSubmitError(null);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Store registration data in localStorage for demo purposes
-      localStorage.setItem('msmeRegistration', JSON.stringify(data));
-      
-      // Update registration context and show success state
-      setSuccessData(data);
-      setRegistrationSuccess(true);
-      setIsRegistered(true);
-      setActiveStep(steps.length);
-      reset(data);
+    const sanitizedData = sanitizeRegistrationData(data);
 
+    try {
+      if (isEditing) {
+        const profileResponse = await ApiService.updateMSMEProfile(
+          buildMsmeProfilePayload(sanitizedData)
+        );
+
+        if (!profileResponse?.success) {
+          throw new Error(profileResponse?.message || 'Unable to update MSME profile.');
+        }
+
+        completeRegistration(sanitizedData);
+        setIsEditing(false);
+        setActiveStep(steps.length);
+        reset({ ...sanitizedData, password: '', confirmPassword: '' });
+        scrollToTop();
+        return;
+      }
+
+      const registerResponse = await ApiService.register({
+        email: data.email,
+        password: data.password,
+        role: 'msme',
+        profile: {
+          companyName: data.companyName,
+          businessDomain: data.businessDomain,
+        },
+      });
+
+      if (!registerResponse?.success) {
+        throw new Error(registerResponse?.message || 'Registration failed. Please try again.');
+      }
+
+      const token = registerResponse?.data?.token;
+
+      if (!token) {
+        throw new Error('Registration failed. Authentication token missing in response.');
+      }
+
+      try {
+        localStorage.setItem('token', token);
+      } catch (storageError) {
+        console.warn('Unable to persist authentication token after registration.', storageError);
+      }
+
+      const profileResponse = await ApiService.updateMSMEProfile(
+        buildMsmeProfilePayload(sanitizedData)
+      );
+
+      if (!profileResponse?.success) {
+        throw new Error(profileResponse?.message || 'Unable to complete MSME profile setup.');
+      }
+
+      completeRegistration(sanitizedData, token);
+      setIsEditing(false);
+      setActiveStep(steps.length);
+      reset({ ...sanitizedData, password: '', confirmPassword: '' });
       scrollToTop();
     } catch (error) {
-      setSubmitError('Registration failed. Please try again.');
+      if (!isEditing && typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('token');
+        } catch (cleanupError) {
+          console.warn('Unable to clear authentication token after failed registration.', cleanupError);
+        }
+      }
+
+      setSubmitError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEditRegistration = () => {
-    setRegistrationSuccess(false);
     setSubmitError(null);
+    setIsEditing(true);
     setActiveStep(0);
-    if (successData) {
-      reset(successData);
-    } else {
-      reset(defaultValues);
-    }
+    const currentData = registrationData
+      ? { ...registrationData, password: '', confirmPassword: '' }
+      : defaultValues;
+
+    reset(currentData);
 
     scrollToTop();
   };
@@ -436,7 +655,10 @@ const MSMERegistration: React.FC = () => {
                     type="email"
                     label="Email Address"
                     error={!!errors.email}
-                    helperText={errors.email?.message}
+                    helperText={
+                      errors.email?.message || (isEditing ? 'Account email cannot be updated here.' : undefined)
+                    }
+                    disabled={isEditing}
                   />
                 )}
               />
@@ -663,12 +885,52 @@ const MSMERegistration: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                Review & Submit
+                {isEditing ? 'Review & Submit Updates' : 'Account Setup & Review'}
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
-                Please review your information and agree to the terms and conditions.
+                {isEditing
+                  ? 'Review your registration details and submit any updates to keep your profile current.'
+                  : 'Create your account password and review your information before submitting.'}
               </Typography>
             </Grid>
+            {!isEditing && (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="password"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        type="password"
+                        label="Account Password"
+                        autoComplete="new-password"
+                        error={!!errors.password}
+                        helperText={errors.password?.message || 'Minimum 6 characters'}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="confirmPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        type="password"
+                        label="Confirm Password"
+                        autoComplete="new-password"
+                        error={!!errors.confirmPassword}
+                        helperText={errors.confirmPassword?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </>
+            )}
             <Grid item xs={12}>
               <Controller
                 name="agreeToTerms"
@@ -712,34 +974,34 @@ const MSMERegistration: React.FC = () => {
   };
 
   const renderSuccessState = () => {
-    if (!successData) {
+    if (!registrationData) {
       return null;
     }
 
     const summaryItems = [
       {
         label: 'Company Name',
-        value: successData.companyName || 'Not provided',
+        value: registrationData.companyName || 'Not provided',
       },
       {
         label: 'Industry',
-        value: successData.industry || 'Not provided',
+        value: registrationData.industry || 'Not provided',
       },
       {
         label: 'Company Type',
-        value: successData.companyType ? successData.companyType.toUpperCase() : 'Not provided',
+        value: registrationData.companyType ? registrationData.companyType.toUpperCase() : 'Not provided',
       },
       {
         label: 'GST Number',
-        value: successData.gstNumber || 'Not provided',
+        value: registrationData.gstNumber || 'Not provided',
       },
       {
         label: 'UDYAM Registration',
-        value: successData.udyamRegistrationNumber || 'Not provided',
+        value: registrationData.udyamRegistrationNumber || 'Not provided',
       },
       {
         label: 'Primary Products/Services',
-        value: successData.primaryProducts || 'Not provided',
+        value: registrationData.primaryProducts || 'Not provided',
       },
     ];
 
@@ -750,7 +1012,7 @@ const MSMERegistration: React.FC = () => {
           severity="success"
           sx={{ mb: 3 }}
         >
-          Registration completed successfully for <strong>{successData.companyName}</strong>. Your sustainability toolkit is now unlocked.
+          Registration completed successfully for <strong>{registrationData.companyName}</strong>. Your sustainability toolkit is now unlocked.
         </Alert>
 
         <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -759,7 +1021,7 @@ const MSMERegistration: React.FC = () => {
             You're all set!
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
-            Explore your dashboard, run a carbon assessment, and discover recommendations tailored to <strong>{successData.companyName}</strong>.
+            Explore your dashboard, run a carbon assessment, and discover recommendations tailored to <strong>{registrationData.companyName}</strong>.
           </Typography>
         </Box>
 
@@ -822,18 +1084,131 @@ const MSMERegistration: React.FC = () => {
           >
             Update Registration Details
           </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              logout();
+              setLoginPassword('');
+              setLoginError(null);
+              navigate('/');
+            }}
+            sx={{ minWidth: 200, py: 1.5 }}
+          >
+            Logout
+          </Button>
         </Stack>
       </>
     );
   };
 
+  if (showLoginForm) {
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 6,
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          border: '1px solid rgba(76, 175, 80, 0.1)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              mb: 2,
+            }}
+          >
+            Welcome Back
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
+            Sign in to continue exploring your Carbon Intelligence dashboard.
+          </Typography>
+        </Box>
+
+        {registrationData && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Your account is registered for <strong>{registrationData.companyName}</strong>. Use <strong>{registrationData.email}</strong> to log in.
+          </Alert>
+        )}
+
+        <Box
+          component="form"
+          noValidate
+          onSubmit={handleLoginSubmit}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
+          <TextField
+            label="Email"
+            type="email"
+            value={loginEmail}
+            onChange={(event) => setLoginEmail(event.target.value)}
+            fullWidth
+            autoComplete="email"
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={loginPassword}
+            onChange={(event) => setLoginPassword(event.target.value)}
+            fullWidth
+            autoComplete="current-password"
+            required
+          />
+
+          {loginError && (
+            <Alert severity="error">
+              {loginError}
+            </Alert>
+          )}
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            justifyContent="flex-start"
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            sx={{ mt: 1 }}
+          >
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isLoggingIn}
+              startIcon={isLoggingIn ? <CircularProgress size={20} color="inherit" /> : null}
+              sx={{ minWidth: 160, py: 1.5 }}
+            >
+              {isLoggingIn ? 'Signing in...' : 'Sign In'}
+            </Button>
+            <Button
+              variant="text"
+              onClick={handleResetStoredRegistration}
+              sx={{ minWidth: 160, py: 1.5 }}
+            >
+              Start New Registration
+            </Button>
+          </Stack>
+        </Box>
+      </Paper>
+    );
+  }
+
   return (
-    <Paper elevation={2} sx={{ 
-      p: 6, 
-      borderRadius: 3,
-      background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-      border: '1px solid rgba(76, 175, 80, 0.1)'
-    }}>
+    <Paper
+      elevation={2}
+      sx={{
+        p: 6,
+        borderRadius: 3,
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        border: '1px solid rgba(76, 175, 80, 0.1)'
+      }}
+    >
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ 
           fontWeight: 700,
@@ -854,7 +1229,7 @@ const MSMERegistration: React.FC = () => {
         </Typography>
       </Box>
 
-      <Stepper activeStep={registrationSuccess ? steps.length : activeStep} sx={{ 
+      <Stepper activeStep={shouldShowSuccess ? steps.length : activeStep} sx={{ 
         mb: 4,
         '& .MuiStepLabel-root': {
           '& .MuiStepLabel-label': {
@@ -878,13 +1253,13 @@ const MSMERegistration: React.FC = () => {
         ))}
       </Stepper>
 
-      {submitError && !registrationSuccess && (
+      {submitError && !shouldShowSuccess && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {submitError}
         </Alert>
       )}
 
-      {registrationSuccess ? (
+      {shouldShowSuccess ? (
         renderSuccessState()
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
