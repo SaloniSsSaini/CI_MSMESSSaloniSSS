@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -19,9 +19,12 @@ import {
   FormControlLabel,
   Checkbox,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Stack
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { CheckCircleOutline as SuccessIcon } from '@mui/icons-material';
+import { useRegistration } from '../context/RegistrationContext';
 
 // Validation schema for MSME registration
 const msmeRegistrationSchema = yup.object({
@@ -100,44 +103,80 @@ const steps = [
 
 const MSMERegistration: React.FC = () => {
   const navigate = useNavigate();
+  const { isRegistered, setIsRegistered } = useRegistration();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [successData, setSuccessData] = useState<MSMERegistrationForm | null>(null);
+
+  const defaultValues = useMemo<Partial<MSMERegistrationForm>>(() => ({
+    companyName: '',
+    companyType: '',
+    industry: '',
+    businessDomain: '',
+    establishmentYear: undefined,
+    udyamRegistrationNumber: '',
+    gstNumber: '',
+    panNumber: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    country: 'India',
+    annualTurnover: undefined,
+    numberOfEmployees: undefined,
+    manufacturingUnits: undefined,
+    primaryProducts: '',
+    hasEnvironmentalClearance: false,
+    hasPollutionControlBoard: false,
+    hasWasteManagement: false,
+    agreeToTerms: false,
+    agreeToDataProcessing: false
+  }), []);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-    trigger
+    trigger,
+    reset
   } = useForm<MSMERegistrationForm>({
     resolver: yupResolver(msmeRegistrationSchema),
-    defaultValues: {
-      companyName: '',
-      companyType: '',
-      industry: '',
-      businessDomain: '',
-      establishmentYear: undefined,
-      udyamRegistrationNumber: '',
-      gstNumber: '',
-      panNumber: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      country: 'India',
-      annualTurnover: undefined,
-      numberOfEmployees: undefined,
-      manufacturingUnits: undefined,
-      primaryProducts: '',
-      hasEnvironmentalClearance: false,
-      hasPollutionControlBoard: false,
-      hasWasteManagement: false,
-      agreeToTerms: false,
-      agreeToDataProcessing: false
-    }
+    defaultValues
   });
+
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (!isRegistered) {
+      setRegistrationSuccess(false);
+      setSuccessData(null);
+      setActiveStep(0);
+      reset(defaultValues);
+      return;
+    }
+
+    try {
+      const savedData = localStorage.getItem('msmeRegistration');
+
+      if (savedData) {
+        const parsedData = JSON.parse(savedData) as MSMERegistrationForm;
+        setSuccessData(parsedData);
+        setRegistrationSuccess(true);
+        setActiveStep(steps.length);
+        reset(parsedData);
+      }
+    } catch (error) {
+      console.error('Failed to load MSME registration data from storage.', error);
+    }
+  }, [isRegistered, reset, defaultValues]);
 
   const handleNext = async () => {
     const fieldsToValidate = getFieldsForStep(activeStep);
@@ -182,13 +221,32 @@ const MSMERegistration: React.FC = () => {
       // Store registration data in localStorage for demo purposes
       localStorage.setItem('msmeRegistration', JSON.stringify(data));
       
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // Update registration context and show success state
+      setSuccessData(data);
+      setRegistrationSuccess(true);
+      setIsRegistered(true);
+      setActiveStep(steps.length);
+      reset(data);
+
+      scrollToTop();
     } catch (error) {
       setSubmitError('Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditRegistration = () => {
+    setRegistrationSuccess(false);
+    setSubmitError(null);
+    setActiveStep(0);
+    if (successData) {
+      reset(successData);
+    } else {
+      reset(defaultValues);
+    }
+
+    scrollToTop();
   };
 
   const renderStepContent = (step: number) => {
@@ -653,6 +711,122 @@ const MSMERegistration: React.FC = () => {
     }
   };
 
+  const renderSuccessState = () => {
+    if (!successData) {
+      return null;
+    }
+
+    const summaryItems = [
+      {
+        label: 'Company Name',
+        value: successData.companyName || 'Not provided',
+      },
+      {
+        label: 'Industry',
+        value: successData.industry || 'Not provided',
+      },
+      {
+        label: 'Company Type',
+        value: successData.companyType ? successData.companyType.toUpperCase() : 'Not provided',
+      },
+      {
+        label: 'GST Number',
+        value: successData.gstNumber || 'Not provided',
+      },
+      {
+        label: 'UDYAM Registration',
+        value: successData.udyamRegistrationNumber || 'Not provided',
+      },
+      {
+        label: 'Primary Products/Services',
+        value: successData.primaryProducts || 'Not provided',
+      },
+    ];
+
+    return (
+      <>
+        <Alert
+          icon={<SuccessIcon fontSize="inherit" />}
+          severity="success"
+          sx={{ mb: 3 }}
+        >
+          Registration completed successfully for <strong>{successData.companyName}</strong>. Your sustainability toolkit is now unlocked.
+        </Alert>
+
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <SuccessIcon sx={{ fontSize: 56, color: 'success.main', mb: 2 }} />
+          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+            You're all set!
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
+            Explore your dashboard, run a carbon assessment, and discover recommendations tailored to <strong>{successData.companyName}</strong>.
+          </Typography>
+        </Box>
+
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          {summaryItems.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.label}>
+              <Box
+                sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  height: '100%',
+                  background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.04) 0%, rgba(46, 125, 50, 0.05) 100%)',
+                  border: '1px solid rgba(76, 175, 80, 0.08)',
+                  textAlign: 'left',
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {item.value}
+                </Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          justifyContent="center"
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          sx={{ mb: 2 }}
+        >
+          <Button
+            variant="contained"
+            onClick={() => navigate('/dashboard')}
+            sx={{
+              minWidth: 200,
+              py: 1.5,
+              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
+              },
+            }}
+          >
+            Go to Dashboard
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/carbon-footprint')}
+            sx={{ minWidth: 200, py: 1.5 }}
+          >
+            Start Carbon Assessment
+          </Button>
+          <Button
+            variant="text"
+            onClick={handleEditRegistration}
+            sx={{ minWidth: 200, py: 1.5 }}
+          >
+            Update Registration Details
+          </Button>
+        </Stack>
+      </>
+    );
+  };
+
   return (
     <Paper elevation={2} sx={{ 
       p: 6, 
@@ -680,7 +854,7 @@ const MSMERegistration: React.FC = () => {
         </Typography>
       </Box>
 
-      <Stepper activeStep={activeStep} sx={{ 
+      <Stepper activeStep={registrationSuccess ? steps.length : activeStep} sx={{ 
         mb: 4,
         '& .MuiStepLabel-root': {
           '& .MuiStepLabel-label': {
@@ -704,73 +878,77 @@ const MSMERegistration: React.FC = () => {
         ))}
       </Stepper>
 
-      {submitError && (
+      {submitError && !registrationSuccess && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {submitError}
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Box sx={{ mb: 4 }}>
-          {renderStepContent(activeStep)}
-        </Box>
-
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          pt: 3,
-          borderTop: '1px solid',
-          borderColor: 'divider'
-        }}>
-          <Button
-            disabled={activeStep === 0}
-            onClick={handleBack}
-            variant="outlined"
-            sx={{ 
-              mr: 1,
-              minWidth: 120,
-              py: 1.5
-            }}
-          >
-            Back
-          </Button>
-          <Box>
-            {activeStep === steps.length - 1 ? (
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={isSubmitting}
-                startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
-                sx={{
-                  minWidth: 180,
-                  py: 1.5,
-                  background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
-                  }
-                }}
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Registration'}
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                sx={{
-                  minWidth: 120,
-                  py: 1.5,
-                  background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
-                  }
-                }}
-              >
-                Next
-              </Button>
-            )}
+      {registrationSuccess ? (
+        renderSuccessState()
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Box sx={{ mb: 4 }}>
+            {renderStepContent(activeStep)}
           </Box>
-        </Box>
-      </form>
+
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            pt: 3,
+            borderTop: '1px solid',
+            borderColor: 'divider'
+          }}>
+            <Button
+              disabled={activeStep === 0}
+              onClick={handleBack}
+              variant="outlined"
+              sx={{ 
+                mr: 1,
+                minWidth: 120,
+                py: 1.5
+              }}
+            >
+              Back
+            </Button>
+            <Box>
+              {activeStep === steps.length - 1 ? (
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={isSubmitting}
+                  startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+                  sx={{
+                    minWidth: 180,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
+                    }
+                  }}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  sx={{
+                    minWidth: 120,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+                    }
+                  }}
+                >
+                  Next
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </form>
+      )}
     </Paper>
   );
 };

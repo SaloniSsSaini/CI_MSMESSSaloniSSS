@@ -29,11 +29,13 @@ import {
   Security as PrivacyIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useRegistration } from '../context/RegistrationContext';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { isRegistered, setIsRegistered } = useRegistration();
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -44,12 +46,24 @@ const Header: React.FC = () => {
   };
 
   const handleNavigation = (path: string) => {
+    if (!isRegistered && path !== '/') {
+      navigate('/');
+      handleMenuClose();
+      return;
+    }
+
     navigate(path);
     handleMenuClose();
   };
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = () => {
+    setIsRegistered(false);
+    navigate('/');
+    handleMenuClose();
   };
 
   const navigationItems = [
@@ -84,7 +98,7 @@ const Header: React.FC = () => {
             cursor: 'pointer',
             mr: 4
           }}
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(isRegistered ? '/dashboard' : '/')}
         >
           <EcoIcon sx={{ mr: 2, fontSize: 32, color: 'white' }} />
           <Box>
@@ -105,47 +119,61 @@ const Header: React.FC = () => {
         </Box>
 
         {/* Navigation Items */}
-        <Box sx={{ 
-          display: { xs: 'none', md: 'flex' }, 
-          alignItems: 'center',
-          gap: 1,
-          flexGrow: 1
-        }}>
-          {navigationItems.map((item) => (
-            <Box
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                backgroundColor: isActive(item.path) 
-                  ? 'rgba(255, 255, 255, 0.2)' 
-                  : 'transparent',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                },
-              }}
-            >
-              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                {item.icon}
-              </Box>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  fontWeight: isActive(item.path) ? 600 : 500,
-                  color: 'white',
-                  fontSize: '0.875rem'
+        <Box
+          sx={{ 
+            display: { xs: 'none', md: 'flex' }, 
+            alignItems: 'center',
+            gap: 1,
+            flexGrow: 1
+          }}
+        >
+          {isRegistered ? (
+            navigationItems.map((item) => (
+              <Box
+                key={item.path}
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: isActive(item.path) 
+                    ? 'rgba(255, 255, 255, 0.2)' 
+                    : 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
               >
-                {item.label}
-              </Typography>
-            </Box>
-          ))}
+                <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                  {item.icon}
+                </Box>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    fontWeight: isActive(item.path) ? 600 : 500,
+                    color: 'white',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {item.label}
+                </Typography>
+              </Box>
+            ))
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.85)',
+                fontWeight: 500,
+              }}
+            >
+              Complete registration to unlock all platform features.
+            </Typography>
+          )}
         </Box>
 
         {/* User Menu */}
@@ -180,12 +208,16 @@ const Header: React.FC = () => {
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            <MenuItem onClick={() => handleNavigation('/dashboard')}>
-              <ListItemIcon>
-                <DashboardIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Dashboard</ListItemText>
-            </MenuItem>
+            {isRegistered && (
+              <MenuItem onClick={() => handleNavigation('/dashboard')}>
+                <ListItemIcon>
+                  <DashboardIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Dashboard</ListItemText>
+              </MenuItem>
+            )}
+            
+            {isRegistered && <Divider />}
             
             <MenuItem onClick={() => handleNavigation('/settings')}>
               <ListItemIcon>
@@ -196,11 +228,11 @@ const Header: React.FC = () => {
             
             <Divider />
             
-            <MenuItem onClick={() => handleNavigation('/')}>
+            <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>Logout</ListItemText>
+              <ListItemText>{isRegistered ? 'Logout' : 'Back to Registration'}</ListItemText>
             </MenuItem>
           </Menu>
         </Box>

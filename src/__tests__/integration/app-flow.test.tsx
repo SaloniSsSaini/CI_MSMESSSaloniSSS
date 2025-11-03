@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import App from '../../App';
 
@@ -8,26 +8,21 @@ const theme = createTheme();
 
 const validUdyamNumber = 'UDYAM-KR-03-0593459';
 
-const renderWithProviders = (component: React.ReactElement) => {
+const renderWithProviders = (
+  component: React.ReactElement,
+  options: { initialEntries?: string[] } = {}
+) => {
   return render(
-    <BrowserRouter>
+    <MemoryRouter initialEntries={options.initialEntries}>
       <ThemeProvider theme={theme}>
         {component}
       </ThemeProvider>
-    </BrowserRouter>
+    </MemoryRouter>
   );
 };
 
-// Mock useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
 describe('App Integration Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
     localStorage.clear();
   });
 
@@ -100,9 +95,14 @@ describe('App Integration Tests', () => {
       // Submit registration
       fireEvent.click(screen.getByText('Submit Registration'));
       
-      // Should navigate to dashboard
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+        expect(screen.getByText("You're all set!")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Go to Dashboard'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Welcome back, Test Company!')).toBeInTheDocument();
       });
     });
 
@@ -261,14 +261,13 @@ describe('App Integration Tests', () => {
 
   describe('Error Handling', () => {
     test('handles navigation errors gracefully', async () => {
-      renderWithProviders(<App />);
-      
-      // Try to navigate to a protected route without MSME data
-      fireEvent.click(screen.getByText('Carbon Assessment'));
-      
+      renderWithProviders(<App />, { initialEntries: ['/carbon-footprint'] });
+
       await waitFor(() => {
-        expect(screen.getByText('Please complete MSME registration first to access carbon footprint assessment.')).toBeInTheDocument();
+        expect(screen.getByText('MSME Registration')).toBeInTheDocument();
       });
+
+      expect(screen.getByText('Complete registration to unlock all platform features.')).toBeInTheDocument();
     });
 
     test('handles form validation errors', async () => {

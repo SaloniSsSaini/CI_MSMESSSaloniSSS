@@ -19,36 +19,138 @@ import CarbonForecastingGraph from './components/CarbonForecastingGraph';
 import DocumentUpload from './components/DocumentUpload';
 import DocumentManagement from './components/DocumentManagement';
 import DataPrivacy from './components/DataPrivacy';
+import ProtectedRoute from './components/ProtectedRoute';
+import { RegistrationProvider } from './context/RegistrationContext';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <ErrorBoundary>
-        <Box sx={{ flexGrow: 1, minHeight: '100vh', backgroundColor: 'background.default' }}>
-          <Header />
-          
-          <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Routes>
-              <Route path="/" element={<MSMERegistration />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/carbon-footprint" element={<CarbonFootprint />} />
-              <Route path="/carbon-savings" element={<CarbonSavings />} />
-              <Route path="/recommendations" element={<Recommendations />} />
-              <Route path="/incentives" element={<IncentivesScreen />} />
-              <Route path="/reporting" element={<ReportingScreen />} />
-              <Route path="/multi-agent-management" element={<MultiAgentManagement />} />
-              <Route path="/multi-agent-dashboard" element={<MultiAgentDashboard />} />
-              <Route path="/optimized-multi-agent-dashboard" element={<OptimizedMultiAgentDashboard />} />
-              <Route path="/green-loans" element={<GreenLoans />} />
-              <Route path="/carbon-forecasting" element={<CarbonForecastingGraph />} />
-              <Route path="/document-upload" element={<DocumentUpload />} />
-              <Route path="/document-management" element={<DocumentManagement />} />
-              <Route path="/data-privacy" element={<DataPrivacy />} />
-            </Routes>
-          </Container>
-        </Box>
-      </ErrorBoundary>
+      <RegistrationProvider>
+        <ErrorBoundary>
+          <Box sx={{ flexGrow: 1, minHeight: '100vh', backgroundColor: 'background.default' }}>
+            <Header />
+            
+            <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+              <Routes>
+                <Route path="/" element={<MSMERegistration />} />
+                <Route
+                  path="/dashboard"
+                  element={(
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/carbon-footprint"
+                  element={(
+                    <ProtectedRoute>
+                      <CarbonFootprint />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/carbon-savings"
+                  element={(
+                    <ProtectedRoute>
+                      <CarbonSavings />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/recommendations"
+                  element={(
+                    <ProtectedRoute>
+                      <Recommendations />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/incentives"
+                  element={(
+                    <ProtectedRoute>
+                      <IncentivesScreen />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/reporting"
+                  element={(
+                    <ProtectedRoute>
+                      <ReportingScreen />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/multi-agent-management"
+                  element={(
+                    <ProtectedRoute>
+                      <MultiAgentManagement />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/multi-agent-dashboard"
+                  element={(
+                    <ProtectedRoute>
+                      <MultiAgentDashboard />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/optimized-multi-agent-dashboard"
+                  element={(
+                    <ProtectedRoute>
+                      <OptimizedMultiAgentDashboard />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/green-loans"
+                  element={(
+                    <ProtectedRoute>
+                      <GreenLoans />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/carbon-forecasting"
+                  element={(
+                    <ProtectedRoute>
+                      <CarbonForecastingGraph />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/document-upload"
+                  element={(
+                    <ProtectedRoute>
+                      <DocumentUpload />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/document-management"
+                  element={(
+                    <ProtectedRoute>
+                      <DocumentManagement />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/data-privacy"
+                  element={(
+                    <ProtectedRoute>
+                      <DataPrivacy />
+                    </ProtectedRoute>
+                  )}
+                />
+              </Routes>
+            </Container>
+          </Box>
+        </ErrorBoundary>
+      </RegistrationProvider>
     </ThemeProvider>
   );
 }
