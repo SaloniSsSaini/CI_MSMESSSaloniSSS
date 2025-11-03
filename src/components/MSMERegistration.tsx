@@ -94,15 +94,16 @@ const createRegistrationSchema = () =>
     primaryProducts: yup.string().required('Primary products/services is required'),
 
     // Environmental Compliance
-    hasEnvironmentalClearance: yup.boolean(),
-    hasPollutionControlBoard: yup.boolean(),
-    hasWasteManagement: yup.boolean(),
+    hasEnvironmentalClearance: yup.boolean().required(),
+    hasPollutionControlBoard: yup.boolean().required(),
+    hasWasteManagement: yup.boolean().required(),
 
     // Terms and Conditions
-    agreeToTerms: yup.boolean().oneOf([true], 'You must agree to the terms and conditions'),
+    agreeToTerms: yup.boolean().oneOf([true], 'You must agree to the terms and conditions').required(),
     agreeToDataProcessing: yup
       .boolean()
-      .oneOf([true], 'You must agree to data processing terms'),
+      .oneOf([true], 'You must agree to data processing terms')
+      .required(),
 
     // Account Credentials
     password: yup
@@ -125,14 +126,13 @@ const createRegistrationSchema = () =>
       .when('$isEditing', {
         is: true,
         then: (schema) =>
-          schema.when('password', (password: string | undefined, confirmSchema: yup.StringSchema<string | undefined>) => {
-            if (!password) {
-              return confirmSchema.notRequired();
-            }
-
-            return confirmSchema
-              .oneOf([yup.ref('password')], 'Passwords must match')
-              .required('Confirm password is required when updating password');
+          schema.when('password', {
+            is: (password: string | undefined) => !password,
+            then: (confirmSchema) => confirmSchema.notRequired(),
+            otherwise: (confirmSchema) =>
+              confirmSchema
+                .oneOf([yup.ref('password')], 'Passwords must match')
+                .required('Confirm password is required when updating password'),
           }),
         otherwise: (schema) =>
           schema
@@ -142,8 +142,8 @@ const createRegistrationSchema = () =>
   });
 
 type MSMERegistrationForm = MSMERegistrationData & {
-  password: string;
-  confirmPassword: string;
+  password?: string;
+  confirmPassword?: string;
 };
 
 const steps = [
@@ -211,12 +211,10 @@ const MSMERegistration: React.FC = () => {
   }, [isEditing]);
 
   const resolver = useCallback(
-    (data: unknown, context: any, options: any) =>
-      yupResolver(createRegistrationSchema(), { context: { isEditing: isEditingRef.current } })(
-        data,
-        context,
-        options
-      ),
+    (data: MSMERegistrationForm, context: any, options: any) =>
+      yupResolver<MSMERegistrationForm>(createRegistrationSchema(), {
+        context: { isEditing: isEditingRef.current },
+      })(data, context, options),
     []
   );
 
