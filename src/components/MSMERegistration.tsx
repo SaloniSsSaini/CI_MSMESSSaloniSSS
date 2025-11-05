@@ -174,6 +174,7 @@ const MSMERegistration: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showPostRegistrationSuccess, setShowPostRegistrationSuccess] = useState(false);
 
   const defaultValues = useMemo<Partial<MSMERegistrationForm>>(() => ({
     companyName: '',
@@ -270,7 +271,8 @@ const MSMERegistration: React.FC = () => {
     try {
       await login(loginEmail, loginPassword);
       setLoginPassword('');
-      scrollToTop();
+      setShowPostRegistrationSuccess(false);
+      navigate('/carbon-footprint');
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Login failed. Please try again.');
     } finally {
@@ -287,6 +289,7 @@ const MSMERegistration: React.FC = () => {
     setIsEditing(false);
     setActiveStep(0);
     reset(defaultValues);
+    setShowPostRegistrationSuccess(false);
     scrollToTop();
   };
 
@@ -419,25 +422,42 @@ const MSMERegistration: React.FC = () => {
         throw new Error('Registration failed. Authentication token missing in response.');
       }
 
+      let tokenPersisted = false;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('token', token);
+          tokenPersisted = true;
+        } catch (storageError) {
+          console.warn('Unable to persist authentication token after registration.', storageError);
+        }
+      }
+
       try {
-        localStorage.setItem('token', token);
-      } catch (storageError) {
-        console.warn('Unable to persist authentication token after registration.', storageError);
+        const profileResponse = await ApiService.updateMSMEProfile(
+          buildMsmeProfilePayload(sanitizedData)
+        );
+
+        if (!profileResponse?.success) {
+          throw new Error(profileResponse?.message || 'Unable to complete MSME profile setup.');
+        }
+
+        completeRegistration(sanitizedData);
+        setIsEditing(false);
+        setActiveStep(steps.length);
+        reset({ ...sanitizedData, password: '', confirmPassword: '' });
+        setShowPostRegistrationSuccess(true);
+        setLoginEmail(sanitizedData.email);
+        scrollToTop();
+      } finally {
+        if (tokenPersisted && typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('token');
+          } catch (cleanupError) {
+            console.warn('Unable to clear temporary authentication token after registration.', cleanupError);
+          }
+        }
       }
-
-      const profileResponse = await ApiService.updateMSMEProfile(
-        buildMsmeProfilePayload(sanitizedData)
-      );
-
-      if (!profileResponse?.success) {
-        throw new Error(profileResponse?.message || 'Unable to complete MSME profile setup.');
-      }
-
-      completeRegistration(sanitizedData, token);
-      setIsEditing(false);
-      setActiveStep(steps.length);
-      reset({ ...sanitizedData, password: '', confirmPassword: '' });
-      scrollToTop();
     } catch (error) {
       if (!isEditing && typeof window !== 'undefined') {
         try {
@@ -1130,6 +1150,12 @@ const MSMERegistration: React.FC = () => {
             Sign in to continue exploring your Carbon Intelligence dashboard.
           </Typography>
         </Box>
+
+        {showPostRegistrationSuccess && registrationData && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            Registration completed successfully. Use your email <strong>{registrationData.email}</strong> and password to log in and begin your carbon assessment journey.
+          </Alert>
+        )}
 
         {registrationData && (
           <Alert severity="info" sx={{ mb: 3 }}>
