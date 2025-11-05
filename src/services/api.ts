@@ -264,6 +264,13 @@ class ApiService {
     });
   }
 
+  async ingestEmailAssessment(data: any) {
+    return this.request('/email/ingest-assess', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getDataRequests() {
     return this.request('/data-privacy/requests');
   }

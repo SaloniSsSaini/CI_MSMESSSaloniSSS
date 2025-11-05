@@ -13,20 +13,21 @@ import {
   ListItemText,
 } from '@mui/material';
 import {
-  Park as EcoIcon,
-  AccountCircle as AccountIcon,
-  Settings as SettingsIcon,
-  Logout as LogoutIcon,
-  Dashboard as DashboardIcon,
-  Assessment as AssessmentIcon,
-  Park as EcoSavingsIcon,
-  Lightbulb as RecommendationsIcon,
-  EmojiEvents as IncentivesIcon,
-  Description as ReportsIcon,
-  AccountBalance as LoansIcon,
-  CloudUpload as UploadIcon,
-  Folder as DocumentsIcon,
-  Security as PrivacyIcon,
+    Park as EcoIcon,
+    AccountCircle as AccountIcon,
+    Settings as SettingsIcon,
+    Logout as LogoutIcon,
+    Dashboard as DashboardIcon,
+    Assessment as AssessmentIcon,
+    Park as EcoSavingsIcon,
+    Lightbulb as RecommendationsIcon,
+    EmojiEvents as IncentivesIcon,
+    Description as ReportsIcon,
+    AccountBalance as LoansIcon,
+    CloudUpload as UploadIcon,
+    Folder as DocumentsIcon,
+    Security as PrivacyIcon,
+    MailOutline as MailAgentIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useRegistration } from '../context/RegistrationContext';
@@ -72,10 +73,11 @@ const Header: React.FC = () => {
     navigate('/');
   };
 
-  const navigationItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { path: '/carbon-footprint', label: 'Carbon Assessment', icon: <AssessmentIcon /> },
-    { path: '/carbon-savings', label: 'Carbon Savings', icon: <EcoSavingsIcon /> },
+    const navigationItems = [
+      { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+      { path: '/carbon-footprint', label: 'Carbon Assessment', icon: <AssessmentIcon /> },
+      { path: '/ai-email-agent', label: 'AI Email Agent', icon: <MailAgentIcon /> },
+      { path: '/carbon-savings', label: 'Carbon Savings', icon: <EcoSavingsIcon /> },
     { path: '/recommendations', label: 'Recommendations', icon: <RecommendationsIcon /> },
     { path: '/incentives', label: 'Incentives', icon: <IncentivesIcon /> },
     { path: '/reporting', label: 'Reports', icon: <ReportsIcon /> },
