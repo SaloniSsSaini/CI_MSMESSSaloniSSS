@@ -8,6 +8,9 @@ const spamDetectionService = require('../services/spamDetectionService');
 const duplicateDetectionService = require('../services/duplicateDetectionService');
 const Transaction = require('../models/Transaction');
 const logger = require('../utils/logger');
+const { MSMENotificationService } = require('../services/msmeNotificationService');
+
+const notificationService = new MSMENotificationService();
 
 // @route   POST /api/sms/process
 // @desc    Process SMS message and extract transaction data
@@ -431,6 +434,65 @@ router.post('/bulk-process', [
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/sms/notify
+// @desc    Send SMS notification to MSME via MSG91
+// @access  Private
+router.post('/notify', [
+  auth,
+  body('type').isString().withMessage('Notification type is required'),
+  body('data').optional().isObject().withMessage('Data must be an object'),
+  body('msmeId').optional().isMongoId().withMessage('Valid MSME id is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { type, data = {}, msmeId: targetMsmeId } = req.body;
+    const supportedTypes = notificationService.getSupportedTypes();
+
+    if (!supportedTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported notification type. Allowed types: ${supportedTypes.join(', ')}`
+      });
+    }
+
+    let msmeId = req.user.msmeId;
+
+    if (req.user.role !== 'msme' && targetMsmeId) {
+      msmeId = targetMsmeId;
+    }
+
+    if (!msmeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'MSME id is required to send notifications'
+      });
+    }
+
+    const result = await notificationService.sendNotification(type, msmeId, data);
+
+    res.json({
+      success: true,
+      message: 'SMS notification sent successfully',
+      data: result
+    });
+  } catch (error) {
+    logger.error('SMS notification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send SMS notification',
       error: error.message
     });
   }

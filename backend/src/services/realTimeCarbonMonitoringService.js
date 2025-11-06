@@ -1,5 +1,8 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
+const { MSMENotificationService } = require('./msmeNotificationService');
+
+const msmeNotificationService = new MSMENotificationService();
 
 class RealTimeCarbonMonitoringService extends EventEmitter {
   constructor() {
@@ -494,15 +497,22 @@ class RealTimeCarbonMonitoringService extends EventEmitter {
   }
 
   async sendAlertNotification(session, alert) {
-    // This would integrate with notification services (email, SMS, etc.)
-    // For now, just log the notification
     logger.info(`Sending alert notification for MSME ${session.msmeId}: ${alert.message}`);
-    
-    // TODO: Integrate with actual notification services
-    // - Email notifications
-    // - SMS notifications
-    // - Push notifications
-    // - Webhook notifications
+
+    try {
+      await msmeNotificationService.sendCarbonAlert(session.msmeId, {
+        metric: alert.metric || alert.type || 'Carbon metric',
+        value: alert.value ?? alert.currentValue,
+        threshold: alert.threshold ?? alert.limit,
+        severity: alert.severity || alert.level || 'medium',
+        action: alert.recommendation || alert.action || alert.nextStep
+      });
+    } catch (error) {
+      logger.error('Failed to dispatch SMS alert notification', {
+        msmeId: session.msmeId,
+        error: error.message
+      });
+    }
   }
 
   async performMonitoringCycle() {
