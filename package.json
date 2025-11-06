@@ -39,6 +39,12 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix"
   },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/src/**/*.smoke.test.ts?(x)",
+      "<rootDir>/src/**/*.smoke.test.js"
+    ]
+  },
   "overrides": {
     "nth-check": ">=2.0.1",
     "postcss": ">=8.4.31",
