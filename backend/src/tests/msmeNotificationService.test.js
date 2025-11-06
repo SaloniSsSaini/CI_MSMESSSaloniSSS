@@ -1,12 +1,19 @@
 const { MSMENotificationService, NOTIFICATION_TYPES } = require('../services/msmeNotificationService');
 
 describe('MSMENotificationService', () => {
+  let originalNotificationsEnv;
   let mockClient;
   let mockModel;
   let service;
   let msmeRecord;
 
+  beforeAll(() => {
+    originalNotificationsEnv = process.env.MSG91_NOTIFICATIONS_ENABLED;
+  });
+
   beforeEach(() => {
+    process.env.MSG91_NOTIFICATIONS_ENABLED = 'true';
+
     msmeRecord = {
       _id: '507f1f77bcf86cd799439011',
       companyName: 'Green Works Ltd',
@@ -34,13 +41,17 @@ describe('MSMENotificationService', () => {
     jest.clearAllMocks();
   });
 
+  afterAll(() => {
+    process.env.MSG91_NOTIFICATIONS_ENABLED = originalNotificationsEnv;
+  });
+
   test('returns supported notification types', () => {
     const types = service.getSupportedTypes();
 
     expect(types).toEqual(expect.arrayContaining(Object.values(NOTIFICATION_TYPES)));
   });
 
-  test('sendProgressUpdate sends formatted message via MSG91', async () => {
+  test('sendProgressUpdate sends formatted message via MSG91 when enabled', async () => {
     const result = await service.sendProgressUpdate('507f1f77bcf86cd799439011', {
       milestone: 'Carbon audit',
       status: 'completed',
@@ -56,7 +67,8 @@ describe('MSMENotificationService', () => {
     }));
     expect(result).toMatchObject({
       msmeId: msmeRecord._id,
-      type: NOTIFICATION_TYPES.PROGRESS
+      type: NOTIFICATION_TYPES.PROGRESS,
+      skipped: false
     });
   });
 
@@ -75,13 +87,16 @@ describe('MSMENotificationService', () => {
       .toThrow('Message is required for custom notifications');
   });
 
-  test('sendCustomNotification sends provided message', async () => {
+  test('sendCustomNotification sends provided message when enabled', async () => {
     const result = await service.sendCustomNotification('507f1f77bcf86cd799439011', 'Hello MSME', { type: 'custom_alert' });
 
     expect(mockClient.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
       message: 'Hello MSME'
     }));
-    expect(result.type).toBe('custom_alert');
+    expect(result).toMatchObject({
+      type: 'custom_alert',
+      skipped: false
+    });
   });
 
   test('dispatch throws when phone number missing', async () => {
@@ -100,5 +115,27 @@ describe('MSMENotificationService', () => {
     await expect(localService.sendProgressUpdate('abc123', { milestone: 'Test', status: 'pending' }))
       .rejects
       .toThrow('MSME abc123 does not have a registered phone number');
+  });
+
+  test('dispatch skips sending when MSG91 notifications are disabled', async () => {
+    process.env.MSG91_NOTIFICATIONS_ENABLED = 'false';
+    mockClient.sendMessage.mockClear();
+
+    const disabledService = new MSMENotificationService({
+      msg91Client: mockClient,
+      msmeModel: mockModel
+    });
+
+    const result = await disabledService.sendProgressUpdate('507f1f77bcf86cd799439011', {
+      milestone: 'Carbon audit',
+      status: 'completed'
+    });
+
+    expect(mockClient.sendMessage).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      msmeId: msmeRecord._id,
+      skipped: true,
+      reason: 'notifications_disabled'
+    });
   });
 });

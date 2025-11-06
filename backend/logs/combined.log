@@ -109,3 +109,19 @@
 {"level":"info","message":"MSME SMS notification sent","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T03:16:33.107Z","type":"progress"}
 {"hasVariables":true,"level":"info","message":"MSG91 SMS sent successfully","recipients":["919876543210"],"service":"carbon-intelligence-backend","timestamp":"2025-11-06T03:16:33.174Z"}
 {"level":"info","message":"MSME SMS notification sent","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T03:16:33.122Z","type":"custom_alert"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.312Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.316Z"}
+{"level":"info","message":"Skipping MSME SMS notification because MSG91 notifications are disabled","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.316Z","type":"progress"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.322Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.323Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.328Z"}
+{"level":"info","message":"Skipping MSME SMS notification because MSG91 notifications are disabled","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.328Z","type":"custom_alert"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.329Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.329Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.330Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.330Z"}
+{"level":"info","message":"Skipping MSME SMS notification because MSG91 notifications are disabled","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:25.330Z","type":"progress"}
+{"level":"info","message":"MSME SMS notification sent","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:45.327Z","type":"progress"}
+{"level":"info","message":"MSME SMS notification sent","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:45.340Z","type":"custom_alert"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:45.342Z"}
+{"level":"info","message":"Skipping MSME SMS notification because MSG91 notifications are disabled","msmeId":"507f1f77bcf86cd799439011","phone":"9876543210","service":"carbon-intelligence-backend","timestamp":"2025-11-06T15:21:45.342Z","type":"progress"}

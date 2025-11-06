@@ -2,6 +2,30 @@ const logger = require('../utils/logger');
 const MSME = require('../models/MSME');
 const MSG91Client = require('./msg91Client');
 
+function parseBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+
+  if (value == null) {
+    return false;
+  }
+
+  return Boolean(value);
+}
+
 const NOTIFICATION_TYPES = Object.freeze({
   PROGRESS: 'progress',
   CARBON_SCORE: 'carbon_score',
@@ -13,9 +37,17 @@ const NOTIFICATION_TYPES = Object.freeze({
 });
 
 class MSMENotificationService {
-  constructor({ msg91Client, msmeModel } = {}) {
+  constructor({ msg91Client, msmeModel, notificationsEnabled } = {}) {
     this.msg91Client = msg91Client || new MSG91Client();
     this.msmeModel = msmeModel || MSME;
+    const resolvedNotificationsEnabled = typeof notificationsEnabled === 'undefined'
+      ? parseBoolean(process.env.MSG91_NOTIFICATIONS_ENABLED)
+      : parseBoolean(notificationsEnabled);
+    this.notificationsEnabled = resolvedNotificationsEnabled;
+
+    if (!this.notificationsEnabled) {
+      logger.warn('MSG91 notifications are disabled; SMS dispatch will be skipped');
+    }
   }
 
   getSupportedTypes() {
@@ -180,6 +212,23 @@ class MSMENotificationService {
       throw new Error(`MSME ${msme._id} does not have a registered phone number`);
     }
 
+    if (!this.notificationsEnabled) {
+      logger.info('Skipping MSME SMS notification because MSG91 notifications are disabled', {
+        msmeId: msme._id,
+        phone: msme.contact.phone,
+        type: metadata.type || 'unknown'
+      });
+
+      return {
+        msmeId: msme._id,
+        phone: msme.contact.phone,
+        type: metadata.type,
+        response: null,
+        skipped: true,
+        reason: 'notifications_disabled'
+      };
+    }
+
     const response = await this.msg91Client.sendMessage({
       to: msme.contact.phone,
       message
@@ -195,7 +244,8 @@ class MSMENotificationService {
       msmeId: msme._id,
       phone: msme.contact.phone,
       type: metadata.type,
-      response
+      response,
+      skipped: false
     };
   }
 

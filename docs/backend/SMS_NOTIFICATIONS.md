@@ -14,8 +14,11 @@ Set the following environment variables in the backend service:
 - `MSG91_COUNTRY_CODE` – Optional country code prefix (defaults to `91`)
 - `MSG91_UNICODE` – Set to `1` to send Unicode messages (default `0`)
 - `MSG91_SHORT_URL` – Set to `true` to enable MSG91 URL shortening
+- `MSG91_NOTIFICATIONS_ENABLED` – Set to `true` to enable MSG91 SMS dispatch (defaults to `false`)
 
 Make sure the backend container/service has outbound access to MSG91 APIs and that the sender ID and templates (if used) are DLT-approved.
+
+> **Note:** MSG91 notifications are disabled by default. Set `MSG91_NOTIFICATIONS_ENABLED=true` in the environment when you are ready to send live SMS traffic.
 
 ## Usage
 
@@ -55,7 +58,7 @@ MSME users automatically target their own MSME profile. Admin and service accoun
 
 ### Automated Alerts
 
-The real-time carbon monitoring service now dispatches SMS alerts through MSG91 whenever threshold breaches occur. Alerts include the affected metric, severity, current value, and recommended action.
+The real-time carbon monitoring service dispatches SMS alerts through MSG91 whenever threshold breaches occur, provided MSG91 notifications are enabled. Alerts include the affected metric, severity, current value, and recommended action.
 
 ## Testing
 
