@@ -146,6 +146,8 @@ type MSMERegistrationForm = MSMERegistrationData & {
   confirmPassword?: string;
 };
 
+type AutoLoginState = 'idle' | 'pending' | 'success' | 'error';
+
 const steps = [
   'Company Information',
   'MSME Registration Details',
@@ -175,6 +177,8 @@ const MSMERegistration: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPostRegistrationSuccess, setShowPostRegistrationSuccess] = useState(false);
+  const [autoLoginState, setAutoLoginState] = useState<AutoLoginState>('idle');
+  const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
 
   const defaultValues = useMemo<Partial<MSMERegistrationForm>>(() => ({
     companyName: '',
@@ -255,7 +259,7 @@ const MSMERegistration: React.FC = () => {
 
   const registrationSuccess = isRegistered && Boolean(registrationData);
   const shouldShowSuccess = registrationSuccess && !isEditing;
-  const showLoginForm = hasCompletedRegistration && !isRegistered;
+  const showLoginForm = hasCompletedRegistration && !isRegistered && autoLoginState !== 'pending';
 
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -286,6 +290,8 @@ const MSMERegistration: React.FC = () => {
     setLoginEmail('');
     setLoginPassword('');
     setLoginError(null);
+    setAutoLoginState('idle');
+    setAutoLoginError(null);
     setIsEditing(false);
     setActiveStep(0);
     reset(defaultValues);
@@ -382,7 +388,13 @@ const MSMERegistration: React.FC = () => {
   const onSubmit = async (data: MSMERegistrationForm) => {
     setIsSubmitting(true);
     setSubmitError(null);
+    setAutoLoginError(null);
+    if (!isEditing) {
+      setAutoLoginState('idle');
+    }
+
     const sanitizedData = sanitizeRegistrationData(data);
+    const passwordForAutoLogin = data.password;
 
     try {
       if (isEditing) {
@@ -446,9 +458,32 @@ const MSMERegistration: React.FC = () => {
         setIsEditing(false);
         setActiveStep(steps.length);
         reset({ ...sanitizedData, password: '', confirmPassword: '' });
-        setShowPostRegistrationSuccess(true);
         setLoginEmail(sanitizedData.email);
         scrollToTop();
+
+        setShowPostRegistrationSuccess(true);
+
+        if (passwordForAutoLogin && passwordForAutoLogin.trim()) {
+          setAutoLoginState('pending');
+
+          try {
+            await login(sanitizedData.email, passwordForAutoLogin);
+            setAutoLoginState('success');
+            setShowPostRegistrationSuccess(false);
+            scrollToTop();
+          } catch (autoLoginException) {
+            console.error('Automatic login failed after registration.', autoLoginException);
+            const autoLoginMessage =
+              autoLoginException instanceof Error
+                ? autoLoginException.message
+                : 'Automatic login failed. Please sign in manually.';
+            setAutoLoginError(autoLoginMessage);
+            setAutoLoginState('error');
+          }
+        } else {
+          setAutoLoginError('Automatic login failed because no password was provided. Please sign in manually.');
+          setAutoLoginState('error');
+        }
       } finally {
         if (tokenPersisted && typeof window !== 'undefined') {
           try {
@@ -467,6 +502,7 @@ const MSMERegistration: React.FC = () => {
         }
       }
 
+      setAutoLoginState('idle');
       setSubmitError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1030,7 +1066,10 @@ const MSMERegistration: React.FC = () => {
           severity="success"
           sx={{ mb: 3 }}
         >
-          Registration completed successfully for <strong>{registrationData.companyName}</strong>. Your sustainability toolkit is now unlocked.
+          Registration completed successfully for <strong>{registrationData.companyName}</strong>.{' '}
+          {autoLoginState === 'success'
+            ? 'You are now signed in and ready to continue.'
+            : 'Your sustainability toolkit is now unlocked.'}
         </Alert>
 
         <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -1119,6 +1158,41 @@ const MSMERegistration: React.FC = () => {
     );
   };
 
+  if (autoLoginState === 'pending') {
+    const pendingEmail = registrationData?.email ?? loginEmail;
+
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 6,
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          border: '1px solid rgba(76, 175, 80, 0.1)',
+        }}
+      >
+        <Alert
+          icon={<SuccessIcon fontSize="inherit" />}
+          severity="success"
+          sx={{ mb: 4 }}
+        >
+          Registration completed successfully for{' '}
+          <strong>{registrationData?.companyName || 'your MSME'}</strong>. We're signing you in automatically.
+        </Alert>
+
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <CircularProgress color="success" size={56} sx={{ mb: 3 }} />
+          <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+            Signing you in...
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Logging in with <strong>{pendingEmail}</strong>. This will just take a moment.
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
+
   if (showLoginForm) {
     return (
       <Paper
@@ -1151,11 +1225,17 @@ const MSMERegistration: React.FC = () => {
           </Typography>
         </Box>
 
-        {showPostRegistrationSuccess && registrationData && (
-          <Alert severity="success" sx={{ mb: 3 }}>
-            Registration completed successfully. Use your email <strong>{registrationData.email}</strong> and password to log in and begin your carbon assessment journey.
-          </Alert>
-        )}
+          {showPostRegistrationSuccess && registrationData && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              Registration completed successfully. Use your email <strong>{registrationData.email}</strong> and password to log in and begin your carbon assessment journey.
+            </Alert>
+          )}
+
+          {autoLoginError && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {autoLoginError}
+            </Alert>
+          )}
 
         {registrationData && (
           <Alert severity="info" sx={{ mb: 3 }}>

@@ -46,9 +46,9 @@ interface MSMEData {
   udyamRegistrationNumber?: string;
   udyogAadharNumber?: string;
   gstNumber: string;
-  annualTurnover: number;
-  numberOfEmployees: number;
-  manufacturingUnits: number;
+  annualTurnover?: number;
+  numberOfEmployees?: number;
+  manufacturingUnits?: number;
 }
 
 interface CarbonSavings {
@@ -253,6 +253,26 @@ const Dashboard: React.FC = () => {
       </Alert>
     );
   }
+
+  const formattedAnnualTurnover =
+    typeof msmeData.annualTurnover === 'number'
+      ? `INR ${msmeData.annualTurnover.toLocaleString()}`
+      : 'Not provided';
+
+  const formattedEmployees =
+    typeof msmeData.numberOfEmployees === 'number'
+      ? msmeData.numberOfEmployees.toLocaleString()
+      : 'Not provided';
+
+  const formattedManufacturingUnits =
+    typeof msmeData.manufacturingUnits === 'number'
+      ? msmeData.manufacturingUnits.toLocaleString()
+      : 'Not provided';
+
+  const manufacturingUnitsDescription =
+    typeof msmeData.manufacturingUnits === 'number'
+      ? `Manage and monitor your ${formattedManufacturingUnits} manufacturing units`
+      : 'Manage and monitor your manufacturing units';
 
   return (
     <Box>
@@ -759,7 +779,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" paragraph>
-                Manage and monitor your {msmeData.manufacturingUnits} manufacturing units
+                {manufacturingUnitsDescription}
               </Typography>
             </CardContent>
             <CardActions>
@@ -933,7 +953,7 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
-                      ?{msmeData.annualTurnover.toLocaleString()}
+                      {formattedAnnualTurnover}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Annual Turnover
@@ -943,7 +963,7 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
-                      {msmeData.numberOfEmployees}
+                      {formattedEmployees}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Employees
@@ -953,7 +973,7 @@ const Dashboard: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
-                      {msmeData.manufacturingUnits}
+                      {formattedManufacturingUnits}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Manufacturing Units

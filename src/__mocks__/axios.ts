@@ -1,4 +1,4 @@
-const mockAxios = {
+const mockAxios: any = {
   create: jest.fn(function create() {
     return mockAxios;
   }),
