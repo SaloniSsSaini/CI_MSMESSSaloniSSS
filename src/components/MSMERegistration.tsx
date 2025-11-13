@@ -1,7 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Paper,
   Typography,
@@ -20,78 +26,92 @@ import {
   Checkbox,
   Alert,
   CircularProgress,
-  Stack
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircleOutline as SuccessIcon } from '@mui/icons-material';
-import ApiService from '../services/api';
-import { MSMERegistrationData, useRegistration } from '../context/RegistrationContext';
+  Stack,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { CheckCircleOutline as SuccessIcon } from "@mui/icons-material";
+import ApiService from "../services/api";
+import {
+  MSMERegistrationData,
+  useRegistration,
+} from "../context/RegistrationContext";
 
 // Validation schema for MSME registration
 const createRegistrationSchema = () =>
   yup.object({
     // Basic Company Information
-    companyName: yup.string().required('Company name is required'),
-    companyType: yup.string().required('Company type is required'),
-    industry: yup.string().required('Industry is required'),
-    businessDomain: yup.string().required('Business domain is required'),
+    companyName: yup.string().required("Company name is required"),
+    companyType: yup.string().required("Company type is required"),
+    industry: yup.string().required("Industry is required"),
+    businessDomain: yup.string().required("Business domain is required"),
     establishmentYear: yup
       .number()
-      .typeError('Establishment year is required')
-      .required('Establishment year is required')
-      .min(1900, 'Invalid year')
-      .max(new Date().getFullYear(), 'Year cannot be in the future'),
+      .typeError("Establishment year is required")
+      .required("Establishment year is required")
+      .min(1900, "Invalid year")
+      .max(new Date().getFullYear(), "Year cannot be in the future"),
 
     // MSME Registration Details
     udyamRegistrationNumber: yup
       .string()
-      .required('UDYAM Registration Number is required')
-      .matches(/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/, 'Invalid UDYAM Registration Number format'),
+      .required("UDYAM Registration Number is required")
+      .matches(
+        /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/,
+        "Invalid UDYAM Registration Number format",
+      ),
     gstNumber: yup
       .string()
-      .required('GST Number is required')
-      .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST Number format'),
+      .required("GST Number is required")
+      .matches(
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+        "Invalid GST Number format",
+      ),
     panNumber: yup
       .string()
-      .required('PAN Number is required')
-      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN Number format'),
+      .required("PAN Number is required")
+      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN Number format"),
 
     // Contact Information
-    email: yup.string().email('Invalid email format').required('Email is required'),
+    email: yup
+      .string()
+      .email("Invalid email format")
+      .required("Email is required"),
     phone: yup
       .string()
-      .required('Phone number is required')
-      .matches(/^[6-9]\d{9}$/, 'Invalid phone number format'),
+      .required("Phone number is required")
+      .matches(/^[6-9]\d{9}$/, "Invalid phone number format"),
 
     // Address Information
-    address: yup.string().required('Address is required'),
-    city: yup.string().required('City is required'),
-    state: yup.string().required('State is required'),
+    address: yup.string().required("Address is required"),
+    city: yup.string().required("City is required"),
+    state: yup.string().required("State is required"),
     pincode: yup
       .string()
-      .required('Pincode is required')
-      .matches(/^[1-9][0-9]{5}$/, 'Invalid pincode format'),
-    country: yup.string().required('Country is required'),
+      .required("Pincode is required")
+      .matches(/^[1-9][0-9]{5}$/, "Invalid pincode format"),
+    country: yup.string().required("Country is required"),
 
     // Business Details
     annualTurnover: yup
       .number()
-      .typeError('Annual turnover is required')
-      .required('Annual turnover is required')
-      .min(0, 'Turnover cannot be negative'),
+      .typeError("Annual turnover is required")
+      .required("Annual turnover is required")
+      .min(0, "Turnover cannot be negative"),
     numberOfEmployees: yup
       .number()
-      .typeError('Number of employees is required')
-      .required('Number of employees is required')
-      .min(1, 'Must have at least 1 employee'),
+      .typeError("Number of employees is required")
+      .required("Number of employees is required")
+      .min(1, "Must have at least 1 employee"),
 
     // Manufacturing Details
     manufacturingUnits: yup
       .number()
-      .typeError('Number of manufacturing units is required')
-      .required('Number of manufacturing units is required')
-      .min(1, 'Must have at least 1 unit'),
-    primaryProducts: yup.string().required('Primary products/services is required'),
+      .typeError("Number of manufacturing units is required")
+      .required("Number of manufacturing units is required")
+      .min(1, "Must have at least 1 unit"),
+    primaryProducts: yup
+      .string()
+      .required("Primary products/services is required"),
 
     // Environmental Compliance
     hasEnvironmentalClearance: yup.boolean().required(),
@@ -99,45 +119,52 @@ const createRegistrationSchema = () =>
     hasWasteManagement: yup.boolean().required(),
 
     // Terms and Conditions
-    agreeToTerms: yup.boolean().oneOf([true], 'You must agree to the terms and conditions').required(),
+    agreeToTerms: yup
+      .boolean()
+      .oneOf([true], "You must agree to the terms and conditions")
+      .required(),
     agreeToDataProcessing: yup
       .boolean()
-      .oneOf([true], 'You must agree to data processing terms')
+      .oneOf([true], "You must agree to data processing terms")
       .required(),
 
     // Account Credentials
     password: yup
       .string()
       .trim()
-      .when('$isEditing', {
+      .when("$isEditing", {
         is: true,
         then: (schema) =>
           schema
-            .transform((value) => (value === '' ? undefined : value))
+            .transform((value) => (value === "" ? undefined : value))
             .notRequired()
-            .min(6, 'Password must be at least 6 characters'),
+            .min(6, "Password must be at least 6 characters"),
         otherwise: (schema) =>
-          schema.min(6, 'Password must be at least 6 characters').required('Password is required'),
+          schema
+            .min(6, "Password must be at least 6 characters")
+            .required("Password is required"),
       }),
     confirmPassword: yup
       .string()
       .trim()
-      .transform((value) => (value === '' ? undefined : value))
-      .when('$isEditing', {
+      .transform((value) => (value === "" ? undefined : value))
+      .when("$isEditing", {
         is: true,
         then: (schema) =>
-          schema.when('password', {
+          schema.when("password", {
             is: (password: string | undefined) => !password,
             then: (confirmSchema) => confirmSchema.notRequired(),
             otherwise: (confirmSchema) =>
               confirmSchema
-                .oneOf([yup.ref('password')], 'Passwords must match')
-                .required('Confirm password is required when updating password'),
+                .oneOf([yup.ref("password")], "Passwords must match")
+                .required(
+                  "Confirm password is required when updating password",
+                ),
           }),
         otherwise: (schema) =>
           schema
-            .required('Confirm password is required')
-            .oneOf([yup.ref('password')], 'Passwords must match'),
+            .required("Confirm password is required")
+            .oneOf([yup.ref("password")], "Passwords must match"),
       }),
   });
 
@@ -146,15 +173,15 @@ type MSMERegistrationForm = MSMERegistrationData & {
   confirmPassword?: string;
 };
 
-type AutoLoginState = 'idle' | 'pending' | 'success' | 'error';
+type AutoLoginState = "idle" | "pending" | "success" | "error";
 
 const steps = [
-  'Company Information',
-  'MSME Registration Details',
-  'Contact & Address',
-  'Business Details',
-  'Environmental Compliance',
-  'Account Setup & Review'
+  "Company Information",
+  "MSME Registration Details",
+  "Contact & Address",
+  "Business Details",
+  "Environmental Compliance",
+  "Account Setup & Review",
 ];
 
 const MSMERegistration: React.FC = () => {
@@ -171,43 +198,50 @@ const MSMERegistration: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccessMessage, setSubmitSuccessMessage] = useState<
+    string | null
+  >(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showPostRegistrationSuccess, setShowPostRegistrationSuccess] = useState(false);
-  const [autoLoginState, setAutoLoginState] = useState<AutoLoginState>('idle');
+  const [showPostRegistrationSuccess, setShowPostRegistrationSuccess] =
+    useState(false);
+  const [autoLoginState, setAutoLoginState] = useState<AutoLoginState>("idle");
   const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
 
-  const defaultValues = useMemo<Partial<MSMERegistrationForm>>(() => ({
-    companyName: '',
-    companyType: '',
-    industry: '',
-    businessDomain: '',
-    establishmentYear: undefined,
-    udyamRegistrationNumber: '',
-    gstNumber: '',
-    panNumber: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    country: 'India',
-    annualTurnover: undefined,
-    numberOfEmployees: undefined,
-    manufacturingUnits: undefined,
-    primaryProducts: '',
-    hasEnvironmentalClearance: false,
-    hasPollutionControlBoard: false,
-    hasWasteManagement: false,
-    agreeToTerms: false,
-    agreeToDataProcessing: false,
-    password: '',
-    confirmPassword: ''
-  }), []);
+  const defaultValues = useMemo<Partial<MSMERegistrationForm>>(
+    () => ({
+      companyName: "",
+      companyType: "",
+      industry: "",
+      businessDomain: "",
+      establishmentYear: undefined,
+      udyamRegistrationNumber: "",
+      gstNumber: "",
+      panNumber: "",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      country: "India",
+      annualTurnover: undefined,
+      numberOfEmployees: undefined,
+      manufacturingUnits: undefined,
+      primaryProducts: "",
+      hasEnvironmentalClearance: false,
+      hasPollutionControlBoard: false,
+      hasWasteManagement: false,
+      agreeToTerms: false,
+      agreeToDataProcessing: false,
+      password: "",
+      confirmPassword: "",
+    }),
+    [],
+  );
 
   const isEditingRef = useRef(isEditing);
 
@@ -220,7 +254,7 @@ const MSMERegistration: React.FC = () => {
       yupResolver<MSMERegistrationForm>(createRegistrationSchema(), {
         context: { isEditing: isEditingRef.current },
       })(data, context, options),
-    []
+    [],
   );
 
   const {
@@ -228,15 +262,18 @@ const MSMERegistration: React.FC = () => {
     handleSubmit,
     formState: { errors },
     trigger,
-    reset
+    reset,
   } = useForm<MSMERegistrationForm>({
     resolver,
-    defaultValues
+    defaultValues,
   });
 
   const scrollToTop = () => {
-    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (
+      typeof window !== "undefined" &&
+      typeof window.scrollTo === "function"
+    ) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -259,14 +296,15 @@ const MSMERegistration: React.FC = () => {
 
   const registrationSuccess = isRegistered && Boolean(registrationData);
   const shouldShowSuccess = registrationSuccess && !isEditing;
-  const showLoginForm = hasCompletedRegistration && !isRegistered && autoLoginState !== 'pending';
+  const showLoginForm =
+    hasCompletedRegistration && !isRegistered && autoLoginState !== "pending";
 
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginError(null);
 
     if (!loginEmail || !loginPassword) {
-      setLoginError('Please enter both email and password.');
+      setLoginError("Please enter both email and password.");
       return;
     }
 
@@ -274,11 +312,15 @@ const MSMERegistration: React.FC = () => {
 
     try {
       await login(loginEmail, loginPassword);
-      setLoginPassword('');
+      setLoginPassword("");
       setShowPostRegistrationSuccess(false);
-      navigate('/carbon-footprint');
+      navigate("/carbon-footprint");
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : 'Login failed. Please try again.');
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again.",
+      );
     } finally {
       setIsLoggingIn(false);
     }
@@ -286,11 +328,12 @@ const MSMERegistration: React.FC = () => {
 
   const handleResetStoredRegistration = () => {
     setSubmitError(null);
+    setSubmitSuccessMessage(null);
     resetRegistration();
-    setLoginEmail('');
-    setLoginPassword('');
+    setLoginEmail("");
+    setLoginPassword("");
     setLoginError(null);
-    setAutoLoginState('idle');
+    setAutoLoginState("idle");
     setAutoLoginError(null);
     setIsEditing(false);
     setActiveStep(0);
@@ -300,37 +343,64 @@ const MSMERegistration: React.FC = () => {
   };
 
   const handleNext = async () => {
+    setSubmitSuccessMessage(null);
     const fieldsToValidate = getFieldsForStep(activeStep);
     const isValid = await trigger(fieldsToValidate);
-    
+
     if (isValid) {
       setActiveStep((prevStep) => prevStep + 1);
     }
   };
 
   const handleBack = () => {
+    setSubmitSuccessMessage(null);
     setActiveStep((prevStep) => prevStep - 1);
   };
 
   const getFieldsForStep = (step: number): (keyof MSMERegistrationForm)[] => {
     switch (step) {
       case 0:
-        return ['companyName', 'companyType', 'industry', 'businessDomain', 'establishmentYear'];
+        return [
+          "companyName",
+          "companyType",
+          "industry",
+          "businessDomain",
+          "establishmentYear",
+        ];
       case 1:
-        return ['udyamRegistrationNumber', 'gstNumber', 'panNumber'];
+        return ["udyamRegistrationNumber", "gstNumber", "panNumber"];
       case 2:
-        return ['email', 'phone', 'address', 'city', 'state', 'pincode', 'country'];
+        return [
+          "email",
+          "phone",
+          "address",
+          "city",
+          "state",
+          "pincode",
+          "country",
+        ];
       case 3:
-        return ['annualTurnover', 'numberOfEmployees', 'manufacturingUnits', 'primaryProducts'];
+        return [
+          "annualTurnover",
+          "numberOfEmployees",
+          "manufacturingUnits",
+          "primaryProducts",
+        ];
       case 4:
-        return ['hasEnvironmentalClearance', 'hasPollutionControlBoard', 'hasWasteManagement'];
-      case 5:
-      {
-        const fields: (keyof MSMERegistrationForm)[] = ['agreeToTerms', 'agreeToDataProcessing'];
+        return [
+          "hasEnvironmentalClearance",
+          "hasPollutionControlBoard",
+          "hasWasteManagement",
+        ];
+      case 5: {
+        const fields: (keyof MSMERegistrationForm)[] = [
+          "agreeToTerms",
+          "agreeToDataProcessing",
+        ];
 
         if (!isEditing) {
-          fields.unshift('confirmPassword');
-          fields.unshift('password');
+          fields.unshift("confirmPassword");
+          fields.unshift("password");
         }
 
         return fields;
@@ -340,12 +410,10 @@ const MSMERegistration: React.FC = () => {
     }
   };
 
-  const sanitizeRegistrationData = (data: MSMERegistrationForm): MSMERegistrationData => {
-    const {
-      password,
-      confirmPassword,
-      ...rest
-    } = data;
+  const sanitizeRegistrationData = (
+    data: MSMERegistrationForm,
+  ): MSMERegistrationData => {
+    const { password, confirmPassword, ...rest } = data;
 
     return {
       ...rest,
@@ -388,9 +456,10 @@ const MSMERegistration: React.FC = () => {
   const onSubmit = async (data: MSMERegistrationForm) => {
     setIsSubmitting(true);
     setSubmitError(null);
+    setSubmitSuccessMessage(null);
     setAutoLoginError(null);
     if (!isEditing) {
-      setAutoLoginState('idle');
+      setAutoLoginState("idle");
     }
 
     const sanitizedData = sanitizeRegistrationData(data);
@@ -399,17 +468,19 @@ const MSMERegistration: React.FC = () => {
     try {
       if (isEditing) {
         const profileResponse = await ApiService.updateMSMEProfile(
-          buildMsmeProfilePayload(sanitizedData)
+          buildMsmeProfilePayload(sanitizedData),
         );
 
         if (!profileResponse?.success) {
-          throw new Error(profileResponse?.message || 'Unable to update MSME profile.');
+          throw new Error(
+            profileResponse?.message || "Unable to update MSME profile.",
+          );
         }
 
         completeRegistration(sanitizedData);
         setIsEditing(false);
         setActiveStep(steps.length);
-        reset({ ...sanitizedData, password: '', confirmPassword: '' });
+        reset({ ...sanitizedData, password: "", confirmPassword: "" });
         scrollToTop();
         return;
       }
@@ -417,7 +488,7 @@ const MSMERegistration: React.FC = () => {
       const registerResponse = await ApiService.register({
         email: data.email,
         password: data.password,
-        role: 'msme',
+        role: "msme",
         profile: {
           companyName: data.companyName,
           businessDomain: data.businessDomain,
@@ -425,85 +496,115 @@ const MSMERegistration: React.FC = () => {
       });
 
       if (!registerResponse?.success) {
-        throw new Error(registerResponse?.message || 'Registration failed. Please try again.');
+        throw new Error(
+          registerResponse?.message || "Registration failed. Please try again.",
+        );
       }
 
       const token = registerResponse?.data?.token;
 
       if (!token) {
-        throw new Error('Registration failed. Authentication token missing in response.');
+        throw new Error(
+          "Registration failed. Authentication token missing in response.",
+        );
       }
 
       let tokenPersisted = false;
 
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         try {
-          localStorage.setItem('token', token);
+          localStorage.setItem("token", token);
           tokenPersisted = true;
         } catch (storageError) {
-          console.warn('Unable to persist authentication token after registration.', storageError);
+          console.warn(
+            "Unable to persist authentication token after registration.",
+            storageError,
+          );
         }
       }
 
       try {
         const profileResponse = await ApiService.updateMSMEProfile(
-          buildMsmeProfilePayload(sanitizedData)
+          buildMsmeProfilePayload(sanitizedData),
         );
 
         if (!profileResponse?.success) {
-          throw new Error(profileResponse?.message || 'Unable to complete MSME profile setup.');
+          throw new Error(
+            profileResponse?.message ||
+              "Unable to complete MSME profile setup.",
+          );
         }
 
         completeRegistration(sanitizedData);
         setIsEditing(false);
         setActiveStep(steps.length);
-        reset({ ...sanitizedData, password: '', confirmPassword: '' });
+        reset({ ...sanitizedData, password: "", confirmPassword: "" });
         setLoginEmail(sanitizedData.email);
         scrollToTop();
 
+        setSubmitSuccessMessage(
+          "Registration successful! Our AI agents are ready to assist with carbon footprint calculations, analytics, predictive insights, tailored recommendations, and climate incentives. Use your credentials to log in and continue.",
+        );
         setShowPostRegistrationSuccess(true);
 
         if (passwordForAutoLogin && passwordForAutoLogin.trim()) {
-          setAutoLoginState('pending');
+          setAutoLoginState("pending");
 
           try {
             await login(sanitizedData.email, passwordForAutoLogin);
-            setAutoLoginState('success');
+            setAutoLoginState("success");
             setShowPostRegistrationSuccess(false);
+            setSubmitSuccessMessage(null);
             scrollToTop();
           } catch (autoLoginException) {
-            console.error('Automatic login failed after registration.', autoLoginException);
+            console.error(
+              "Automatic login failed after registration.",
+              autoLoginException,
+            );
             const autoLoginMessage =
               autoLoginException instanceof Error
                 ? autoLoginException.message
-                : 'Automatic login failed. Please sign in manually.';
+                : "Automatic login failed. Please sign in manually.";
             setAutoLoginError(autoLoginMessage);
-            setAutoLoginState('error');
+            setAutoLoginState("error");
           }
         } else {
-          setAutoLoginError('Automatic login failed because no password was provided. Please sign in manually.');
-          setAutoLoginState('error');
+          setAutoLoginError(
+            "Automatic login failed because no password was provided. Please sign in manually.",
+          );
+          setAutoLoginState("error");
         }
       } finally {
-        if (tokenPersisted && typeof window !== 'undefined') {
+        if (tokenPersisted && typeof window !== "undefined") {
           try {
-            localStorage.removeItem('token');
+            localStorage.removeItem("token");
           } catch (cleanupError) {
-            console.warn('Unable to clear temporary authentication token after registration.', cleanupError);
+            console.warn(
+              "Unable to clear temporary authentication token after registration.",
+              cleanupError,
+            );
           }
         }
       }
     } catch (error) {
-      if (!isEditing && typeof window !== 'undefined') {
+      if (!isEditing && typeof window !== "undefined") {
         try {
-          localStorage.removeItem('token');
+          localStorage.removeItem("token");
         } catch (cleanupError) {
-          console.warn('Unable to clear authentication token after failed registration.', cleanupError);
+          console.warn(
+            "Unable to clear authentication token after failed registration.",
+            cleanupError,
+          );
         }
       }
 
-      setAutoLoginState('idle');
-      setSubmitError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+      setAutoLoginState("idle");
+      setSubmitSuccessMessage(null);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -511,10 +612,11 @@ const MSMERegistration: React.FC = () => {
 
   const handleEditRegistration = () => {
     setSubmitError(null);
+    setSubmitSuccessMessage(null);
     setIsEditing(true);
     setActiveStep(0);
     const currentData = registrationData
-      ? { ...registrationData, password: '', confirmPassword: '' }
+      ? { ...registrationData, password: "", confirmPassword: "" }
       : defaultValues;
 
     reset(currentData);
@@ -572,7 +674,9 @@ const MSMERegistration: React.FC = () => {
                       <MenuItem value="chemicals">Chemicals</MenuItem>
                       <MenuItem value="electronics">Electronics</MenuItem>
                       <MenuItem value="automotive">Automotive</MenuItem>
-                      <MenuItem value="pharmaceuticals">Pharmaceuticals</MenuItem>
+                      <MenuItem value="pharmaceuticals">
+                        Pharmaceuticals
+                      </MenuItem>
                       <MenuItem value="other">Other</MenuItem>
                     </Select>
                   </FormControl>
@@ -595,16 +699,32 @@ const MSMERegistration: React.FC = () => {
                       <MenuItem value="wholesale">Wholesale</MenuItem>
                       <MenuItem value="e_commerce">E-Commerce</MenuItem>
                       <MenuItem value="consulting">Consulting</MenuItem>
-                      <MenuItem value="logistics">Logistics & Transportation</MenuItem>
-                      <MenuItem value="agriculture">Agriculture & Allied</MenuItem>
-                      <MenuItem value="handicrafts">Handicrafts & Artisans</MenuItem>
-                      <MenuItem value="food_processing">Food Processing</MenuItem>
+                      <MenuItem value="logistics">
+                        Logistics & Transportation
+                      </MenuItem>
+                      <MenuItem value="agriculture">
+                        Agriculture & Allied
+                      </MenuItem>
+                      <MenuItem value="handicrafts">
+                        Handicrafts & Artisans
+                      </MenuItem>
+                      <MenuItem value="food_processing">
+                        Food Processing
+                      </MenuItem>
                       <MenuItem value="textiles">Textiles & Garments</MenuItem>
                       <MenuItem value="electronics">Electronics & IT</MenuItem>
-                      <MenuItem value="automotive">Automotive & Engineering</MenuItem>
-                      <MenuItem value="construction">Construction & Real Estate</MenuItem>
-                      <MenuItem value="healthcare">Healthcare & Pharmaceuticals</MenuItem>
-                      <MenuItem value="education">Education & Training</MenuItem>
+                      <MenuItem value="automotive">
+                        Automotive & Engineering
+                      </MenuItem>
+                      <MenuItem value="construction">
+                        Construction & Real Estate
+                      </MenuItem>
+                      <MenuItem value="healthcare">
+                        Healthcare & Pharmaceuticals
+                      </MenuItem>
+                      <MenuItem value="education">
+                        Education & Training
+                      </MenuItem>
                       <MenuItem value="tourism">Tourism & Hospitality</MenuItem>
                       <MenuItem value="other">Other</MenuItem>
                     </Select>
@@ -650,7 +770,10 @@ const MSMERegistration: React.FC = () => {
                     label="UDYAM Registration Number"
                     placeholder="UDYAM-XX-00-0000000"
                     error={!!errors.udyamRegistrationNumber}
-                    helperText={errors.udyamRegistrationNumber?.message || "Format: UDYAM-XX-00-0000000"}
+                    helperText={
+                      errors.udyamRegistrationNumber?.message ||
+                      "Format: UDYAM-XX-00-0000000"
+                    }
                   />
                 )}
               />
@@ -666,7 +789,9 @@ const MSMERegistration: React.FC = () => {
                     label="GST Number"
                     placeholder="00XXXXX0000X0X"
                     error={!!errors.gstNumber}
-                    helperText={errors.gstNumber?.message || "Format: 00XXXXX0000X0X"}
+                    helperText={
+                      errors.gstNumber?.message || "Format: 00XXXXX0000X0X"
+                    }
                   />
                 )}
               />
@@ -682,7 +807,9 @@ const MSMERegistration: React.FC = () => {
                     label="PAN Number"
                     placeholder="XXXXX0000X"
                     error={!!errors.panNumber}
-                    helperText={errors.panNumber?.message || "Format: XXXXX0000X"}
+                    helperText={
+                      errors.panNumber?.message || "Format: XXXXX0000X"
+                    }
                   />
                 )}
               />
@@ -710,7 +837,10 @@ const MSMERegistration: React.FC = () => {
                     label="Email Address"
                     error={!!errors.email}
                     helperText={
-                      errors.email?.message || (isEditing ? 'Account email cannot be updated here.' : undefined)
+                      errors.email?.message ||
+                      (isEditing
+                        ? "Account email cannot be updated here."
+                        : undefined)
                     }
                     disabled={isEditing}
                   />
@@ -939,12 +1069,14 @@ const MSMERegistration: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                {isEditing ? 'Review & Submit Updates' : 'Account Setup & Review'}
+                {isEditing
+                  ? "Review & Submit Updates"
+                  : "Account Setup & Review"}
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
                 {isEditing
-                  ? 'Review your registration details and submit any updates to keep your profile current.'
-                  : 'Create your account password and review your information before submitting.'}
+                  ? "Review your registration details and submit any updates to keep your profile current."
+                  : "Create your account password and review your information before submitting."}
               </Typography>
             </Grid>
             {!isEditing && (
@@ -961,7 +1093,9 @@ const MSMERegistration: React.FC = () => {
                         label="Account Password"
                         autoComplete="new-password"
                         error={!!errors.password}
-                        helperText={errors.password?.message || 'Minimum 6 characters'}
+                        helperText={
+                          errors.password?.message || "Minimum 6 characters"
+                        }
                       />
                     )}
                   />
@@ -1023,7 +1157,7 @@ const MSMERegistration: React.FC = () => {
         );
 
       default:
-        return 'Unknown step';
+        return "Unknown step";
     }
   };
 
@@ -1034,28 +1168,30 @@ const MSMERegistration: React.FC = () => {
 
     const summaryItems = [
       {
-        label: 'Company Name',
-        value: registrationData.companyName || 'Not provided',
+        label: "Company Name",
+        value: registrationData.companyName || "Not provided",
       },
       {
-        label: 'Industry',
-        value: registrationData.industry || 'Not provided',
+        label: "Industry",
+        value: registrationData.industry || "Not provided",
       },
       {
-        label: 'Company Type',
-        value: registrationData.companyType ? registrationData.companyType.toUpperCase() : 'Not provided',
+        label: "Company Type",
+        value: registrationData.companyType
+          ? registrationData.companyType.toUpperCase()
+          : "Not provided",
       },
       {
-        label: 'GST Number',
-        value: registrationData.gstNumber || 'Not provided',
+        label: "GST Number",
+        value: registrationData.gstNumber || "Not provided",
       },
       {
-        label: 'UDYAM Registration',
-        value: registrationData.udyamRegistrationNumber || 'Not provided',
+        label: "UDYAM Registration",
+        value: registrationData.udyamRegistrationNumber || "Not provided",
       },
       {
-        label: 'Primary Products/Services',
-        value: registrationData.primaryProducts || 'Not provided',
+        label: "Primary Products/Services",
+        value: registrationData.primaryProducts || "Not provided",
       },
     ];
 
@@ -1066,19 +1202,31 @@ const MSMERegistration: React.FC = () => {
           severity="success"
           sx={{ mb: 3 }}
         >
-          Registration completed successfully for <strong>{registrationData.companyName}</strong>.{' '}
-          {autoLoginState === 'success'
-            ? 'You are now signed in and ready to continue.'
-            : 'Your sustainability toolkit is now unlocked.'}
+          Registration completed successfully for{" "}
+          <strong>{registrationData.companyName}</strong>.{" "}
+          {autoLoginState === "success"
+            ? "You are now signed in and ready to continue."
+            : "Your AI-driven sustainability toolkit is now unlocked."}
         </Alert>
 
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <SuccessIcon sx={{ fontSize: 56, color: 'success.main', mb: 2 }} />
-          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+        <Box sx={{ textAlign: "center", mb: 4 }}>
+          <SuccessIcon sx={{ fontSize: 56, color: "success.main", mb: 2 }} />
+          <Typography
+            variant="h4"
+            component="h2"
+            gutterBottom
+            sx={{ fontWeight: 700 }}
+          >
             You're all set!
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
-            Explore your dashboard, run a carbon assessment, and discover recommendations tailored to <strong>{registrationData.companyName}</strong>.
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ maxWidth: 560, mx: "auto" }}
+          >
+            Explore your dashboard, run a carbon assessment, and discover
+            recommendations tailored to{" "}
+            <strong>{registrationData.companyName}</strong>.
           </Typography>
         </Box>
 
@@ -1089,13 +1237,18 @@ const MSMERegistration: React.FC = () => {
                 sx={{
                   p: 3,
                   borderRadius: 2,
-                  height: '100%',
-                  background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.04) 0%, rgba(46, 125, 50, 0.05) 100%)',
-                  border: '1px solid rgba(76, 175, 80, 0.08)',
-                  textAlign: 'left',
+                  height: "100%",
+                  background:
+                    "linear-gradient(135deg, rgba(76, 175, 80, 0.04) 0%, rgba(46, 125, 50, 0.05) 100%)",
+                  border: "1px solid rgba(76, 175, 80, 0.08)",
+                  textAlign: "left",
                 }}
               >
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
                   {item.label}
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
@@ -1107,37 +1260,110 @@ const MSMERegistration: React.FC = () => {
         </Grid>
 
         <Stack
-          direction={{ xs: 'column', sm: 'row' }}
+          sx={{
+            mb: 4,
+            p: 3,
+            borderRadius: 2,
+            background:
+              "linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(56, 142, 60, 0.12) 100%)",
+            border: "1px solid rgba(76, 175, 80, 0.16)",
+            textAlign: "left",
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            AI Agent Coalition Activated
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Your carbon intelligence AI agents are now orchestrating real-time
+            footprint tracking, predictive emissions modelling, tailored
+            recommendations, incentive discovery, and ongoing compliance
+            monitoring for your organisation.
+          </Typography>
+        </Stack>
+
+        <Stack
+          direction={{ xs: "column", md: "row" }}
           spacing={2}
           justifyContent="center"
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-          sx={{ mb: 2 }}
+          alignItems={{ xs: "stretch", md: "center" }}
+          sx={{
+            mb: 2,
+            flexWrap: { xs: "nowrap", md: "wrap" },
+            "& > *": { flexGrow: 1, minWidth: { xs: "100%", md: 200 } },
+          }}
         >
           <Button
             variant="contained"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             sx={{
-              minWidth: 200,
               py: 1.5,
-              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
+              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
               },
             }}
           >
             Go to Dashboard
           </Button>
           <Button
-            variant="outlined"
-            onClick={() => navigate('/carbon-footprint')}
-            sx={{ minWidth: 200, py: 1.5 }}
+            variant="contained"
+            color="success"
+            onClick={() => navigate("/carbon-footprint")}
+            sx={{
+              py: 1.5,
+              background: "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)",
+              },
+            }}
           >
             Start Carbon Assessment
           </Button>
           <Button
+            variant="outlined"
+            onClick={() => navigate("/carbon-forecasting")}
+            sx={{ py: 1.5 }}
+          >
+            AI Emission Predictions
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/recommendations")}
+            sx={{ py: 1.5 }}
+          >
+            AI Recommendations
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/incentives")}
+            sx={{ py: 1.5 }}
+          >
+            Explore Incentives
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/multi-agent-dashboard")}
+            sx={{ py: 1.5 }}
+          >
+            AI Agent Control Center
+          </Button>
+        </Stack>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          justifyContent="center"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          sx={{
+            mb: 2,
+            flexWrap: { xs: "nowrap", sm: "wrap" },
+            "& > *": { flexGrow: 1, minWidth: { xs: "100%", sm: 200 } },
+          }}
+        >
+          <Button
             variant="text"
             onClick={handleEditRegistration}
-            sx={{ minWidth: 200, py: 1.5 }}
+            sx={{ py: 1.5 }}
           >
             Update Registration Details
           </Button>
@@ -1145,11 +1371,11 @@ const MSMERegistration: React.FC = () => {
             variant="outlined"
             onClick={() => {
               logout();
-              setLoginPassword('');
+              setLoginPassword("");
               setLoginError(null);
-              navigate('/');
+              navigate("/");
             }}
-            sx={{ minWidth: 200, py: 1.5 }}
+            sx={{ py: 1.5 }}
           >
             Logout
           </Button>
@@ -1158,7 +1384,7 @@ const MSMERegistration: React.FC = () => {
     );
   };
 
-  if (autoLoginState === 'pending') {
+  if (autoLoginState === "pending") {
     const pendingEmail = registrationData?.email ?? loginEmail;
 
     return (
@@ -1167,8 +1393,8 @@ const MSMERegistration: React.FC = () => {
         sx={{
           p: 6,
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid rgba(76, 175, 80, 0.1)',
+          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+          border: "1px solid rgba(76, 175, 80, 0.1)",
         }}
       >
         <Alert
@@ -1176,17 +1402,24 @@ const MSMERegistration: React.FC = () => {
           severity="success"
           sx={{ mb: 4 }}
         >
-          Registration completed successfully for{' '}
-          <strong>{registrationData?.companyName || 'your MSME'}</strong>. We're signing you in automatically.
+          Registration completed successfully for{" "}
+          <strong>{registrationData?.companyName || "your MSME"}</strong>. We're
+          signing you in automatically.
         </Alert>
 
-        <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Box sx={{ textAlign: "center", py: 4 }}>
           <CircularProgress color="success" size={56} sx={{ mb: 3 }} />
-          <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h5"
+            component="h2"
+            gutterBottom
+            sx={{ fontWeight: 600 }}
+          >
             Signing you in...
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Logging in with <strong>{pendingEmail}</strong>. This will just take a moment.
+            Logging in with <strong>{pendingEmail}</strong>. This will just take
+            a moment.
           </Typography>
         </Box>
       </Paper>
@@ -1200,46 +1433,59 @@ const MSMERegistration: React.FC = () => {
         sx={{
           p: 6,
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid rgba(76, 175, 80, 0.1)',
+          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+          border: "1px solid rgba(76, 175, 80, 0.1)",
         }}
       >
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Box sx={{ textAlign: "center", mb: 4 }}>
           <Typography
             variant="h3"
             component="h1"
             gutterBottom
             sx={{
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
               mb: 2,
             }}
           >
             Welcome Back
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto' }}>
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            sx={{ maxWidth: 520, mx: "auto" }}
+          >
             Sign in to continue exploring your Carbon Intelligence dashboard.
           </Typography>
         </Box>
 
-          {showPostRegistrationSuccess && registrationData && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              Registration completed successfully. Use your email <strong>{registrationData.email}</strong> and password to log in and begin your carbon assessment journey.
-            </Alert>
-          )}
+        {(submitSuccessMessage ||
+          (showPostRegistrationSuccess && registrationData)) && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {submitSuccessMessage || (
+              <>
+                Registration completed successfully. Use your email{" "}
+                <strong>{registrationData?.email}</strong> and password to log
+                in and begin your carbon assessment journey.
+              </>
+            )}
+          </Alert>
+        )}
 
-          {autoLoginError && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {autoLoginError}
-            </Alert>
-          )}
+        {autoLoginError && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {autoLoginError}
+          </Alert>
+        )}
 
         {registrationData && (
           <Alert severity="info" sx={{ mb: 3 }}>
-            Your account is registered for <strong>{registrationData.companyName}</strong>. Use <strong>{registrationData.email}</strong> to log in.
+            Your account is registered for{" "}
+            <strong>{registrationData.companyName}</strong>. Use{" "}
+            <strong>{registrationData.email}</strong> to log in.
           </Alert>
         )}
 
@@ -1247,7 +1493,7 @@ const MSMERegistration: React.FC = () => {
           component="form"
           noValidate
           onSubmit={handleLoginSubmit}
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
           <TextField
             label="Email"
@@ -1268,27 +1514,27 @@ const MSMERegistration: React.FC = () => {
             required
           />
 
-          {loginError && (
-            <Alert severity="error">
-              {loginError}
-            </Alert>
-          )}
+          {loginError && <Alert severity="error">{loginError}</Alert>}
 
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction={{ xs: "column", sm: "row" }}
             spacing={2}
             justifyContent="flex-start"
-            alignItems={{ xs: 'stretch', sm: 'center' }}
+            alignItems={{ xs: "stretch", sm: "center" }}
             sx={{ mt: 1 }}
           >
             <Button
               type="submit"
               variant="contained"
               disabled={isLoggingIn}
-              startIcon={isLoggingIn ? <CircularProgress size={20} color="inherit" /> : null}
+              startIcon={
+                isLoggingIn ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : null
+              }
               sx={{ minWidth: 160, py: 1.5 }}
             >
-              {isLoggingIn ? 'Signing in...' : 'Sign In'}
+              {isLoggingIn ? "Signing in..." : "Sign In"}
             </Button>
             <Button
               variant="text"
@@ -1297,6 +1543,61 @@ const MSMERegistration: React.FC = () => {
             >
               Start New Registration
             </Button>
+          </Stack>
+        </Box>
+
+        <Box
+          sx={{
+            mt: 5,
+            p: 3,
+            borderRadius: 2,
+            background:
+              "linear-gradient(135deg, rgba(46, 125, 50, 0.06) 0%, rgba(76, 175, 80, 0.08) 100%)",
+            border: "1px solid rgba(76, 175, 80, 0.16)",
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            What Happens After You Log In
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your AI carbon intelligence agents will guide you through the next
+            steps as soon as you sign in.
+          </Typography>
+          <Stack spacing={1.5} sx={{ mt: 2 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
+              <Typography variant="body2">
+                Run automated carbon footprint calculations across your
+                facilities.
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
+              <Typography variant="body2">
+                Unlock AI-driven analytics, forecasts, and scenario planning.
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
+              <Typography variant="body2">
+                Receive personalised recommendations and decarbonisation
+                roadmaps.
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
+              <Typography variant="body2">
+                Explore incentives, climate finance, and policy-aligned
+                programmes.
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
+              <Typography variant="body2">
+                Coordinate specialised AI agents for document ingestion,
+                monitoring, and reporting.
+              </Typography>
+            </Stack>
           </Stack>
         </Box>
       </Paper>
@@ -1309,47 +1610,60 @@ const MSMERegistration: React.FC = () => {
       sx={{
         p: 6,
         borderRadius: 3,
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid rgba(76, 175, 80, 0.1)'
+        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+        border: "1px solid rgba(76, 175, 80, 0.1)",
       }}
     >
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography variant="h3" component="h1" gutterBottom sx={{ 
-          fontWeight: 700,
-          background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          mb: 2
-        }}>
+      <Box sx={{ textAlign: "center", mb: 4 }}>
+        <Typography
+          variant="h3"
+          component="h1"
+          gutterBottom
+          sx={{
+            fontWeight: 700,
+            background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            mb: 2,
+          }}
+        >
           MSME Registration
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ 
-          maxWidth: 600, 
-          mx: 'auto',
-          lineHeight: 1.6
-        }}>
-          Register your MSME company to measure carbon footprint and get sustainable manufacturing recommendations
+        <Typography
+          variant="h6"
+          color="text.secondary"
+          sx={{
+            maxWidth: 600,
+            mx: "auto",
+            lineHeight: 1.6,
+          }}
+        >
+          Register your MSME company to measure carbon footprint and get
+          sustainable manufacturing recommendations
         </Typography>
       </Box>
 
-      <Stepper activeStep={shouldShowSuccess ? steps.length : activeStep} sx={{ 
-        mb: 4,
-        '& .MuiStepLabel-root': {
-          '& .MuiStepLabel-label': {
-            fontWeight: 500,
-            fontSize: '0.875rem'
-          }
-        },
-        '& .MuiStepIcon-root': {
-          '&.Mui-completed': {
-            color: 'success.main'
+      <Stepper
+        activeStep={shouldShowSuccess ? steps.length : activeStep}
+        sx={{
+          mb: 4,
+          "& .MuiStepLabel-root": {
+            "& .MuiStepLabel-label": {
+              fontWeight: 500,
+              fontSize: "0.875rem",
+            },
           },
-          '&.Mui-active': {
-            color: 'primary.main'
-          }
-        }
-      }}>
+          "& .MuiStepIcon-root": {
+            "&.Mui-completed": {
+              color: "success.main",
+            },
+            "&.Mui-active": {
+              color: "primary.main",
+            },
+          },
+        }}
+      >
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -1362,30 +1676,55 @@ const MSMERegistration: React.FC = () => {
           {submitError}
         </Alert>
       )}
+      {submitSuccessMessage && !shouldShowSuccess && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {submitSuccessMessage}
+        </Alert>
+      )}
 
       {shouldShowSuccess ? (
         renderSuccessState()
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Box sx={{ mb: 4 }}>
-            {renderStepContent(activeStep)}
+          <Box
+            sx={{
+              mb: 4,
+              p: 3,
+              borderRadius: 2,
+              background:
+                "linear-gradient(135deg, rgba(33, 150, 243, 0.06) 0%, rgba(25, 118, 210, 0.08) 100%)",
+              border: "1px solid rgba(33, 150, 243, 0.12)",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              AI Agents Ready to Assist
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Our Carbon Intelligence AI agents will activate once you submit
+              this form to coordinate carbon footprint calculations, scenario
+              analysis, predictive forecasting, tailored recommendations, and
+              incentive discovery for your MSME.
+            </Typography>
           </Box>
+          <Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
 
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            pt: 3,
-            borderTop: '1px solid',
-            borderColor: 'divider'
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              pt: 3,
+              borderTop: "1px solid",
+              borderColor: "divider",
+            }}
+          >
             <Button
               disabled={activeStep === 0}
               onClick={handleBack}
               variant="outlined"
-              sx={{ 
+              sx={{
                 mr: 1,
                 minWidth: 120,
-                py: 1.5
+                py: 1.5,
               }}
             >
               Back
@@ -1396,17 +1735,21 @@ const MSMERegistration: React.FC = () => {
                   type="submit"
                   variant="contained"
                   disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+                  startIcon={
+                    isSubmitting ? <CircularProgress size={20} /> : null
+                  }
                   sx={{
                     minWidth: 180,
                     py: 1.5,
-                    background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
+                    },
                   }}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+                  {isSubmitting ? "Submitting..." : "Submit Registration"}
                 </Button>
               ) : (
                 <Button
@@ -1415,10 +1758,12 @@ const MSMERegistration: React.FC = () => {
                   sx={{
                     minWidth: 120,
                     py: 1.5,
-                    background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
-                    }
+                    background:
+                      "linear-gradient(135deg, #2196f3 0%, #1565c0 100%)",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)",
+                    },
                   }}
                 >
                   Next
