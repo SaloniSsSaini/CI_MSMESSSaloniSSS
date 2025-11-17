@@ -12,6 +12,7 @@ This directory contains all documentation for the Carbon Intelligence project, o
 - **Carbon_Intelligence_Pitch_Presentation.md** - Business pitch and presentation materials
 - **COMPREHENSIVE_OPTIMIZATION_SUMMARY.md** - Performance optimization details
 - **DOCUMENT_UPLOAD_FEATURE.md** - Document upload functionality documentation
+- **AWS_ENVIRONMENT_SETUP.md** - Step-by-step AWS dependency installation and deployment guide
 - **ENHANCED_PITCH_IMPROVEMENTS_SUMMARY.md** - Pitch enhancement improvements
 - **GIFT_SCHEME_DOCUMENTATION.md** - Gift scheme feature documentation
 - **MULTI_AGENT_IMPLEMENTATION_SUMMARY.md** - Multi-agent system implementation
