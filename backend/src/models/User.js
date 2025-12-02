@@ -14,11 +14,11 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
-  role: {
-    type: String,
-    enum: ['admin', 'msme', 'analyst'],
-    default: 'msme'
-  },
+  // role: {
+  //   type: String,
+  //   enum: ['admin', 'msme', 'analyst'],
+  //   default: 'msme'
+  // },
   isActive: {
     type: Boolean,
     default: true
@@ -31,6 +31,14 @@ const userSchema = new mongoose.Schema({
     lastName: String,
     phone: String,
     avatar: String
+  },
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

@@ -50,12 +50,13 @@ const msmeSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  udyamRegistrationNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    match: /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/
-  },
+  // udyamRegistrationNumber: {
+  //   type: String,
+  //   required: true,
+  //   // unique: true,
+  //   match: /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/
+  // },
+  udyamRegistrationNumber: { type: String, unique: false, sparse: true },
   gstNumber: {
     type: String,
     required: true,

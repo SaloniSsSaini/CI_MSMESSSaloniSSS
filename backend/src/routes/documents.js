@@ -112,6 +112,7 @@ router.post('/upload', auth, upload.single('document'), async (req, res) => {
 // @desc    Get all documents for an MSME
 // @access  Private
 router.get('/', auth, async (req, res) => {
+  console.log("documents.js: 115")
   try {
     const { page = 1, limit = 10, status, documentType, startDate, endDate } = req.query;
     const msmeId = req.user.id;

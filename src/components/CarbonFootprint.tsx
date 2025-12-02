@@ -33,6 +33,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import ApiService from "../services/api";
 
 // Carbon footprint calculation schema
 const carbonFootprintSchema = yup.object({
@@ -115,13 +116,33 @@ const CarbonFootprint: React.FC = () => {
     }
   });
 
-  useEffect(() => {
-    // Load MSME registration data
-    const savedData = localStorage.getItem('msmeRegistration');
-    if (savedData) {
-      setMsmeData(JSON.parse(savedData));
+  // useEffect(() => {
+  //   // Load MSME registration data
+  //   const savedData = localStorage.getItem('msmeRegistration');
+  //   const response = await apiService.getMSMEProfile();
+  //   if (savedData) {
+  //     setMsmeData(JSON.parse(savedData));
+  //   }
+  // }, []);
+
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const response = await ApiService.getMSMEProfile();
+      console.log("API DATA:", response);
+
+      if (response) {
+        setMsmeData(response); // DO NOT JSON.parse
+      }
+    } catch (err) {
+      console.error("Error fetching MSME profile:", err);
     }
-  }, []);
+  };
+
+  fetchData();
+}, []);
+
+
 
   const handleNext = async () => {
     const fieldsToValidate = getFieldsForStep(activeStep);

@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 // @desc    Get carbon footprint forecast for MSME
 // @access  Private
 router.get('/forecast', auth, async (req, res) => {
+  console.log("carbonforecasting : 13")
   try {
     const { forecastPeriods = 12, confidenceLevel = 0.95, modelType = 'auto' } = req.query;
     

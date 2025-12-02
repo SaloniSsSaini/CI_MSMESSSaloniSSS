@@ -34,6 +34,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   Timeline as TimelineIcon
 } from '@mui/icons-material';
+import ApiService from "../services/api";
 
 interface Recommendation {
   id: string;
@@ -59,10 +60,23 @@ const Recommendations: React.FC = () => {
 
   useEffect(() => {
     // Load MSME registration data
-    const savedData = localStorage.getItem('msmeRegistration');
-    if (savedData) {
-      setMsmeData(JSON.parse(savedData));
-    }
+    // const savedData = localStorage.getItem('msmeRegistration');
+    // if (savedData) {
+    //   setMsmeData(JSON.parse(savedData));
+    // }
+    const fetchData = async () => {
+      try {
+        const response = await ApiService?.getMSMEProfile();
+        console.log("API DATA:", response);
+
+        if (response) {
+          setMsmeData(response.data); // DO NOT JSON.parse
+        }
+      } catch (err) {
+        console.error("Error fetching MSME profile:", err);
+      }
+    };
+    fetchData();
 
     // Generate recommendations based on MSME data
     setTimeout(() => {
@@ -325,8 +339,8 @@ const Recommendations: React.FC = () => {
     }
   };
 
-  const filteredRecommendations = selectedCategory === 'all' 
-    ? recommendations 
+  const filteredRecommendations = selectedCategory === 'all'
+    ? recommendations
     : recommendations.filter(rec => rec.category === selectedCategory);
 
   const categories = ['all', ...Array.from(new Set(recommendations.map(rec => rec.category)))];
@@ -390,18 +404,18 @@ const Recommendations: React.FC = () => {
                       {recommendation.title}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                      <Chip 
-                        label={recommendation.priority.toUpperCase()} 
+                      <Chip
+                        label={recommendation.priority.toUpperCase()}
                         color={getPriorityColor(recommendation.priority) as any}
                         size="small"
                       />
-                      <Chip 
-                        label={`${recommendation.cost.toUpperCase()} COST`} 
+                      <Chip
+                        label={`${recommendation.cost.toUpperCase()} COST`}
                         color={getCostColor(recommendation.cost) as any}
                         size="small"
                       />
-                      <Chip 
-                        label={recommendation.timeline.toUpperCase()} 
+                      <Chip
+                        label={recommendation.timeline.toUpperCase()}
                         color="info"
                         size="small"
                         icon={getTimelineIcon(recommendation.timeline)}
@@ -445,7 +459,7 @@ const Recommendations: React.FC = () => {
                     <List dense>
                       {recommendation.implementation.map((step, index) => (
                         <ListItem key={index}>
-                          <ListItemText 
+                          <ListItemText
                             primary={`${index + 1}. ${step}`}
                             primaryTypographyProps={{ variant: 'body2' }}
                           />
@@ -460,7 +474,7 @@ const Recommendations: React.FC = () => {
                         <Typography variant="h6" gutterBottom>
                           Impact Metrics
                         </Typography>
-                        
+
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="body2" color="text.secondary">
                             Environmental Impact
@@ -497,8 +511,8 @@ const Recommendations: React.FC = () => {
                         </Box>
 
                         <CardActions>
-                          <Button 
-                            variant="contained" 
+                          <Button
+                            variant="contained"
                             fullWidth
                             startIcon={<EcoIcon />}
                           >

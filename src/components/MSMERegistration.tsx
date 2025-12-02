@@ -1,13 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import React, { useState } from "react";
 import {
   Paper,
   Typography,
@@ -22,158 +13,51 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Checkbox,
   Alert,
   CircularProgress,
-  Stack,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { CheckCircleOutline as SuccessIcon } from "@mui/icons-material";
 import ApiService from "../services/api";
-import {
-  MSMERegistrationData,
-  useRegistration,
-} from "../context/RegistrationContext";
 
-// Validation schema for MSME registration
-const createRegistrationSchema = () =>
-  yup.object({
-    // Basic Company Information
-    companyName: yup.string().required("Company name is required"),
-    companyType: yup.string().required("Company type is required"),
-    industry: yup.string().required("Industry is required"),
-    businessDomain: yup.string().required("Business domain is required"),
-    establishmentYear: yup
-      .number()
-      .typeError("Establishment year is required")
-      .required("Establishment year is required")
-      .min(1900, "Invalid year")
-      .max(new Date().getFullYear(), "Year cannot be in the future"),
-
-    // MSME Registration Details
-    udyamRegistrationNumber: yup
-      .string()
-      .required("UDYAM Registration Number is required")
-      .matches(
-        /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/,
-        "Invalid UDYAM Registration Number format",
-      ),
-    gstNumber: yup
-      .string()
-      .required("GST Number is required")
-      .matches(
-        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-        "Invalid GST Number format",
-      ),
-    panNumber: yup
-      .string()
-      .required("PAN Number is required")
-      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN Number format"),
-
-    // Contact Information
-    email: yup
-      .string()
-      .email("Invalid email format")
-      .required("Email is required"),
-    phone: yup
-      .string()
-      .required("Phone number is required")
-      .matches(/^[6-9]\d{9}$/, "Invalid phone number format"),
-
-    // Address Information
-    address: yup.string().required("Address is required"),
-    city: yup.string().required("City is required"),
-    state: yup.string().required("State is required"),
-    pincode: yup
-      .string()
-      .required("Pincode is required")
-      .matches(/^[1-9][0-9]{5}$/, "Invalid pincode format"),
-    country: yup.string().required("Country is required"),
-
-    // Business Details
-    annualTurnover: yup
-      .number()
-      .typeError("Annual turnover is required")
-      .required("Annual turnover is required")
-      .min(0, "Turnover cannot be negative"),
-    numberOfEmployees: yup
-      .number()
-      .typeError("Number of employees is required")
-      .required("Number of employees is required")
-      .min(1, "Must have at least 1 employee"),
-
-    // Manufacturing Details
-    manufacturingUnits: yup
-      .number()
-      .typeError("Number of manufacturing units is required")
-      .required("Number of manufacturing units is required")
-      .min(1, "Must have at least 1 unit"),
-    primaryProducts: yup
-      .string()
-      .required("Primary products/services is required"),
-
-    // Environmental Compliance
-    hasEnvironmentalClearance: yup.boolean().required(),
-    hasPollutionControlBoard: yup.boolean().required(),
-    hasWasteManagement: yup.boolean().required(),
-
-    // Terms and Conditions
-    agreeToTerms: yup
-      .boolean()
-      .oneOf([true], "You must agree to the terms and conditions")
-      .required(),
-    agreeToDataProcessing: yup
-      .boolean()
-      .oneOf([true], "You must agree to data processing terms")
-      .required(),
-
-    // Account Credentials
-    password: yup
-      .string()
-      .trim()
-      .when("$isEditing", {
-        is: true,
-        then: (schema) =>
-          schema
-            .transform((value) => (value === "" ? undefined : value))
-            .notRequired()
-            .min(6, "Password must be at least 6 characters"),
-        otherwise: (schema) =>
-          schema
-            .min(6, "Password must be at least 6 characters")
-            .required("Password is required"),
-      }),
-    confirmPassword: yup
-      .string()
-      .trim()
-      .transform((value) => (value === "" ? undefined : value))
-      .when("$isEditing", {
-        is: true,
-        then: (schema) =>
-          schema.when("password", {
-            is: (password: string | undefined) => !password,
-            then: (confirmSchema) => confirmSchema.notRequired(),
-            otherwise: (confirmSchema) =>
-              confirmSchema
-                .oneOf([yup.ref("password")], "Passwords must match")
-                .required(
-                  "Confirm password is required when updating password",
-                ),
-          }),
-        otherwise: (schema) =>
-          schema
-            .required("Confirm password is required")
-            .oneOf([yup.ref("password")], "Passwords must match"),
-      }),
-  });
-
-type MSMERegistrationForm = MSMERegistrationData & {
-  password?: string;
-  confirmPassword?: string;
+// Define the form type based on Mongoose schema
+type MSMERegistrationForm = {
+  // Basic Company Information
+  companyName: string;
+  companyType: string;
+  industry: string;
+  businessDomain: string;
+  establishmentYear: string;
+  
+  // MSME Registration Details
+  udyamRegistrationNumber: string;
+  gstNumber: string;
+  panNumber: string;
+  
+  // Contact Information
+  email: string;
+  phone: string;
+  
+  // Address Information
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+  
+  // Business Details
+  annualTurnover: string;
+  numberOfEmployees: string;
+  manufacturingUnits: string;
+  primaryProducts: string;
+  
+  // Environmental Compliance
+  hasEnvironmentalClearance: boolean;
+  hasPollutionControlBoard: boolean;
+  hasWasteManagement: boolean;
 };
-
-type AutoLoginState = "idle" | "pending" | "success" | "error";
 
 const steps = [
   "Company Information",
@@ -181,447 +65,330 @@ const steps = [
   "Contact & Address",
   "Business Details",
   "Environmental Compliance",
-  "Account Setup & Review",
+  "Review & Submit"
 ];
 
 const MSMERegistration: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    isRegistered,
-    hasCompletedRegistration,
-    registrationData,
-    completeRegistration,
-    login,
-    logout,
-    resetRegistration,
-  } = useRegistration();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccessMessage, setSubmitSuccessMessage] = useState<
-    string | null
-  >(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showPostRegistrationSuccess, setShowPostRegistrationSuccess] =
-    useState(false);
-  const [autoLoginState, setAutoLoginState] = useState<AutoLoginState>("idle");
-  const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const defaultValues = useMemo<Partial<MSMERegistrationForm>>(
-    () => ({
-      companyName: "",
-      companyType: "",
-      industry: "",
-      businessDomain: "",
-      establishmentYear: undefined,
-      udyamRegistrationNumber: "",
-      gstNumber: "",
-      panNumber: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      pincode: "",
-      country: "India",
-      annualTurnover: undefined,
-      numberOfEmployees: undefined,
-      manufacturingUnits: undefined,
-      primaryProducts: "",
-      hasEnvironmentalClearance: false,
-      hasPollutionControlBoard: false,
-      hasWasteManagement: false,
-      agreeToTerms: false,
-      agreeToDataProcessing: false,
-      password: "",
-      confirmPassword: "",
-    }),
-    [],
-  );
-
-  const isEditingRef = useRef(isEditing);
-
-  useEffect(() => {
-    isEditingRef.current = isEditing;
-  }, [isEditing]);
-
-  const resolver = useCallback(
-    (data: MSMERegistrationForm, context: any, options: any) =>
-      yupResolver<MSMERegistrationForm>(createRegistrationSchema(), {
-        context: { isEditing: isEditingRef.current },
-      })(data, context, options),
-    [],
-  );
-
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-    trigger,
-    reset,
-  } = useForm<MSMERegistrationForm>({
-    resolver,
-    defaultValues,
+  // Form state
+  const [formData, setFormData] = useState<MSMERegistrationForm>({
+    // Basic Company Information
+    companyName: "",
+    companyType: "",
+    industry: "",
+    businessDomain: "",
+    establishmentYear: "",
+    
+    // MSME Registration Details
+    udyamRegistrationNumber: "",
+    gstNumber: "",
+    panNumber: "",
+    
+    // Contact Information
+    email: "",
+    phone: "",
+    
+    // Address Information
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "India",
+    
+    // Business Details
+    annualTurnover: "",
+    numberOfEmployees: "",
+    manufacturingUnits: "",
+    primaryProducts: "",
+    
+    // Environmental Compliance
+    hasEnvironmentalClearance: false,
+    hasPollutionControlBoard: false,
+    hasWasteManagement: false,
   });
 
-  const scrollToTop = () => {
-    if (
-      typeof window !== "undefined" &&
-      typeof window.scrollTo === "function"
-    ) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  // Validation state
+  const [errors, setErrors] = useState<Partial<MSMERegistrationForm>>({});
+
+  // Handle input changes
+  const handleInputChange = (field: keyof MSMERegistrationForm, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
     }
   };
 
-  useEffect(() => {
-    if (registrationData?.email) {
-      setLoginEmail(registrationData.email);
+  // Validation functions
+  const validateStep = (step: number): boolean => {
+    const newErrors: Partial<MSMERegistrationForm> = {};
+
+    switch (step) {
+      case 0:
+        if (!formData.companyName.trim()) newErrors.companyName = "Company name is required";
+        if (!formData.companyType) newErrors.companyType = "Company type is required";
+        if (!formData.industry) newErrors.industry = "Industry is required";
+        if (!formData.businessDomain) newErrors.businessDomain = "Business domain is required";
+        if (!formData.establishmentYear.trim()) newErrors.establishmentYear = "Establishment year is required";
+        else if (isNaN(Number(formData.establishmentYear)) || Number(formData.establishmentYear) < 1900 || Number(formData.establishmentYear) > new Date().getFullYear())
+          newErrors.establishmentYear = "Invalid establishment year";
+        break;
+      
+      case 1:
+        if (!formData.udyamRegistrationNumber.trim()) newErrors.udyamRegistrationNumber = "UDYAM Registration Number is required";
+        else if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(formData.udyamRegistrationNumber))
+          newErrors.udyamRegistrationNumber = "Invalid UDYAM format: UDYAM-XX-00-0000000";
+        
+        if (!formData.gstNumber.trim()) newErrors.gstNumber = "GST Number is required";
+        else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstNumber))
+          newErrors.gstNumber = "Invalid GST Number format";
+        
+        if (!formData.panNumber.trim()) newErrors.panNumber = "PAN Number is required";
+        else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber))
+          newErrors.panNumber = "Invalid PAN Number format";
+        break;
+      
+      case 2:
+        if (!formData.email.trim()) newErrors.email = "Email is required";
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email format";
+        
+        if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
+        else if (!/^[6-9]\d{9}$/.test(formData.phone)) newErrors.phone = "Invalid phone number format";
+        
+        if (!formData.address.trim()) newErrors.address = "Address is required";
+        if (!formData.city.trim()) newErrors.city = "City is required";
+        if (!formData.state.trim()) newErrors.state = "State is required";
+        if (!formData.pincode.trim()) newErrors.pincode = "Pincode is required";
+        else if (!/^[1-9][0-9]{5}$/.test(formData.pincode)) newErrors.pincode = "Invalid pincode format";
+        break;
+      
+      case 3:
+        if (!formData.annualTurnover.trim()) newErrors.annualTurnover = "Annual turnover is required";
+        else if (isNaN(Number(formData.annualTurnover)) || Number(formData.annualTurnover) < 0) 
+          newErrors.annualTurnover = "Turnover cannot be negative";
+        
+        if (!formData.numberOfEmployees.trim()) newErrors.numberOfEmployees = "Number of employees is required";
+        else if (isNaN(Number(formData.numberOfEmployees)) || Number(formData.numberOfEmployees) < 1) 
+          newErrors.numberOfEmployees = "Must have at least 1 employee";
+        
+        if (!formData.manufacturingUnits.trim()) newErrors.manufacturingUnits = "Number of manufacturing units is required";
+        else if (isNaN(Number(formData.manufacturingUnits)) || Number(formData.manufacturingUnits) < 1) 
+          newErrors.manufacturingUnits = "Must have at least 1 unit";
+        
+        if (!formData.primaryProducts.trim()) newErrors.primaryProducts = "Primary products/services is required";
+        break;
     }
-  }, [registrationData]);
 
-  useEffect(() => {
-    if (!isRegistered && !isEditing) {
-      setActiveStep(0);
-      reset(defaultValues);
-    }
-
-    if (isRegistered && !isEditing) {
-      setActiveStep(steps.length);
-    }
-  }, [isRegistered, isEditing, reset, defaultValues]);
-
-  const registrationSuccess = isRegistered && Boolean(registrationData);
-  const shouldShowSuccess = registrationSuccess && !isEditing;
-  const showLoginForm =
-    hasCompletedRegistration && !isRegistered && autoLoginState !== "pending";
-
-  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoginError(null);
-
-    if (!loginEmail || !loginPassword) {
-      setLoginError("Please enter both email and password.");
-      return;
-    }
-
-    setIsLoggingIn(true);
-
-    try {
-      await login(loginEmail, loginPassword);
-      setLoginPassword("");
-      setShowPostRegistrationSuccess(false);
-      navigate("/carbon-footprint");
-    } catch (error) {
-      setLoginError(
-        error instanceof Error
-          ? error.message
-          : "Login failed. Please try again.",
-      );
-    } finally {
-      setIsLoggingIn(false);
-    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleResetStoredRegistration = () => {
-    setSubmitError(null);
-    setSubmitSuccessMessage(null);
-    resetRegistration();
-    setLoginEmail("");
-    setLoginPassword("");
-    setLoginError(null);
-    setAutoLoginState("idle");
-    setAutoLoginError(null);
-    setIsEditing(false);
-    setActiveStep(0);
-    reset(defaultValues);
-    setShowPostRegistrationSuccess(false);
-    scrollToTop();
-  };
-
-  const handleNext = async () => {
-    setSubmitSuccessMessage(null);
-    const fieldsToValidate = getFieldsForStep(activeStep);
-    const isValid = await trigger(fieldsToValidate);
-
-    if (isValid) {
+  const handleNext = () => {
+    if (validateStep(activeStep)) {
       setActiveStep((prevStep) => prevStep + 1);
+      setSubmitError(null);
     }
   };
 
   const handleBack = () => {
-    setSubmitSuccessMessage(null);
     setActiveStep((prevStep) => prevStep - 1);
-  };
-
-  const getFieldsForStep = (step: number): (keyof MSMERegistrationForm)[] => {
-    switch (step) {
-      case 0:
-        return [
-          "companyName",
-          "companyType",
-          "industry",
-          "businessDomain",
-          "establishmentYear",
-        ];
-      case 1:
-        return ["udyamRegistrationNumber", "gstNumber", "panNumber"];
-      case 2:
-        return [
-          "email",
-          "phone",
-          "address",
-          "city",
-          "state",
-          "pincode",
-          "country",
-        ];
-      case 3:
-        return [
-          "annualTurnover",
-          "numberOfEmployees",
-          "manufacturingUnits",
-          "primaryProducts",
-        ];
-      case 4:
-        return [
-          "hasEnvironmentalClearance",
-          "hasPollutionControlBoard",
-          "hasWasteManagement",
-        ];
-      case 5: {
-        const fields: (keyof MSMERegistrationForm)[] = [
-          "agreeToTerms",
-          "agreeToDataProcessing",
-        ];
-
-        if (!isEditing) {
-          fields.unshift("confirmPassword");
-          fields.unshift("password");
-        }
-
-        return fields;
-      }
-      default:
-        return [];
-    }
-  };
-
-  const sanitizeRegistrationData = (
-    data: MSMERegistrationForm,
-  ): MSMERegistrationData => {
-    const { password, confirmPassword, ...rest } = data;
-
-    return {
-      ...rest,
-    };
-  };
-
-  const buildMsmeProfilePayload = (data: MSMERegistrationData) => ({
-    companyName: data.companyName,
-    companyType: data.companyType,
-    industry: data.industry,
-    businessDomain: data.businessDomain,
-    establishmentYear: data.establishmentYear,
-    udyamRegistrationNumber: data.udyamRegistrationNumber,
-    gstNumber: data.gstNumber,
-    panNumber: data.panNumber,
-    contact: {
-      email: data.email,
-      phone: data.phone,
-      address: {
-        street: data.address,
-        city: data.city,
-        state: data.state,
-        pincode: data.pincode,
-        country: data.country,
-      },
-    },
-    business: {
-      annualTurnover: data.annualTurnover,
-      numberOfEmployees: data.numberOfEmployees,
-      manufacturingUnits: data.manufacturingUnits,
-      primaryProducts: data.primaryProducts,
-    },
-    environmentalCompliance: {
-      hasEnvironmentalClearance: data.hasEnvironmentalClearance,
-      hasPollutionControlBoard: data.hasPollutionControlBoard,
-      hasWasteManagement: data.hasWasteManagement,
-    },
-  });
-
-  const onSubmit = async (data: MSMERegistrationForm) => {
-    setIsSubmitting(true);
     setSubmitError(null);
-    setSubmitSuccessMessage(null);
-    setAutoLoginError(null);
-    if (!isEditing) {
-      setAutoLoginState("idle");
-    }
+  };
 
-    const sanitizedData = sanitizeRegistrationData(data);
-    const passwordForAutoLogin = data.password;
+  // const onSubmit = async () => {
+  //   setIsSubmitting(true);
+  //   setSubmitError(null);
 
-    try {
-      if (isEditing) {
-        const profileResponse = await ApiService.updateMSMEProfile(
-          buildMsmeProfilePayload(sanitizedData),
-        );
+  //   try {
+  //     // Prepare data for backend according to Mongoose schema
+  //     const submissionData = {
+  //       companyName: formData.companyName,
+  //       companyType: formData.companyType,
+  //       industry: formData.industry,
+  //       businessDomain: formData.businessDomain,
+  //       establishmentYear: Number(formData.establishmentYear),
+  //       udyamRegistrationNumber: formData.udyamRegistrationNumber,
+  //       gstNumber: formData.gstNumber,
+  //       panNumber: formData.panNumber,
+  //       contact: {
+  //         email: formData.email,
+  //         phone: formData.phone,
+  //         address: {
+  //           street: formData.address,
+  //           city: formData.city,
+  //           state: formData.state,
+  //           pincode: formData.pincode,
+  //           country: formData.country,
+  //         },
+  //       },
+  //       business: {
+  //         annualTurnover: Number(formData.annualTurnover),
+  //         numberOfEmployees: Number(formData.numberOfEmployees),
+  //         manufacturingUnits: Number(formData.manufacturingUnits),
+  //         primaryProducts: formData.primaryProducts,
+  //       },
+  //       environmentalCompliance: {
+  //         hasEnvironmentalClearance: formData.hasEnvironmentalClearance,
+  //         hasPollutionControlBoard: formData.hasPollutionControlBoard,
+  //         hasWasteManagement: formData.hasWasteManagement,
+  //       },
+  //     };
 
-        if (!profileResponse?.success) {
-          throw new Error(
-            profileResponse?.message || "Unable to update MSME profile.",
-          );
-        }
+  //     console.log("Submitting MSME registration data:", submissionData);
+      
+  //     // Simulate API call - replace with actual API call
+  //     await new Promise(resolve => setTimeout(resolve, 2000));
+      
+  //     console.log("MSME Registration successful!");
+  //     setSubmitSuccess(true);
+      
+  //   } catch (error) {
+  //     console.error("Registration error:", error);
+  //     setSubmitError(
+  //       error instanceof Error
+  //         ? error.message
+  //         : "Registration failed. Please try again."
+  //     );
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
-        completeRegistration(sanitizedData);
-        setIsEditing(false);
-        setActiveStep(steps.length);
-        reset({ ...sanitizedData, password: "", confirmPassword: "" });
-        scrollToTop();
-        return;
-      }
 
-      const registerResponse = await ApiService.register({
-        email: data.email,
-        password: data.password,
-        role: "msme",
-        profile: {
-          companyName: data.companyName,
-          businessDomain: data.businessDomain,
+  const onSubmit = async () => {
+  setIsSubmitting(true);
+  setSubmitError(null);
+
+  try {
+    // Prepare data for backend according to Mongoose schema
+    const submissionData = {
+      companyName: formData.companyName,
+      companyType: formData.companyType,
+      industry: formData.industry,
+      businessDomain: formData.businessDomain,
+      establishmentYear: Number(formData.establishmentYear),
+      udyamRegistrationNumber: formData.udyamRegistrationNumber,
+      gstNumber: formData.gstNumber,
+      panNumber: formData.panNumber,
+      contact: {
+        email: formData.email,
+        phone: formData.phone,
+        address: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+          country: formData.country,
         },
-      });
+      },
+      business: {
+        annualTurnover: Number(formData.annualTurnover),
+        numberOfEmployees: Number(formData.numberOfEmployees),
+        manufacturingUnits: Number(formData.manufacturingUnits),
+        primaryProducts: formData.primaryProducts,
+      },
+      environmentalCompliance: {
+        hasEnvironmentalClearance: formData.hasEnvironmentalClearance,
+        hasPollutionControlBoard: formData.hasPollutionControlBoard,
+        hasWasteManagement: formData.hasWasteManagement,
+      },
+    };
 
-      if (!registerResponse?.success) {
-        throw new Error(
-          registerResponse?.message || "Registration failed. Please try again.",
-        );
-      }
-
-      const token = registerResponse?.data?.token;
-
-      if (!token) {
-        throw new Error(
-          "Registration failed. Authentication token missing in response.",
-        );
-      }
-
-      let tokenPersisted = false;
-
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("token", token);
-          tokenPersisted = true;
-        } catch (storageError) {
-          console.warn(
-            "Unable to persist authentication token after registration.",
-            storageError,
-          );
-        }
-      }
-
-      try {
-        const profileResponse = await ApiService.updateMSMEProfile(
-          buildMsmeProfilePayload(sanitizedData),
-        );
-
-        if (!profileResponse?.success) {
-          throw new Error(
-            profileResponse?.message ||
-              "Unable to complete MSME profile setup.",
-          );
-        }
-
-        completeRegistration(sanitizedData);
-        setIsEditing(false);
-        setActiveStep(steps.length);
-        reset({ ...sanitizedData, password: "", confirmPassword: "" });
-        setLoginEmail(sanitizedData.email);
-        scrollToTop();
-
-        setSubmitSuccessMessage(
-          "Registration successful! Our AI agents are ready to assist with carbon footprint calculations, analytics, predictive insights, tailored recommendations, and climate incentives. Use your credentials to log in and continue.",
-        );
-        setShowPostRegistrationSuccess(true);
-
-        if (passwordForAutoLogin && passwordForAutoLogin.trim()) {
-          setAutoLoginState("pending");
-
-          try {
-            await login(sanitizedData.email, passwordForAutoLogin);
-            setAutoLoginState("success");
-            setShowPostRegistrationSuccess(false);
-            setSubmitSuccessMessage(null);
-            scrollToTop();
-          } catch (autoLoginException) {
-            console.error(
-              "Automatic login failed after registration.",
-              autoLoginException,
-            );
-            const autoLoginMessage =
-              autoLoginException instanceof Error
-                ? autoLoginException.message
-                : "Automatic login failed. Please sign in manually.";
-            setAutoLoginError(autoLoginMessage);
-            setAutoLoginState("error");
-          }
-        } else {
-          setAutoLoginError(
-            "Automatic login failed because no password was provided. Please sign in manually.",
-          );
-          setAutoLoginState("error");
-        }
-      } finally {
-        if (tokenPersisted && typeof window !== "undefined") {
-          try {
-            localStorage.removeItem("token");
-          } catch (cleanupError) {
-            console.warn(
-              "Unable to clear temporary authentication token after registration.",
-              cleanupError,
-            );
-          }
-        }
-      }
-    } catch (error) {
-      if (!isEditing && typeof window !== "undefined") {
-        try {
-          localStorage.removeItem("token");
-        } catch (cleanupError) {
-          console.warn(
-            "Unable to clear authentication token after failed registration.",
-            cleanupError,
-          );
-        }
-      }
-
-      setAutoLoginState("idle");
-      setSubmitSuccessMessage(null);
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Registration failed. Please try again.",
-      );
-    } finally {
-      setIsSubmitting(false);
+    console.log("Submitting MSME registration data:", submissionData);
+    
+    // Use your ApiService to register MSME
+    const response = await ApiService.registerMSME(submissionData);
+    
+    if (response.success) {
+      console.log("MSME Registration successful!");
+      setSubmitSuccess(true);
+    } else {
+      throw new Error(response.message || "Registration failed");
     }
-  };
+    
+  } catch (error) {
+    console.error("Registration error:", error);
+    setSubmitError(
+      error instanceof Error
+        ? error.message
+        : "Registration failed. Please try again."
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-  const handleEditRegistration = () => {
-    setSubmitError(null);
-    setSubmitSuccessMessage(null);
-    setIsEditing(true);
-    setActiveStep(0);
-    const currentData = registrationData
-      ? { ...registrationData, password: "", confirmPassword: "" }
-      : defaultValues;
 
-    reset(currentData);
 
-    scrollToTop();
+
+  // Helper function to format display values
+  const formatDisplayValue = (value: any, fieldName: keyof MSMERegistrationForm): string => {
+    if (!value || value.toString().trim() === "") {
+      return "Not provided";
+    }
+
+    switch (fieldName) {
+      case "companyType":
+        const companyTypeMap: { [key: string]: string } = {
+          micro: "Micro Enterprise",
+          small: "Small Enterprise",
+          medium: "Medium Enterprise",
+        };
+        return companyTypeMap[value] || value;
+      
+      case "businessDomain":
+        const businessDomainMap: { [key: string]: string } = {
+          manufacturing: "Manufacturing",
+          trading: "Trading",
+          services: "Services",
+          export_import: "Export/Import",
+          retail: "Retail",
+          wholesale: "Wholesale",
+          e_commerce: "E-Commerce",
+          consulting: "Consulting",
+          logistics: "Logistics & Transportation",
+          agriculture: "Agriculture & Allied",
+          handicrafts: "Handicrafts & Artisans",
+          food_processing: "Food Processing",
+          textiles: "Textiles & Garments",
+          electronics: "Electronics & IT",
+          automotive: "Automotive & Engineering",
+          construction: "Construction & Real Estate",
+          healthcare: "Healthcare & Pharmaceuticals",
+          education: "Education & Training",
+          tourism: "Tourism & Hospitality",
+          other: "Other",
+        };
+        return businessDomainMap[value] || value;
+      
+      case "annualTurnover":
+        return `₹${Number(value).toLocaleString()}`;
+      
+      case "establishmentYear":
+      case "numberOfEmployees":
+      case "manufacturingUnits":
+        return value.toString();
+      
+      case "hasEnvironmentalClearance":
+      case "hasPollutionControlBoard":
+      case "hasWasteManagement":
+        return value ? "Yes" : "No";
+      
+      default:
+        return value.toString();
+    }
   };
 
   const renderStepContent = (step: number) => {
@@ -630,122 +397,108 @@ const MSMERegistration: React.FC = () => {
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Controller
-                name="companyName"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Company Name"
-                    error={!!errors.companyName}
-                    helperText={errors.companyName?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Company Name"
+                value={formData.companyName}
+                onChange={(e) => handleInputChange("companyName", e.target.value)}
+                error={!!errors.companyName}
+                helperText={errors.companyName}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="companyType"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.companyType}>
-                    <InputLabel>Company Type</InputLabel>
-                    <Select {...field} label="Company Type">
-                      <MenuItem value="micro">Micro Enterprise</MenuItem>
-                      <MenuItem value="small">Small Enterprise</MenuItem>
-                      <MenuItem value="medium">Medium Enterprise</MenuItem>
-                    </Select>
-                  </FormControl>
+              <FormControl fullWidth error={!!errors.companyType} required>
+                <InputLabel>Company Type</InputLabel>
+                <Select
+                  value={formData.companyType}
+                  label="Company Type"
+                  onChange={(e) => handleInputChange("companyType", e.target.value)}
+                >
+                  <MenuItem value=""><em>Select Company Type</em></MenuItem>
+                  <MenuItem value="micro">Micro Enterprise</MenuItem>
+                  <MenuItem value="small">Small Enterprise</MenuItem>
+                  <MenuItem value="medium">Medium Enterprise</MenuItem>
+                </Select>
+                {errors.companyType && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                    {errors.companyType}
+                  </Typography>
                 )}
-              />
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="industry"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.industry}>
-                    <InputLabel>Industry</InputLabel>
-                    <Select {...field} label="Industry">
-                      <MenuItem value="manufacturing">Manufacturing</MenuItem>
-                      <MenuItem value="textiles">Textiles</MenuItem>
-                      <MenuItem value="food">Food Processing</MenuItem>
-                      <MenuItem value="chemicals">Chemicals</MenuItem>
-                      <MenuItem value="electronics">Electronics</MenuItem>
-                      <MenuItem value="automotive">Automotive</MenuItem>
-                      <MenuItem value="pharmaceuticals">
-                        Pharmaceuticals
-                      </MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </Select>
-                  </FormControl>
+              <FormControl fullWidth error={!!errors.industry} required>
+                <InputLabel>Industry</InputLabel>
+                <Select
+                  value={formData.industry}
+                  label="Industry"
+                  onChange={(e) => handleInputChange("industry", e.target.value)}
+                >
+                  <MenuItem value=""><em>Select Industry</em></MenuItem>
+                  <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                  <MenuItem value="textiles">Textiles</MenuItem>
+                  <MenuItem value="food">Food Processing</MenuItem>
+                  <MenuItem value="chemicals">Chemicals</MenuItem>
+                  <MenuItem value="electronics">Electronics</MenuItem>
+                  <MenuItem value="automotive">Automotive</MenuItem>
+                  <MenuItem value="pharmaceuticals">Pharmaceuticals</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+                {errors.industry && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                    {errors.industry}
+                  </Typography>
                 )}
-              />
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="businessDomain"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.businessDomain}>
-                    <InputLabel>Business Domain</InputLabel>
-                    <Select {...field} label="Business Domain">
-                      <MenuItem value="manufacturing">Manufacturing</MenuItem>
-                      <MenuItem value="trading">Trading</MenuItem>
-                      <MenuItem value="services">Services</MenuItem>
-                      <MenuItem value="export_import">Export/Import</MenuItem>
-                      <MenuItem value="retail">Retail</MenuItem>
-                      <MenuItem value="wholesale">Wholesale</MenuItem>
-                      <MenuItem value="e_commerce">E-Commerce</MenuItem>
-                      <MenuItem value="consulting">Consulting</MenuItem>
-                      <MenuItem value="logistics">
-                        Logistics & Transportation
-                      </MenuItem>
-                      <MenuItem value="agriculture">
-                        Agriculture & Allied
-                      </MenuItem>
-                      <MenuItem value="handicrafts">
-                        Handicrafts & Artisans
-                      </MenuItem>
-                      <MenuItem value="food_processing">
-                        Food Processing
-                      </MenuItem>
-                      <MenuItem value="textiles">Textiles & Garments</MenuItem>
-                      <MenuItem value="electronics">Electronics & IT</MenuItem>
-                      <MenuItem value="automotive">
-                        Automotive & Engineering
-                      </MenuItem>
-                      <MenuItem value="construction">
-                        Construction & Real Estate
-                      </MenuItem>
-                      <MenuItem value="healthcare">
-                        Healthcare & Pharmaceuticals
-                      </MenuItem>
-                      <MenuItem value="education">
-                        Education & Training
-                      </MenuItem>
-                      <MenuItem value="tourism">Tourism & Hospitality</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </Select>
-                  </FormControl>
+              <FormControl fullWidth error={!!errors.businessDomain} required>
+                <InputLabel>Business Domain</InputLabel>
+                <Select
+                  value={formData.businessDomain}
+                  label="Business Domain"
+                  onChange={(e) => handleInputChange("businessDomain", e.target.value)}
+                >
+                  <MenuItem value=""><em>Select Business Domain</em></MenuItem>
+                  <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                  <MenuItem value="trading">Trading</MenuItem>
+                  <MenuItem value="services">Services</MenuItem>
+                  <MenuItem value="export_import">Export/Import</MenuItem>
+                  <MenuItem value="retail">Retail</MenuItem>
+                  <MenuItem value="wholesale">Wholesale</MenuItem>
+                  <MenuItem value="e_commerce">E-Commerce</MenuItem>
+                  <MenuItem value="consulting">Consulting</MenuItem>
+                  <MenuItem value="logistics">Logistics & Transportation</MenuItem>
+                  <MenuItem value="agriculture">Agriculture & Allied</MenuItem>
+                  <MenuItem value="handicrafts">Handicrafts & Artisans</MenuItem>
+                  <MenuItem value="food_processing">Food Processing</MenuItem>
+                  <MenuItem value="textiles">Textiles & Garments</MenuItem>
+                  <MenuItem value="electronics">Electronics & IT</MenuItem>
+                  <MenuItem value="automotive">Automotive & Engineering</MenuItem>
+                  <MenuItem value="construction">Construction & Real Estate</MenuItem>
+                  <MenuItem value="healthcare">Healthcare & Pharmaceuticals</MenuItem>
+                  <MenuItem value="education">Education & Training</MenuItem>
+                  <MenuItem value="tourism">Tourism & Hospitality</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+                {errors.businessDomain && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                    {errors.businessDomain}
+                  </Typography>
                 )}
-              />
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="establishmentYear"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type="number"
-                    label="Establishment Year"
-                    error={!!errors.establishmentYear}
-                    helperText={errors.establishmentYear?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                type="number"
+                label="Establishment Year"
+                value={formData.establishmentYear}
+                onChange={(e) => handleInputChange("establishmentYear", e.target.value)}
+                error={!!errors.establishmentYear}
+                helperText={errors.establishmentYear}
+                required
               />
             </Grid>
           </Grid>
@@ -760,58 +513,39 @@ const MSMERegistration: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="udyamRegistrationNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="UDYAM Registration Number"
-                    placeholder="UDYAM-XX-00-0000000"
-                    error={!!errors.udyamRegistrationNumber}
-                    helperText={
-                      errors.udyamRegistrationNumber?.message ||
-                      "Format: UDYAM-XX-00-0000000"
-                    }
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="UDYAM Registration Number"
+                placeholder="UDYAM-XX-00-0000000"
+                value={formData.udyamRegistrationNumber}
+                onChange={(e) => handleInputChange("udyamRegistrationNumber", e.target.value)}
+                error={!!errors.udyamRegistrationNumber}
+                helperText={errors.udyamRegistrationNumber || "Format: UDYAM-XX-00-0000000"}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="gstNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="GST Number"
-                    placeholder="00XXXXX0000X0X"
-                    error={!!errors.gstNumber}
-                    helperText={
-                      errors.gstNumber?.message || "Format: 00XXXXX0000X0X"
-                    }
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="GST Number"
+                placeholder="00XXXXX0000X0X"
+                value={formData.gstNumber}
+                onChange={(e) => handleInputChange("gstNumber", e.target.value)}
+                error={!!errors.gstNumber}
+                helperText={errors.gstNumber || "Format: 00XXXXX0000X0X"}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="panNumber"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="PAN Number"
-                    placeholder="XXXXX0000X"
-                    error={!!errors.panNumber}
-                    helperText={
-                      errors.panNumber?.message || "Format: XXXXX0000X"
-                    }
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="PAN Number"
+                placeholder="XXXXX0000X"
+                value={formData.panNumber}
+                onChange={(e) => handleInputChange("panNumber", e.target.value)}
+                error={!!errors.panNumber}
+                helperText={errors.panNumber || "Format: XXXXX0000X"}
+                required
               />
             </Grid>
           </Grid>
@@ -826,118 +560,82 @@ const MSMERegistration: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="email"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type="email"
-                    label="Email Address"
-                    error={!!errors.email}
-                    helperText={
-                      errors.email?.message ||
-                      (isEditing
-                        ? "Account email cannot be updated here."
-                        : undefined)
-                    }
-                    disabled={isEditing}
-                  />
-                )}
+              <TextField
+                fullWidth
+                type="email"
+                label="Email Address"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                error={!!errors.email}
+                helperText={errors.email}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="phone"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Phone Number"
-                    placeholder="9876543210"
-                    error={!!errors.phone}
-                    helperText={errors.phone?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Phone Number"
+                placeholder="9876543210"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                error={!!errors.phone}
+                helperText={errors.phone}
+                required
               />
             </Grid>
             <Grid item xs={12}>
-              <Controller
-                name="address"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="Address"
-                    error={!!errors.address}
-                    helperText={errors.address?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Address"
+                value={formData.address}
+                onChange={(e) => handleInputChange("address", e.target.value)}
+                error={!!errors.address}
+                helperText={errors.address}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Controller
-                name="city"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="City"
-                    error={!!errors.city}
-                    helperText={errors.city?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="City"
+                value={formData.city}
+                onChange={(e) => handleInputChange("city", e.target.value)}
+                error={!!errors.city}
+                helperText={errors.city}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Controller
-                name="state"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="State"
-                    error={!!errors.state}
-                    helperText={errors.state?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="State"
+                value={formData.state}
+                onChange={(e) => handleInputChange("state", e.target.value)}
+                error={!!errors.state}
+                helperText={errors.state}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Controller
-                name="pincode"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Pincode"
-                    error={!!errors.pincode}
-                    helperText={errors.pincode?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Pincode"
+                value={formData.pincode}
+                onChange={(e) => handleInputChange("pincode", e.target.value)}
+                error={!!errors.pincode}
+                helperText={errors.pincode}
+                required
               />
             </Grid>
             <Grid item xs={12}>
-              <Controller
-                name="country"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Country"
-                    error={!!errors.country}
-                    helperText={errors.country?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Country"
+                value={formData.country}
+                onChange={(e) => handleInputChange("country", e.target.value)}
+                required
               />
             </Grid>
           </Grid>
@@ -952,66 +650,50 @@ const MSMERegistration: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="annualTurnover"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type="number"
-                    label="Annual Turnover (?)"
-                    error={!!errors.annualTurnover}
-                    helperText={errors.annualTurnover?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                type="number"
+                label="Annual Turnover (₹)"
+                value={formData.annualTurnover}
+                onChange={(e) => handleInputChange("annualTurnover", e.target.value)}
+                error={!!errors.annualTurnover}
+                helperText={errors.annualTurnover}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="numberOfEmployees"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type="number"
-                    label="Number of Employees"
-                    error={!!errors.numberOfEmployees}
-                    helperText={errors.numberOfEmployees?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                type="number"
+                label="Number of Employees"
+                value={formData.numberOfEmployees}
+                onChange={(e) => handleInputChange("numberOfEmployees", e.target.value)}
+                error={!!errors.numberOfEmployees}
+                helperText={errors.numberOfEmployees}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="manufacturingUnits"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    type="number"
-                    label="Number of Manufacturing Units"
-                    error={!!errors.manufacturingUnits}
-                    helperText={errors.manufacturingUnits?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                type="number"
+                label="Number of Manufacturing Units"
+                value={formData.manufacturingUnits}
+                onChange={(e) => handleInputChange("manufacturingUnits", e.target.value)}
+                error={!!errors.manufacturingUnits}
+                helperText={errors.manufacturingUnits}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Controller
-                name="primaryProducts"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Primary Products/Services"
-                    error={!!errors.primaryProducts}
-                    helperText={errors.primaryProducts?.message}
-                  />
-                )}
+              <TextField
+                fullWidth
+                label="Primary Products/Services"
+                value={formData.primaryProducts}
+                onChange={(e) => handleInputChange("primaryProducts", e.target.value)}
+                error={!!errors.primaryProducts}
+                helperText={errors.primaryProducts}
+                required
               />
             </Grid>
           </Grid>
@@ -1026,39 +708,36 @@ const MSMERegistration: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12}>
-              <Controller
-                name="hasEnvironmentalClearance"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox {...field} checked={field.value} />}
-                    label="Has Environmental Clearance Certificate"
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.hasEnvironmentalClearance}
+                    onChange={(e) => handleInputChange("hasEnvironmentalClearance", e.target.checked)}
                   />
-                )}
+                }
+                label="Has Environmental Clearance Certificate"
               />
             </Grid>
             <Grid item xs={12}>
-              <Controller
-                name="hasPollutionControlBoard"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox {...field} checked={field.value} />}
-                    label="Registered with State Pollution Control Board"
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.hasPollutionControlBoard}
+                    onChange={(e) => handleInputChange("hasPollutionControlBoard", e.target.checked)}
                   />
-                )}
+                }
+                label="Registered with State Pollution Control Board"
               />
             </Grid>
             <Grid item xs={12}>
-              <Controller
-                name="hasWasteManagement"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox {...field} checked={field.value} />}
-                    label="Has Waste Management System"
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.hasWasteManagement}
+                    onChange={(e) => handleInputChange("hasWasteManagement", e.target.checked)}
                   />
-                )}
+                }
+                label="Has Waste Management System"
               />
             </Grid>
           </Grid>
@@ -1069,89 +748,128 @@ const MSMERegistration: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                {isEditing
-                  ? "Review & Submit Updates"
-                  : "Account Setup & Review"}
+                Review Your Information
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
-                {isEditing
-                  ? "Review your registration details and submit any updates to keep your profile current."
-                  : "Create your account password and review your information before submitting."}
+                Please review all the information before submitting your registration.
               </Typography>
             </Grid>
-            {!isEditing && (
-              <>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="password"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        type="password"
-                        label="Account Password"
-                        autoComplete="new-password"
-                        error={!!errors.password}
-                        helperText={
-                          errors.password?.message || "Minimum 6 characters"
-                        }
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="confirmPassword"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        type="password"
-                        label="Confirm Password"
-                        autoComplete="new-password"
-                        error={!!errors.confirmPassword}
-                        helperText={errors.confirmPassword?.message}
-                      />
-                    )}
-                  />
-                </Grid>
-              </>
-            )}
+            
+            {/* Company Information */}
             <Grid item xs={12}>
-              <Controller
-                name="agreeToTerms"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox {...field} checked={field.value} />}
-                    label="I agree to the Terms and Conditions"
-                  />
-                )}
-              />
-              {errors.agreeToTerms && (
-                <Typography color="error" variant="caption">
-                  {errors.agreeToTerms.message}
-                </Typography>
-              )}
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                Company Information
+              </Typography>
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Company Name</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.companyName, "companyName")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Company Type</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.companyType, "companyType")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Industry</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.industry, "industry")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Business Domain</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.businessDomain, "businessDomain")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Establishment Year</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.establishmentYear, "establishmentYear")}</Typography>
+            </Grid>
+
+            {/* MSME Registration */}
             <Grid item xs={12}>
-              <Controller
-                name="agreeToDataProcessing"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={<Checkbox {...field} checked={field.value} />}
-                    label="I agree to the data processing and privacy policy"
-                  />
-                )}
-              />
-              {errors.agreeToDataProcessing && (
-                <Typography color="error" variant="caption">
-                  {errors.agreeToDataProcessing.message}
-                </Typography>
-              )}
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                MSME Registration
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">UDYAM Number</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.udyamRegistrationNumber, "udyamRegistrationNumber")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">GST Number</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.gstNumber, "gstNumber")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">PAN Number</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.panNumber, "panNumber")}</Typography>
+            </Grid>
+
+            {/* Contact Information */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                Contact Information
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.email, "email")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.phone, "phone")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Address</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.address, "address")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Location</Typography>
+              <Typography variant="body1">
+                {formData.city && formData.state ? `${formData.city}, ${formData.state}, ${formData.pincode}` : "Not provided"}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Country</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.country, "country")}</Typography>
+            </Grid>
+
+            {/* Business Details */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                Business Details
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Annual Turnover</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.annualTurnover, "annualTurnover")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Number of Employees</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.numberOfEmployees, "numberOfEmployees")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Manufacturing Units</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.manufacturingUnits, "manufacturingUnits")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Primary Products</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.primaryProducts, "primaryProducts")}</Typography>
+            </Grid>
+
+            {/* Environmental Compliance */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                Environmental Compliance
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Environmental Clearance</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.hasEnvironmentalClearance, "hasEnvironmentalClearance")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Pollution Control Board</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.hasPollutionControlBoard, "hasPollutionControlBoard")}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Waste Management</Typography>
+              <Typography variant="body1">{formatDisplayValue(formData.hasWasteManagement, "hasWasteManagement")}</Typography>
             </Grid>
           </Grid>
         );
@@ -1161,445 +879,86 @@ const MSMERegistration: React.FC = () => {
     }
   };
 
-  const renderSuccessState = () => {
-    if (!registrationData) {
-      return null;
-    }
+  const renderSuccessState = () => (
+    <>
+      <Alert
+        icon={<SuccessIcon fontSize="inherit" />}
+        severity="success"
+        sx={{ mb: 3 }}
+      >
+        Registration completed successfully for <strong>{formData.companyName}</strong>!
+      </Alert>
 
-    const summaryItems = [
-      {
-        label: "Company Name",
-        value: registrationData.companyName || "Not provided",
-      },
-      {
-        label: "Industry",
-        value: registrationData.industry || "Not provided",
-      },
-      {
-        label: "Company Type",
-        value: registrationData.companyType
-          ? registrationData.companyType.toUpperCase()
-          : "Not provided",
-      },
-      {
-        label: "GST Number",
-        value: registrationData.gstNumber || "Not provided",
-      },
-      {
-        label: "UDYAM Registration",
-        value: registrationData.udyamRegistrationNumber || "Not provided",
-      },
-      {
-        label: "Primary Products/Services",
-        value: registrationData.primaryProducts || "Not provided",
-      },
-    ];
+      <Box sx={{ textAlign: "center", mb: 4 }}>
+        <SuccessIcon sx={{ fontSize: 56, color: "success.main", mb: 2 }} />
+        <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+          Welcome Aboard!
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: "auto" }}>
+          Thank you for registering <strong>{formData.companyName}</strong>. 
+          Your MSME profile has been created successfully.
+        </Typography>
+      </Box>
 
-    return (
-      <>
-        <Alert
-          icon={<SuccessIcon fontSize="inherit" />}
-          severity="success"
-          sx={{ mb: 3 }}
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap" }}>
+        <Button
+          variant="contained"
+          onClick={() => navigate("/dashboard")}
+          sx={{ minWidth: 160 }}
         >
-          Registration completed successfully for{" "}
-          <strong>{registrationData.companyName}</strong>.{" "}
-          {autoLoginState === "success"
-            ? "You are now signed in and ready to continue."
-            : "Your AI-driven sustainability toolkit is now unlocked."}
-        </Alert>
-
-        <Box sx={{ textAlign: "center", mb: 4 }}>
-          <SuccessIcon sx={{ fontSize: 56, color: "success.main", mb: 2 }} />
-          <Typography
-            variant="h4"
-            component="h2"
-            gutterBottom
-            sx={{ fontWeight: 700 }}
-          >
-            You're all set!
-          </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ maxWidth: 560, mx: "auto" }}
-          >
-            Explore your dashboard, run a carbon assessment, and discover
-            recommendations tailored to{" "}
-            <strong>{registrationData.companyName}</strong>.
-          </Typography>
-        </Box>
-
-        <Grid container spacing={2} sx={{ mb: 4 }}>
-          {summaryItems.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.label}>
-              <Box
-                sx={{
-                  p: 3,
-                  borderRadius: 2,
-                  height: "100%",
-                  background:
-                    "linear-gradient(135deg, rgba(76, 175, 80, 0.04) 0%, rgba(46, 125, 50, 0.05) 100%)",
-                  border: "1px solid rgba(76, 175, 80, 0.08)",
-                  textAlign: "left",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  {item.label}
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {item.value}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-
-        <Stack
-          sx={{
-            mb: 4,
-            p: 3,
-            borderRadius: 2,
-            background:
-              "linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(56, 142, 60, 0.12) 100%)",
-            border: "1px solid rgba(76, 175, 80, 0.16)",
-            textAlign: "left",
+          Go to Dashboard
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            setSubmitSuccess(false);
+            setActiveStep(0);
+            setFormData({
+              companyName: "",
+              companyType: "",
+              industry: "",
+              businessDomain: "",
+              establishmentYear: "",
+              udyamRegistrationNumber: "",
+              gstNumber: "",
+              panNumber: "",
+              email: "",
+              phone: "",
+              address: "",
+              city: "",
+              state: "",
+              pincode: "",
+              country: "India",
+              annualTurnover: "",
+              numberOfEmployees: "",
+              manufacturingUnits: "",
+              primaryProducts: "",
+              hasEnvironmentalClearance: false,
+              hasPollutionControlBoard: false,
+              hasWasteManagement: false,
+            });
           }}
+          sx={{ minWidth: 160 }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-            AI Agent Coalition Activated
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Your carbon intelligence AI agents are now orchestrating real-time
-            footprint tracking, predictive emissions modelling, tailored
-            recommendations, incentive discovery, and ongoing compliance
-            monitoring for your organisation.
-          </Typography>
-        </Stack>
+          Register Another
+        </Button>
+      </Box>
+    </>
+  );
 
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          justifyContent="center"
-          alignItems={{ xs: "stretch", md: "center" }}
-          sx={{
-            mb: 2,
-            flexWrap: { xs: "nowrap", md: "wrap" },
-            "& > *": { flexGrow: 1, minWidth: { xs: "100%", md: 200 } },
-          }}
-        >
-          <Button
-            variant="contained"
-            onClick={() => navigate("/dashboard")}
-            sx={{
-              py: 1.5,
-              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
-              },
-            }}
-          >
-            Go to Dashboard
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={() => navigate("/carbon-footprint")}
-            sx={{
-              py: 1.5,
-              background: "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)",
-              },
-            }}
-          >
-            Start Carbon Assessment
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/carbon-forecasting")}
-            sx={{ py: 1.5 }}
-          >
-            AI Emission Predictions
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/recommendations")}
-            sx={{ py: 1.5 }}
-          >
-            AI Recommendations
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/incentives")}
-            sx={{ py: 1.5 }}
-          >
-            Explore Incentives
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/multi-agent-dashboard")}
-            sx={{ py: 1.5 }}
-          >
-            AI Agent Control Center
-          </Button>
-        </Stack>
-
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          justifyContent="center"
-          alignItems={{ xs: "stretch", sm: "center" }}
-          sx={{
-            mb: 2,
-            flexWrap: { xs: "nowrap", sm: "wrap" },
-            "& > *": { flexGrow: 1, minWidth: { xs: "100%", sm: 200 } },
-          }}
-        >
-          <Button
-            variant="text"
-            onClick={handleEditRegistration}
-            sx={{ py: 1.5 }}
-          >
-            Update Registration Details
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              logout();
-              setLoginPassword("");
-              setLoginError(null);
-              navigate("/");
-            }}
-            sx={{ py: 1.5 }}
-          >
-            Logout
-          </Button>
-        </Stack>
-      </>
-    );
-  };
-
-  if (autoLoginState === "pending") {
-    const pendingEmail = registrationData?.email ?? loginEmail;
-
+  if (submitSuccess) {
     return (
       <Paper
         elevation={2}
         sx={{
           p: 6,
           borderRadius: 3,
-          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-          border: "1px solid rgba(76, 175, 80, 0.1)",
+          maxWidth: 1000,
+          mx: "auto",
+          mt: 4,
         }}
       >
-        <Alert
-          icon={<SuccessIcon fontSize="inherit" />}
-          severity="success"
-          sx={{ mb: 4 }}
-        >
-          Registration completed successfully for{" "}
-          <strong>{registrationData?.companyName || "your MSME"}</strong>. We're
-          signing you in automatically.
-        </Alert>
-
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <CircularProgress color="success" size={56} sx={{ mb: 3 }} />
-          <Typography
-            variant="h5"
-            component="h2"
-            gutterBottom
-            sx={{ fontWeight: 600 }}
-          >
-            Signing you in...
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Logging in with <strong>{pendingEmail}</strong>. This will just take
-            a moment.
-          </Typography>
-        </Box>
-      </Paper>
-    );
-  }
-
-  if (showLoginForm) {
-    return (
-      <Paper
-        elevation={2}
-        sx={{
-          p: 6,
-          borderRadius: 3,
-          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-          border: "1px solid rgba(76, 175, 80, 0.1)",
-        }}
-      >
-        <Box sx={{ textAlign: "center", mb: 4 }}>
-          <Typography
-            variant="h3"
-            component="h1"
-            gutterBottom
-            sx={{
-              fontWeight: 700,
-              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              mb: 2,
-            }}
-          >
-            Welcome Back
-          </Typography>
-          <Typography
-            variant="h6"
-            color="text.secondary"
-            sx={{ maxWidth: 520, mx: "auto" }}
-          >
-            Sign in to continue exploring your Carbon Intelligence dashboard.
-          </Typography>
-        </Box>
-
-        {(submitSuccessMessage ||
-          (showPostRegistrationSuccess && registrationData)) && (
-          <Alert severity="success" sx={{ mb: 3 }}>
-            {submitSuccessMessage || (
-              <>
-                Registration completed successfully. Use your email{" "}
-                <strong>{registrationData?.email}</strong> and password to log
-                in and begin your carbon assessment journey.
-              </>
-            )}
-          </Alert>
-        )}
-
-        {autoLoginError && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {autoLoginError}
-          </Alert>
-        )}
-
-        {registrationData && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Your account is registered for{" "}
-            <strong>{registrationData.companyName}</strong>. Use{" "}
-            <strong>{registrationData.email}</strong> to log in.
-          </Alert>
-        )}
-
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleLoginSubmit}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <TextField
-            label="Email"
-            type="email"
-            value={loginEmail}
-            onChange={(event) => setLoginEmail(event.target.value)}
-            fullWidth
-            autoComplete="email"
-            required
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={loginPassword}
-            onChange={(event) => setLoginPassword(event.target.value)}
-            fullWidth
-            autoComplete="current-password"
-            required
-          />
-
-          {loginError && <Alert severity="error">{loginError}</Alert>}
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={2}
-            justifyContent="flex-start"
-            alignItems={{ xs: "stretch", sm: "center" }}
-            sx={{ mt: 1 }}
-          >
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isLoggingIn}
-              startIcon={
-                isLoggingIn ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : null
-              }
-              sx={{ minWidth: 160, py: 1.5 }}
-            >
-              {isLoggingIn ? "Signing in..." : "Sign In"}
-            </Button>
-            <Button
-              variant="text"
-              onClick={handleResetStoredRegistration}
-              sx={{ minWidth: 160, py: 1.5 }}
-            >
-              Start New Registration
-            </Button>
-          </Stack>
-        </Box>
-
-        <Box
-          sx={{
-            mt: 5,
-            p: 3,
-            borderRadius: 2,
-            background:
-              "linear-gradient(135deg, rgba(46, 125, 50, 0.06) 0%, rgba(76, 175, 80, 0.08) 100%)",
-            border: "1px solid rgba(76, 175, 80, 0.16)",
-          }}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-            What Happens After You Log In
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Your AI carbon intelligence agents will guide you through the next
-            steps as soon as you sign in.
-          </Typography>
-          <Stack spacing={1.5} sx={{ mt: 2 }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
-              <Typography variant="body2">
-                Run automated carbon footprint calculations across your
-                facilities.
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
-              <Typography variant="body2">
-                Unlock AI-driven analytics, forecasts, and scenario planning.
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
-              <Typography variant="body2">
-                Receive personalised recommendations and decarbonisation
-                roadmaps.
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
-              <Typography variant="body2">
-                Explore incentives, climate finance, and policy-aligned
-                programmes.
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <SuccessIcon fontSize="small" sx={{ color: "success.main" }} />
-              <Typography variant="body2">
-                Coordinate specialised AI agents for document ingestion,
-                monitoring, and reporting.
-              </Typography>
-            </Stack>
-          </Stack>
-        </Box>
+        {renderSuccessState()}
       </Paper>
     );
   }
@@ -1610,57 +969,27 @@ const MSMERegistration: React.FC = () => {
       sx={{
         p: 6,
         borderRadius: 3,
-        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid rgba(76, 175, 80, 0.1)",
+        maxWidth: 1000,
+        mx: "auto",
+        mt: 4,
       }}
     >
       <Box sx={{ textAlign: "center", mb: 4 }}>
-        <Typography
-          variant="h3"
-          component="h1"
-          gutterBottom
-          sx={{
-            fontWeight: 700,
-            background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 2,
-          }}
-        >
+        <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
           MSME Registration
         </Typography>
-        <Typography
-          variant="h6"
-          color="text.secondary"
-          sx={{
-            maxWidth: 600,
-            mx: "auto",
-            lineHeight: 1.6,
-          }}
-        >
-          Register your MSME company to measure carbon footprint and get
-          sustainable manufacturing recommendations
+        <Typography variant="h6" color="text.secondary">
+          Complete your MSME registration with all required details
         </Typography>
       </Box>
 
       <Stepper
-        activeStep={shouldShowSuccess ? steps.length : activeStep}
+        activeStep={activeStep}
         sx={{
           mb: 4,
-          "& .MuiStepLabel-root": {
-            "& .MuiStepLabel-label": {
-              fontWeight: 500,
-              fontSize: "0.875rem",
-            },
-          },
-          "& .MuiStepIcon-root": {
-            "&.Mui-completed": {
-              color: "success.main",
-            },
-            "&.Mui-active": {
-              color: "primary.main",
-            },
+          "& .MuiStepLabel-root .MuiStepLabel-label": {
+            fontWeight: 500,
+            fontSize: "0.875rem",
           },
         }}
       >
@@ -1671,108 +1000,56 @@ const MSMERegistration: React.FC = () => {
         ))}
       </Stepper>
 
-      {submitError && !shouldShowSuccess && (
+      {submitError && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {submitError}
         </Alert>
       )}
-      {submitSuccessMessage && !shouldShowSuccess && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {submitSuccessMessage}
-        </Alert>
-      )}
 
-      {shouldShowSuccess ? (
-        renderSuccessState()
-      ) : (
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Box
-            sx={{
-              mb: 4,
-              p: 3,
-              borderRadius: 2,
-              background:
-                "linear-gradient(135deg, rgba(33, 150, 243, 0.06) 0%, rgba(25, 118, 210, 0.08) 100%)",
-              border: "1px solid rgba(33, 150, 243, 0.12)",
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-              AI Agents Ready to Assist
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Our Carbon Intelligence AI agents will activate once you submit
-              this form to coordinate carbon footprint calculations, scenario
-              analysis, predictive forecasting, tailored recommendations, and
-              incentive discovery for your MSME.
-            </Typography>
-          </Box>
-          <Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
+      <Box sx={{ mb: 4 }}>
+        {renderStepContent(activeStep)}
+      </Box>
 
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              pt: 3,
-              borderTop: "1px solid",
-              borderColor: "divider",
-            }}
-          >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          pt: 3,
+          borderTop: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Button
+          disabled={activeStep === 0}
+          onClick={handleBack}
+          variant="outlined"
+          sx={{ minWidth: 120 }}
+        >
+          Back
+        </Button>
+        
+        <Box>
+          {activeStep === steps.length - 1 ? (
             <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              variant="outlined"
-              sx={{
-                mr: 1,
-                minWidth: 120,
-                py: 1.5,
-              }}
+              variant="contained"
+              disabled={isSubmitting}
+              onClick={onSubmit}
+              startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+              sx={{ minWidth: 180 }}
             >
-              Back
+              {isSubmitting ? "Submitting..." : "Complete Registration"}
             </Button>
-            <Box>
-              {activeStep === steps.length - 1 ? (
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={isSubmitting}
-                  startIcon={
-                    isSubmitting ? <CircularProgress size={20} /> : null
-                  }
-                  sx={{
-                    minWidth: 180,
-                    py: 1.5,
-                    background:
-                      "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-                    "&:hover": {
-                      background:
-                        "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
-                    },
-                  }}
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Registration"}
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleNext}
-                  sx={{
-                    minWidth: 120,
-                    py: 1.5,
-                    background:
-                      "linear-gradient(135deg, #2196f3 0%, #1565c0 100%)",
-                    "&:hover": {
-                      background:
-                        "linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)",
-                    },
-                  }}
-                >
-                  Next
-                </Button>
-              )}
-            </Box>
-          </Box>
-        </form>
-      )}
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              sx={{ minWidth: 120 }}
+            >
+              Next
+            </Button>
+          )}
+        </Box>
+      </Box>
     </Paper>
   );
 };

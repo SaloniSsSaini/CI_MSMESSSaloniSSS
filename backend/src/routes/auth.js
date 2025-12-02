@@ -6,6 +6,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const MSME = require('../models/MSME');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const sendEmail = require('../utils/sendEmail');
 
 // @route   POST /api/auth/register
 // @desc    Register user
@@ -16,6 +19,8 @@ router.post('/register', [
   body('role').isIn(['admin', 'msme', 'analyst']).withMessage('Valid role is required')
 ], async (req, res) => {
   try {
+    console.log("/register")
+    console.log("19 auth.js")
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -312,5 +317,134 @@ router.post('/refresh', async (req, res) => {
     });
   }
 });
+
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public
+router.post('/forgot-password', [
+  body('email').isEmail().withMessage('Valid email is required')
+], async (req, res) => {
+  try {
+    console.log(req.body)
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: 'If that email exists, a password reset link has been sent'
+      }); 
+      // Don't reveal if email exists for security
+    }
+
+    // Generate token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 1000 * 60 * 15; // 15 minutes
+    await user.save();
+
+    // TODO: send email here
+    // console.log("RESET LINK:", `https://yourfrontend.com/reset-password/${resetToken}`);
+
+    await sendEmail({
+      to: email,
+      subject: "Password Reset Request",
+      html: `
+    <p>You requested a password reset.</p>
+    <p>Click the link below to reset your password:</p>
+    <a href="https://localhost:3000/reset-password?token=${resetToken}">
+      Reset Password
+    </a>
+    <p>This link expires in 15 minutes.</p>
+  `
+    });
+
+    logger.info(`Password reset email sent: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset link sent to email'
+    });
+
+  } catch (error) {
+    logger.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using token
+// @access  Public
+router.post('/reset-password', [
+  body('token').notEmpty().withMessage('Token is required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+], async (req, res) => {
+  try {
+    console.log(req.body)
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { token, password } = req.body;
+    console.log(token)
+    // Find user with valid token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      console.log("418 auth.js")
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    // Update password
+    user.password = password;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    logger.info(`Password reset successful: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
+
+  } catch (error) {
+    logger.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 
 module.exports = router;

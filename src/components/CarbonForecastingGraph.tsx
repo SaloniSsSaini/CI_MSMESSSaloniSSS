@@ -115,7 +115,7 @@ const CarbonForecastingGraph: React.FC = () => {
     
     try {
       const response = await fetch(
-        `/api/carbon-forecasting/forecast?forecastPeriods=${forecastPeriods}&modelType=${modelType}&confidenceLevel=${confidenceLevel}`,
+        `http://localhost:5000/api/carbon-forecasting/forecast?forecastPeriods=${forecastPeriods}&modelType=${modelType}&confidenceLevel=${confidenceLevel}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -391,7 +391,7 @@ const CarbonForecastingGraph: React.FC = () => {
                     Model Accuracy
                   </Typography>
                   <Typography variant="h6">
-                    {forecastData.accuracy.mape.toFixed(1)}% MAPE
+                    {forecastData?.accuracy?.mape === null ? "null" : (forecastData?.accuracy?.mape?.toFixed(1))}% MAPE
                   </Typography>
                 </Box>
                 
@@ -400,7 +400,8 @@ const CarbonForecastingGraph: React.FC = () => {
                     Root Mean Square Error
                   </Typography>
                   <Typography variant="h6">
-                    {forecastData.accuracy.rmse.toFixed(1)} kg CO₂
+                    {forecastData?.accuracy?.rmse === null ? "null" : (forecastData?.accuracy?.rmse?.toFixed(1))} kg CO₂
+                    {/* {forecastData.accuracy.rmse.toFixed(1)} kg CO₂ */}
                   </Typography>
                 </Box>
                 
@@ -408,9 +409,9 @@ const CarbonForecastingGraph: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">
                     Mean Absolute Error
                   </Typography>
-                  <Typography variant="h6">
+                  {/* <Typography variant="h6">
                     {forecastData.accuracy.mae.toFixed(1)} kg CO₂
-                  </Typography>
+                  </Typography> */}
                 </Box>
                 
                 <Divider sx={{ my: 2 }} />

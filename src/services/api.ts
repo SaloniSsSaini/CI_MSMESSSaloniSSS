@@ -40,11 +40,38 @@ class ApiService {
   }
 
   async register(userData: any) {
+    console.log(userData)
+    console.log("api.ts 43")
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
   }
+
+async forgotPassword(userData: any) {
+  console.log(userData)
+  return this.request('/auth/forgot-password', {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"   // <-- required!
+    },
+    body: JSON.stringify(userData)
+  });
+}
+
+async resetPassword(userData: { token: string; password: string }) {
+  console.log("Reset password payload:", userData);
+
+  return this.request('/auth/reset-password', {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(userData)
+  });
+}
+
+
 
   // MSME endpoints
   async getMSMEProfile() {
@@ -59,6 +86,7 @@ class ApiService {
   }
 
   async registerMSME(data: any) {
+    console.log("63 api.ts", data)
     return this.request('/msme/register', {
       method: 'POST',
       body: JSON.stringify(data),

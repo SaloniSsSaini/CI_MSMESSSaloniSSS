@@ -126,6 +126,7 @@ router.post('/register', [
   body('business.manufacturingUnits').isInt().withMessage('Number of manufacturing units must be an integer')
 ], async (req, res) => {
   try {
+    console.log("129 msme.js")
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({

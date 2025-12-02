@@ -178,6 +178,7 @@ const DocumentManagement: React.FC = () => {
         limit: rowsPerPage,
         ...filter
       });
+      console.log(response)
       if (response.success) {
         setDocuments(response.documents);
       }

@@ -38,6 +38,7 @@ import {
   CloudUpload as UploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import ApiService from "../services/api";
 
 interface MSMEData {
   companyName: string;
@@ -100,20 +101,39 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     // Load MSME registration data
-    const savedData = localStorage.getItem('msmeRegistration');
-    if (savedData) {
-      const data = JSON.parse(savedData);
-      setMsmeData(data);
+    // const savedData = localStorage.getItem('msmeRegistration');
+    // if (savedData) {
+    //   const data = JSON.parse(savedData);
+    //   setMsmeData(data);
       
-      // Simulate carbon score calculation
+    //   // Simulate carbon score calculation
+    //   setTimeout(() => {
+    //     setCarbonScore(Math.floor(Math.random() * 40) + 60); // Random score between 60-100
+    //     setIsLoading(false);
+    //     loadCarbonSavings();
+    //   }, 1500);
+    // } else {
+    //   setIsLoading(false);
+    // }
+      const fetchData = async () => {
+        try {
+          const response = await ApiService?.getMSMEProfile();
+          console.log("API DATA:", response);
+    
+          if (response) {
+            setMsmeData(response.data); // DO NOT JSON.parse
+          }
+              //   // Simulate carbon score calculation
       setTimeout(() => {
         setCarbonScore(Math.floor(Math.random() * 40) + 60); // Random score between 60-100
         setIsLoading(false);
         loadCarbonSavings();
       }, 1500);
-    } else {
-      setIsLoading(false);
-    }
+        } catch (err) {
+          console.error("Error fetching MSME profile:", err);
+        }
+      };
+      fetchData();
   }, []);
 
   const loadCarbonSavings = async () => {

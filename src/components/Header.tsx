@@ -56,6 +56,16 @@ const Header: React.FC = () => {
     navigate(path);
     handleMenuClose();
   };
+  const handleForgotPassword = (path: string) => {
+    if (!isRegistered && path !== '/') {
+      navigate(path);
+      // handleMenuClose();
+      return;
+    }
+
+    navigate(path);
+    handleMenuClose();
+  };
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -76,13 +86,13 @@ const Header: React.FC = () => {
     const navigationItems = [
       { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       { path: '/carbon-footprint', label: 'Carbon Assessment', icon: <AssessmentIcon /> },
-      { path: '/ai-email-agent', label: 'AI Email Agent', icon: <MailAgentIcon /> },
-      { path: '/carbon-savings', label: 'Carbon Savings', icon: <EcoSavingsIcon /> },
-    { path: '/recommendations', label: 'Recommendations', icon: <RecommendationsIcon /> },
-    { path: '/incentives', label: 'Incentives', icon: <IncentivesIcon /> },
-    { path: '/reporting', label: 'Reports', icon: <ReportsIcon /> },
-    { path: '/green-loans', label: 'Green Loans', icon: <LoansIcon /> },
-    { path: '/document-upload', label: 'Upload', icon: <UploadIcon /> },
+    //   { path: '/ai-email-agent', label: 'AI Email Agent', icon: <MailAgentIcon /> },
+    //   { path: '/carbon-savings', label: 'Carbon Savings', icon: <EcoSavingsIcon /> },
+    // { path: '/recommendations', label: 'Recommendations', icon: <RecommendationsIcon /> },
+    // { path: '/incentives', label: 'Incentives', icon: <IncentivesIcon /> },
+    // { path: '/reporting', label: 'Reports', icon: <ReportsIcon /> },
+    // { path: '/green-loans', label: 'Green Loans', icon: <LoansIcon /> },
+    // { path: '/document-upload', label: 'Upload', icon: <UploadIcon /> },
     { path: '/document-management', label: 'Documents', icon: <DocumentsIcon /> },
     { path: '/data-privacy', label: 'Data Privacy', icon: <PrivacyIcon /> },
   ];
@@ -235,6 +245,18 @@ const Header: React.FC = () => {
             </MenuItem>
             
             <Divider />
+
+            {!isRegistered && (
+              <>
+              <MenuItem onClick={() => handleForgotPassword('/forgot-password')}>
+                <ListItemIcon>
+                  <SettingsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Forget Password</ListItemText>
+              </MenuItem>
+              <Divider />
+              </>
+            )}
             
             <MenuItem onClick={handleAuthAction}>
               <ListItemIcon>

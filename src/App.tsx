@@ -5,6 +5,8 @@ import theme from './theme';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
 import MSMERegistration from './components/MSMERegistration';
+import MSMERegTest from './components/MSMERegTest';
+import UserLogin from './components/UserLogin';
 import Dashboard from './components/Dashboard';
 import CarbonFootprint from './components/CarbonFootprint';
 import CarbonSavings from './components/CarbonSavings';
@@ -22,6 +24,10 @@ import DataPrivacy from './components/DataPrivacy';
 import AICarbonEmailAgent from './components/AICarbonEmailAgent';
 import ProtectedRoute from './components/ProtectedRoute';
 import { RegistrationProvider } from './context/RegistrationContext';
+import UserRegister from './components/UserRegister';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
+import MSMEList from './components/MSMEList';
 
 function App() {
   return (
@@ -34,12 +40,26 @@ function App() {
 
               <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
                 <Routes>
-                  <Route path="/" element={<MSMERegistration />} />
+                  <Route path="/msme-registration" element={<MSMERegistration />} />
+                  {/* <Route path="/" element={<MSMERegTest />} /> */}
+                  <Route path="/" element={<UserLogin />} />
+                  <Route path="/login" element={<UserLogin />} />
+                  <Route path="/register" element={<UserRegister />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/dashboard"
                     element={(
                       <ProtectedRoute>
                         <Dashboard />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route
+                    path="/msme-list"
+                    element={(
+                      <ProtectedRoute>
+                        <MSMEList />
                       </ProtectedRoute>
                     )}
                   />
