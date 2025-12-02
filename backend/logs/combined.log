@@ -870,3 +870,65 @@
 {"level":"info","message":"GET /api/documents/statistics/overview - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T11:21:18.331Z"}
 {"level":"info","message":"GET /api/documents - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T11:21:18.333Z"}
 {"level":"info","message":"GET /api/documents/statistics/overview - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T11:21:18.334Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:13.861Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.158Z"}
+{"level":"info","message":"Real-time carbon monitoring service initialized","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.258Z"}
+{"level":"info","message":"Server running on port 5000","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.269Z"}
+{"level":"info","message":"Environment: development","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.270Z"}
+{"level":"info","message":"Agent Optimization Service initialized","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.272Z"}
+{"level":"info","message":"MongoDB Connected: localhost","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.326Z"}
+{"level":"info","message":"AI Agent Service initialized with 0 agents","service":"carbon-intelligence-backend","timestamp":"2025-12-02T13:59:15.386Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:00:44.266Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:00:44.298Z"}
+{"level":"info","message":"POST /api/auth/login - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:02:45.369Z"}
+{"level":"info","message":"User logged in successfully: aryansingh879791@gmail.com","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:02:45.594Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:02:45.635Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:02:45.648Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:26.114Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:26.134Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:31.402Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:31.418Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:56.287Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:03:56.305Z"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:00.029Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"auto","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:00.056Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:00.077Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"auto","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:00.096Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:31.786Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"linear","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:31.808Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:34.001Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"exponential","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:34.024Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:36.714Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"movingAverage","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:36.733Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:39.625Z"}
+{"forecastPeriods":"12","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"arima","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:39.647Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:42.310Z"}
+{"forecastPeriods":"6","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"arima","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:42.324Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:45.656Z"}
+{"forecastPeriods":"24","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"arima","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:45.672Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/carbon-forecasting/forecast - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:51.181Z"}
+{"forecastPeriods":"24","level":"info","message":"Carbon forecast generated for MSME: 69220fb54a42092ebc99c6fb","modelType":"arima","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:51.208Z","userId":"69220cbbf24e32317762b725"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:55.419Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:55.431Z"}
+{"level":"info","message":"GET /api/documents - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:56.974Z"}
+{"level":"info","message":"GET /api/documents/statistics/overview - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:56.977Z"}
+{"level":"info","message":"GET /api/documents - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:56.981Z"}
+{"level":"info","message":"GET /api/documents/statistics/overview - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:56.991Z"}
+{"level":"info","message":"GET /api/data-privacy/settings - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.965Z"}
+{"level":"info","message":"Get privacy settings request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.971Z"}
+{"level":"info","message":"GET /api/data-privacy/settings - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.977Z"}
+{"level":"info","message":"Get privacy settings request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.987Z"}
+{"level":"info","message":"GET /api/data-privacy/requests - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.992Z"}
+{"level":"info","message":"Get data requests request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:57.998Z"}
+{"level":"info","message":"GET /api/data-privacy/requests - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.002Z"}
+{"level":"info","message":"Get data requests request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.014Z"}
+{"level":"info","message":"GET /api/data-privacy/activities - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.017Z"}
+{"level":"info","message":"Get data activities request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.026Z"}
+{"level":"info","message":"GET /api/data-privacy/activities - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.029Z"}
+{"level":"info","message":"Get data activities request","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:58.036Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:59.047Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:04:59.061Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:43.279Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:43.294Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:52.389Z"}
+{"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:52.401Z"}
