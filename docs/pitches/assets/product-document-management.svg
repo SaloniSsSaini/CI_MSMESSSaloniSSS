@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+  <defs>
+    <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2196F3"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0B1220" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #F8FAFC; }
+      .card { fill: #FFFFFF; stroke: rgba(15,23,42,0.08); filter: url(#shadow); }
+      .muted { fill: #4A5568; font-family: Inter, Roboto, Arial, sans-serif; }
+      .title { fill: #1A202C; font-family: Inter, Roboto, Arial, sans-serif; font-weight: 800; }
+      .label { fill: #1A202C; font-family: Inter, Roboto, Arial, sans-serif; font-weight: 600; }
+      .chipOk { fill: rgba(76,175,80,0.12); stroke: rgba(76,175,80,0.25); }
+      .chipDup { fill: rgba(255,193,7,0.18); stroke: rgba(255,111,0,0.25); }
+      .chipTxt { font-family: Inter, Roboto, Arial, sans-serif; font-weight: 700; font-size: 12px; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="800"/>
+  <text class="title" x="80" y="95" font-size="34">Document Management (auto-processing + duplicates)</text>
+  <text class="muted" x="80" y="130" font-size="16">Upload bills/invoices, extract fields, compute CO‚ signals, and flag duplicates for clean reporting.</text>
+
+  <rect class="card" x="80" y="170" width="1240" height="560" rx="24"/>
+
+  <!-- Stats cards -->
+  <g transform="translate(130,220)">
+    <g>
+      <rect x="0" y="0" width="260" height="90" rx="20" fill="#FFFFFF" stroke="rgba(76,175,80,0.18)" filter="url(#shadow)"/>
+      <text class="muted" x="22" y="34" font-size="12">Total documents</text>
+      <text class="label" x="22" y="68" font-size="28">1,248</text>
+    </g>
+    <g transform="translate(280,0)">
+      <rect x="0" y="0" width="260" height="90" rx="20" fill="#FFFFFF" stroke="rgba(33,150,243,0.18)" filter="url(#shadow)"/>
+      <text class="muted" x="22" y="34" font-size="12">Total amount</text>
+      <text class="label" x="22" y="68" font-size="26">¹ 38.6L</text>
+    </g>
+    <g transform="translate(560,0)">
+      <rect x="0" y="0" width="260" height="90" rx="20" fill="#FFFFFF" stroke="rgba(33,150,243,0.18)" filter="url(#shadow)"/>
+      <text class="muted" x="22" y="34" font-size="12">CO‚ emissions (from docs)</text>
+      <text class="label" x="22" y="68" font-size="26" fill="#1565C0">4,120 kg</text>
+    </g>
+    <g transform="translate(840,0)">
+      <rect x="0" y="0" width="260" height="90" rx="20" fill="#FFFFFF" stroke="rgba(255,111,0,0.20)" filter="url(#shadow)"/>
+      <text class="muted" x="22" y="34" font-size="12">Duplicates found</text>
+      <text class="label" x="22" y="68" font-size="26" fill="#B45309">37</text>
+    </g>
+  </g>
+
+  <!-- Table mock -->
+  <g transform="translate(130,340)">
+    <text class="label" x="0" y="0" font-size="16">All documents</text>
+    <text class="muted" x="0" y="22" font-size="13">Search + filter by status/type; investigate extracted fields and carbon footprint.</text>
+
+    <rect x="0" y="40" width="1140" height="330" rx="22" fill="#FFFFFF" stroke="rgba(148,163,184,0.35)" filter="url(#shadow)"/>
+
+    <!-- Header row -->
+    <rect x="0" y="40" width="1140" height="54" rx="22" fill="rgba(33,150,243,0.06)"/>
+    <text class="muted" x="22" y="76" font-size="12">Document</text>
+    <text class="muted" x="500" y="76" font-size="12">Type</text>
+    <text class="muted" x="640" y="76" font-size="12">Status</text>
+    <text class="muted" x="800" y="76" font-size="12">Amount</text>
+    <text class="muted" x="940" y="76" font-size="12">Date</text>
+
+    <!-- Row 1 -->
+    <g transform="translate(0,104)">
+      <rect x="0" y="0" width="1140" height="56" fill="#FFFFFF"/>
+      <text class="label" x="22" y="34" font-size="13">Electricity_Bill_May.pdf</text>
+      <text class="muted" x="500" y="34" font-size="13">Bill</text>
+      <rect class="chipOk" x="620" y="16" width="110" height="26" rx="13"/>
+      <text class="chipTxt" x="645" y="34" fill="#2E7D32">PROCESSED</text>
+      <text class="label" x="800" y="34" font-size="13">¹ 1,14,200</text>
+      <text class="muted" x="940" y="34" font-size="13">2025-05-31</text>
+    </g>
+
+    <!-- Row 2 -->
+    <g transform="translate(0,160)">
+      <rect x="0" y="0" width="1140" height="56" fill="#FFFFFF"/>
+      <text class="label" x="22" y="34" font-size="13">Diesel_Invoice_0421.png</text>
+      <text class="muted" x="500" y="34" font-size="13">Invoice</text>
+      <rect class="chipDup" x="620" y="16" width="110" height="26" rx="13"/>
+      <text class="chipTxt" x="650" y="34" fill="#B45309">DUPLICATE</text>
+      <text class="label" x="800" y="34" font-size="13">¹ 28,650</text>
+      <text class="muted" x="940" y="34" font-size="13">2025-04-21</text>
+    </g>
+
+    <!-- Row 3 -->
+    <g transform="translate(0,216)">
+      <rect x="0" y="0" width="1140" height="56" fill="#FFFFFF"/>
+      <text class="label" x="22" y="34" font-size="13">Raw_Material_Steel_Mar.pdf</text>
+      <text class="muted" x="500" y="34" font-size="13">Invoice</text>
+      <rect class="chipOk" x="620" y="16" width="110" height="26" rx="13"/>
+      <text class="chipTxt" x="645" y="34" fill="#2E7D32">PROCESSED</text>
+      <text class="label" x="800" y="34" font-size="13">¹ 6,42,000</text>
+      <text class="muted" x="940" y="34" font-size="13">2025-03-18</text>
+    </g>
+
+    <!-- Side note -->
+    <g transform="translate(0,286)">
+      <rect x="0" y="0" width="1140" height="84" rx="18" fill="rgba(76,175,80,0.06)" stroke="rgba(76,175,80,0.18)"/>
+      <text class="label" x="22" y="34" font-size="14">Why this matters</text>
+      <text class="muted" x="22" y="58" font-size="13">Clean, structured evidence enables audit-ready reporting and stronger underwriting signals for green finance.</text>
+      <rect x="900" y="22" width="218" height="42" rx="14" fill="url(#gBlue)"/>
+      <text x="950" y="49" font-size="13" fill="#FFFFFF" font-family="Inter, Roboto, Arial, sans-serif" font-weight="800">View extracted data</text>
+    </g>
+  </g>
+</svg>
+

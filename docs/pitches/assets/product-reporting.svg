@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+  <defs>
+    <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2196F3"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0B1220" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #F8FAFC; }
+      .card { fill: #FFFFFF; stroke: rgba(15,23,42,0.08); filter: url(#shadow); }
+      .muted { fill: #4A5568; font-family: Inter, Roboto, Arial, sans-serif; }
+      .title { fill: #1A202C; font-family: Inter, Roboto, Arial, sans-serif; font-weight: 800; }
+      .label { fill: #1A202C; font-family: Inter, Roboto, Arial, sans-serif; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="800"/>
+  <text class="title" x="80" y="95" font-size="34">Sustainability Reporting (export/email/print)</text>
+  <text class="muted" x="80" y="130" font-size="16">A dashboard-style report builder: trends, category split, recommendations status, and comparisons.</text>
+
+  <rect class="card" x="80" y="170" width="1240" height="560" rx="24"/>
+
+  <!-- Header actions -->
+  <g transform="translate(130,220)">
+    <text class="label" x="0" y="0" font-size="18">Sustainability Reports</text>
+    <rect x="820" y="-22" width="120" height="40" rx="14" fill="#FFFFFF" stroke="rgba(148,163,184,0.9)"/>
+    <text class="muted" x="850" y="4" font-size="13">Export</text>
+    <rect x="950" y="-22" width="120" height="40" rx="14" fill="#FFFFFF" stroke="rgba(148,163,184,0.9)"/>
+    <text class="muted" x="985" y="4" font-size="13">Email</text>
+    <rect x="1080" y="-22" width="120" height="40" rx="14" fill="#FFFFFF" stroke="rgba(148,163,184,0.9)"/>
+    <text class="muted" x="1118" y="4" font-size="13">Print</text>
+  </g>
+
+  <!-- Filters -->
+  <g transform="translate(130,260)">
+    <rect x="0" y="0" width="1140" height="86" rx="20" fill="#FFFFFF" stroke="rgba(148,163,184,0.35)" filter="url(#shadow)"/>
+    <text class="muted" x="22" y="30" font-size="12">Date range</text>
+    <rect x="22" y="36" width="300" height="40" rx="12" fill="#FFFFFF" stroke="rgba(148,163,184,0.9)"/>
+    <text class="muted" x="38" y="62" font-size="14">Last 6 months ¾</text>
+
+    <text class="muted" x="350" y="30" font-size="12">Report type</text>
+    <rect x="350" y="36" width="300" height="40" rx="12" fill="#FFFFFF" stroke="rgba(148,163,184,0.9)"/>
+    <text class="muted" x="366" y="62" font-size="14">Comprehensive ¾</text>
+
+    <rect x="860" y="34" width="258" height="44" rx="14" fill="url(#gBlue)"/>
+    <text x="930" y="62" font-size="14" fill="#FFFFFF" font-family="Inter, Roboto, Arial, sans-serif" font-weight="800">Generate report</text>
+  </g>
+
+  <!-- Charts grid -->
+  <g transform="translate(130,370)">
+    <rect x="0" y="0" width="560" height="210" rx="22" fill="#FFFFFF" stroke="rgba(33,150,243,0.18)" filter="url(#shadow)"/>
+    <text class="label" x="22" y="36" font-size="14">Carbon footprint trend</text>
+    <path d="M40 170 C120 120, 180 150, 250 100 C320 55, 410 100, 520 70" fill="none" stroke="#2196F3" stroke-width="4"/>
+    <path d="M40 170 L40 175 L520 175" stroke="rgba(148,163,184,0.6)" stroke-width="2"/>
+
+    <rect x="580" y="0" width="560" height="210" rx="22" fill="#FFFFFF" stroke="rgba(76,175,80,0.18)" filter="url(#shadow)"/>
+    <text class="label" x="602" y="36" font-size="14">Emissions by category</text>
+    <circle cx="860" cy="120" r="70" fill="rgba(33,150,243,0.14)"/>
+    <path d="M860 120 L860 50 A70 70 0 0 1 922 155 Z" fill="rgba(76,175,80,0.35)"/>
+    <path d="M860 120 L922 155 A70 70 0 0 1 820 185 Z" fill="rgba(255,193,7,0.45)"/>
+    <path d="M860 120 L820 185 A70 70 0 0 1 860 50 Z" fill="rgba(156,39,176,0.25)"/>
+
+    <rect x="0" y="230" width="1140" height="170" rx="22" fill="#FFFFFF" stroke="rgba(148,163,184,0.35)" filter="url(#shadow)"/>
+    <text class="label" x="22" y="266" font-size="14">Recommendations status</text>
+    <rect x="22" y="290" width="1096" height="46" rx="14" fill="rgba(76,175,80,0.06)" stroke="rgba(76,175,80,0.18)"/>
+    <text class="muted" x="44" y="318" font-size="13">Install Solar Panels</text>
+    <text class="muted" x="820" y="318" font-size="13">In progress</text>
+    <rect x="980" y="304" width="120" height="22" rx="11" fill="rgba(255,193,7,0.18)" stroke="rgba(255,111,0,0.25)"/>
+    <text x="1003" y="319" font-size="12" fill="#B45309" font-family="Inter, Roboto, Arial, sans-serif" font-weight="800">IN PROGRESS</text>
+  </g>
+</svg>
+
