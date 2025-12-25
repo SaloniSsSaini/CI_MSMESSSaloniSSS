@@ -612,6 +612,197 @@ def build_bank_deck(pngs: dict[str, Path]) -> Path:
     return out
 
 
+def build_partners_channels_deck(pngs: dict[str, Path]) -> Path:
+    prs = make_presentation()
+    add_title_slide(
+        prs,
+        top_title="MAP Day Update",
+        line1="Carbon Intelligence",
+        line2="Key Employees / Partners / Channels",
+        footer="Internal + partner deck",
+    )
+
+    add_section_slide(prs, title="Why this exists", subtitle="Build the data → action → finance loop at scale")
+
+    add_two_col_bullets_image(
+        prs,
+        title="The mission",
+        bullets=[
+            "Help MSMEs measure emissions, reduce costs, and prove progress with audit-ready evidence.",
+            "Turn verified sustainability data into a financial primitive for green lending and portfolio reporting.",
+            "Make sustainability adoption practical: ROI-first recommendations, simple workflows, fast time-to-value.",
+        ],
+        image_path=pngs["platform-loop"],
+        image_caption="Our compounding loop: measure → improve → prove → finance",
+    )
+
+    add_image_slide(
+        prs,
+        title="What we’ve built (product snapshot)",
+        image_path=pngs["product-dashboard-web"],
+        caption="Web dashboard: score, trends, documents, reporting, and green finance workflows",
+    )
+
+    add_section_slide(prs, title="Who this deck is for", subtitle="Three audiences; one coherent program")
+
+    add_bullets_slide(
+        prs,
+        title="Audience and outcomes",
+        bullets=[
+            "Key Employees: join the team and own core product + distribution outcomes.",
+            "Partners: embed/extend the platform (consultancies, auditors, implementers, industry bodies).",
+            "Channels: drive repeatable MSME onboarding via banks, anchor enterprises, or ecosystem partners.",
+        ],
+    )
+
+    add_section_slide(prs, title="Where we win", subtitle="Reliable evidence + simple UX + finance conversion")
+
+    add_two_col_bullets_image(
+        prs,
+        title="Evidence layer (documents) = defensibility",
+        bullets=[
+            "Bills/invoices become structured data with audit trail.",
+            "Duplicate detection reduces errors and strengthens trust.",
+            "Creates repeatable ‘evidence packs’ for buyers, auditors, and lenders.",
+        ],
+        image_path=pngs["product-document-management"],
+    )
+
+    add_two_col_bullets_image(
+        prs,
+        title="Reporting that stakeholders actually consume",
+        bullets=[
+            "Standardized outputs: total CO₂, category split, scope 1/2/3, score and trend.",
+            "Exports for buyers, internal teams, and bank/portfolio reporting.",
+            "Action adoption tracked over time (progress, payback, impact).",
+        ],
+        image_path=pngs["product-reporting"],
+    )
+
+    add_two_col_bullets_image(
+        prs,
+        title="Finance conversion (green lending workflow)",
+        bullets=[
+            "Eligibility and term preview driven by policy rules + verified data.",
+            "Cleaner files reduce back-and-forth and speed approvals.",
+            "Monitoring ties capital deployment to measurable reduction outcomes.",
+        ],
+        image_path=pngs["product-green-loans"],
+    )
+
+    add_section_slide(prs, title="Key employees", subtitle="What we’re hiring for (and why it’s exciting)")
+
+    add_bullets_slide(
+        prs,
+        title="Roles we typically need (adapt as needed)",
+        bullets=[
+            "Product + Engineering: workflows, evidence layer, integrations, reporting/export.",
+            "Data/ML: extraction quality, dedup, carbon estimation models, benchmarks.",
+            "Growth + Partnerships: bank/anchor programs, onboarding playbooks, channel enablement.",
+            "Customer Success: repeatable onboarding, retention/expansion, outcome reporting (₹ savings + CO₂).",
+        ],
+        note="Replace this slide with your exact open roles and seniority.",
+    )
+
+    add_bullets_slide(
+        prs,
+        title="Why a key employee should join",
+        bullets=[
+            "Mission + measurable outcomes: help MSMEs cut costs while meeting compliance pressure.",
+            "Real product in place: ship on a working workflow system (not a concept).",
+            "Distribution leverage: banks and anchor enterprises can onboard thousands via programs.",
+            "Compounding advantage: better evidence → better data → better decisions → better finance conversion.",
+        ],
+    )
+
+    add_section_slide(prs, title="Partners", subtitle="Who we work with and what they gain")
+
+    add_bullets_slide(
+        prs,
+        title="Partner types (examples)",
+        bullets=[
+            "Sustainability consultants / implementers (baseline → roadmap → execution).",
+            "Auditors / verifiers (evidence packs + standardized outputs).",
+            "Industry associations (member onboarding programs).",
+            "Solution providers (solar/efficiency/waste) who need qualified demand + proof.",
+        ],
+    )
+
+    add_bullets_slide(
+        prs,
+        title="Partner value proposition",
+        bullets=[
+            "Faster delivery: standardized workflows and reporting reduce manual effort.",
+            "Higher trust: document-backed evidence improves auditability and buyer/lender confidence.",
+            "More revenue: partners can bundle services around recommendations and implementation.",
+            "Clear packaging: tiered engagement templates (assessment → action plan → monitoring).",
+        ],
+    )
+
+    add_section_slide(prs, title="Channels", subtitle="Repeatable acquisition and onboarding")
+
+    add_bullets_slide(
+        prs,
+        title="Channel models (how leads come in)",
+        bullets=[
+            "Bank channel: RMs / digital journeys for green lending and portfolio monitoring.",
+            "Anchor enterprise channel: supply-chain compliance programs (vendor onboarding).",
+            "Ecosystem channel: associations, platforms, and service providers referring MSMEs.",
+        ],
+    )
+
+    add_bullets_slide(
+        prs,
+        title="Channel motion (recommended)",
+        bullets=[
+            "Step 1: MSME invite → lightweight onboarding + baseline assessment.",
+            "Step 2: Document upload → evidence pack + data cleanliness checks.",
+            "Step 3: Report export → buyer/bank-ready output (shareable).",
+            "Step 4: Action plan → track ROI + implementation status.",
+            "Step 5: Finance conversion (optional) → eligibility + application workflow.",
+        ],
+    )
+
+    add_bullets_slide(
+        prs,
+        title="What channels need from us (enablement kit)",
+        bullets=[
+            "Co-branded landing + onboarding journey.",
+            "Sector-specific templates (inputs, recommended actions, ROI assumptions).",
+            "Partner portal: cohort tracking, export packs, and progress dashboards.",
+            "Training: talk track, demo script, objection handling, and ROI calculator.",
+        ],
+    )
+
+    add_section_slide(prs, title="How we measure success", subtitle="Simple KPIs per audience")
+
+    add_bullets_slide(
+        prs,
+        title="KPIs",
+        bullets=[
+            "Acquisition: invited → activated MSMEs; CAC by channel; time-to-first-report.",
+            "Engagement: documents processed; exports; action adoption rate.",
+            "Outcomes: ₹ savings realized; kg CO₂ reduced; score improvement.",
+            "Finance: eligibility rate; application completion; approval speed; portfolio coverage.",
+        ],
+    )
+
+    add_bullets_slide(
+        prs,
+        title="Next steps (choose your path)",
+        bullets=[
+            "Key employees: share your role fit + a 30/60/90 plan you’d execute.",
+            "Partners: propose 1–2 packaged offerings you can deliver using the platform.",
+            "Channels: select a pilot cohort size and define the onboarding + reporting workflow.",
+        ],
+        note="This deck is designed to be customized per audience and partner type.",
+    )
+
+    out = OUT_DIR / "Carbon_Intelligence_Key_Employees_Partners_Channels_Pitch.pptx"
+    prs.save(out)
+    return out
+
+
 def main() -> None:
     ensure_dirs()
     pngs = convert_all_svgs()
@@ -620,6 +811,7 @@ def main() -> None:
         build_investor_deck(pngs),
         build_msme_deck(pngs),
         build_bank_deck(pngs),
+        build_partners_channels_deck(pngs),
     ]
 
     print("Generated:")
