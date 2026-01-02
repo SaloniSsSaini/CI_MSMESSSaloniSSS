@@ -1,0 +1,6 @@
+node_modules/
+coverage/
+android/.gradle/
+android/app/build/
+CarbonIntelligenceExpo/
+

@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -22,7 +21,7 @@ import {
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
 
-const EmailAnalysisScreen = ({ navigation }: any) => {
+const EmailAnalysisScreen = ({ navigation: _navigation }: any) => {
   const [emailData, setEmailData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);

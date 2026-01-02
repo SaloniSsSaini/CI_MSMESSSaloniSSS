@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import {
   Text,
@@ -14,7 +13,6 @@ import {
   FAB,
   Chip,
   ProgressBar,
-  ActivityIndicator,
 } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { theme, colors } from '../theme/theme';
@@ -27,9 +25,7 @@ import { LoadingScreen } from '../components/LoadingScreen';
 import { ErrorScreen } from '../components/ErrorScreen';
 import * as Animatable from 'react-native-animatable';
 
-const { width } = Dimensions.get('window');
-
-const DashboardScreen = ({ navigation }: any) => {
+export const DashboardScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -243,6 +239,8 @@ const DashboardScreen = ({ navigation }: any) => {
         icon="plus"
         style={styles.fab}
         onPress={() => navigation.navigate('Transactions')}
+        testID="fab-button"
+        accessibilityLabel="Add transaction"
       />
     </View>
   );

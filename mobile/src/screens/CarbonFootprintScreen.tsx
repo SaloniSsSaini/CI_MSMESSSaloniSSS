@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
+  Alert,
 } from 'react-native';
 import {
   Text,
@@ -14,8 +15,6 @@ import {
   ActivityIndicator,
   ProgressBar,
   Chip,
-  List,
-  Divider,
 } from 'react-native-paper';
 import { PieChart } from 'react-native-chart-kit';
 import { theme, colors } from '../theme/theme';
@@ -23,7 +22,7 @@ import { apiService } from '../services/apiService';
 
 const { width } = Dimensions.get('window');
 
-const CarbonFootprintScreen = ({ navigation }: any) => {
+const CarbonFootprintScreen = ({ navigation: _navigation }: any) => {
   const [assessment, setAssessment] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

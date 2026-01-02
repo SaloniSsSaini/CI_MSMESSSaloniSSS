@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,19 +9,16 @@ import {
 import {
   Text,
   Card,
-  Title,
   Searchbar,
   Chip,
   FAB,
-  List,
-  Divider,
   Menu,
   IconButton,
 } from 'react-native-paper';
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
 
-const TransactionScreen = ({ navigation }: any) => {
+const TransactionScreen = ({ navigation: _navigation }: any) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,10 +43,6 @@ const TransactionScreen = ({ navigation }: any) => {
     loadTransactions();
   }, []);
 
-  useEffect(() => {
-    filterTransactions();
-  }, [transactions, searchQuery, selectedCategory]);
-
   const loadTransactions = async () => {
     try {
       setIsLoading(true);
@@ -70,12 +63,12 @@ const TransactionScreen = ({ navigation }: any) => {
     setRefreshing(false);
   };
 
-  const filterTransactions = () => {
+  const filterTransactions = useCallback(() => {
     let filtered = transactions;
 
     // Filter by search query
     if (searchQuery) {
-      filtered = filtered.filter(transaction =>
+      filtered = filtered.filter((transaction) =>
         transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         transaction.vendor.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -83,11 +76,17 @@ const TransactionScreen = ({ navigation }: any) => {
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(transaction => transaction.category === selectedCategory);
+      filtered = filtered.filter(
+        (transaction) => transaction.category === selectedCategory
+      );
     }
 
     setFilteredTransactions(filtered);
-  };
+  }, [transactions, searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    filterTransactions();
+  }, [filterTransactions]);
 
   const formatAmount = (amount: number, currency: string) => {
     return `${currency} ${amount.toLocaleString()}`;
@@ -104,23 +103,6 @@ const TransactionScreen = ({ navigation }: any) => {
 
   const getCategoryColor = (category: string) => {
     return colors[category as keyof typeof colors] || colors.other;
-  };
-
-  const getTransactionTypeIcon = (type: string) => {
-    switch (type) {
-      case 'purchase':
-        return 'shopping';
-      case 'sale':
-        return 'trending-up';
-      case 'expense':
-        return 'credit-card';
-      case 'utility':
-        return 'flash';
-      case 'transport':
-        return 'truck';
-      default:
-        return 'receipt';
-    }
   };
 
   const getSourceIcon = (source: string) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  TextInput,
   Dimensions,
-  RefreshControl
+  RefreshControl,
 } from 'react-native';
-import { Card, Title, Paragraph, Button, ProgressBar, Chip, Avatar, Badge } from 'react-native-paper';
+import { Card, Button, ProgressBar, Chip, Avatar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -60,7 +59,7 @@ const IncentivesScreen: React.FC = () => {
     carbonSaved: 45.2
   });
 
-  const [achievements, setAchievements] = useState<Achievement[]>([
+  const [achievements, _setAchievements] = useState<Achievement[]>([
     {
       id: '1',
       title: 'Carbon Warrior',
@@ -143,7 +142,7 @@ const IncentivesScreen: React.FC = () => {
     }
   ]);
 
-  const [rewards, setRewards] = useState<Reward[]>([
+  const [rewards, _setRewards] = useState<Reward[]>([
     {
       id: '1',
       title: 'Eco-Friendly Water Bottle',
