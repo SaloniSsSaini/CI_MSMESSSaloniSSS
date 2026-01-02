@@ -4,9 +4,7 @@ Monorepo containing:
 
 - Web app (React) in `/src` (root `package.json`)
 - Backend API (Node/Express) in `/backend`
-- Mobile apps in `/mobile`
-  - React Native CLI app in `/mobile`
-  - Expo app in `/mobile/CarbonIntelligenceExpo`
+- Mobile app (React Native) in `/mobile`
 
 ## Quick start (local dev)
 
@@ -53,14 +51,6 @@ Then in another terminal:
 cd mobile
 npm run android
 # or: npm run ios
-```
-
-### 4) Mobile (Expo)
-
-```bash
-cd mobile/CarbonIntelligenceExpo
-npm install
-npm run start
 ```
 
 ## Common scripts

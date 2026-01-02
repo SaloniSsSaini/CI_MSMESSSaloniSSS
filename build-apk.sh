@@ -6,7 +6,7 @@
 echo "Building Carbon Intelligence Mobile APK..."
 
 # Navigate to the mobile project directory
-cd /workspace/mobile/CarbonIntelligenceExpo
+cd /workspace/mobile
 
 # Check if Android SDK is available
 if [ -z "$ANDROID_HOME" ]; then
@@ -23,18 +23,9 @@ if ! command -v java &> /dev/null; then
     exit 1
 fi
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install
-
-# Prebuild Android project
-echo "Prebuilding Android project..."
-npx expo prebuild --platform android
-
-# Build APK
+# Build APK (React Native CLI project)
 echo "Building APK..."
-cd android
-./gradlew assembleDebug
+./build-apk.sh
 
 # Check if build was successful
 if [ $? -eq 0 ]; then
