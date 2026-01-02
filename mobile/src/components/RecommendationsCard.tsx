@@ -36,19 +36,6 @@ export const RecommendationsCard: React.FC<RecommendationsCardProps> = ({
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'alert-circle';
-      case 'medium':
-        return 'alert';
-      case 'low':
-        return 'information';
-      default:
-        return 'lightbulb';
-    }
-  };
-
   const formatCost = (cost: number) => {
     if (cost >= 100000) {
       return `₹${(cost / 100000).toFixed(1)}L`;

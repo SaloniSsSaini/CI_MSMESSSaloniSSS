@@ -39,16 +39,17 @@ describe('LoginScreen', () => {
     render(<LoginScreen navigation={mockNavigation} />);
     
     expect(screen.getByText('Carbon Intelligence')).toBeTruthy();
-    expect(screen.getByText('Sign In')).toBeTruthy();
-    expect(screen.getByText('Email')).toBeTruthy();
-    expect(screen.getByText('Password')).toBeTruthy();
+    expect(screen.getAllByText('Sign In').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('login-email')).toBeTruthy();
+    expect(screen.getByTestId('login-password')).toBeTruthy();
     expect(screen.getByText("Don't have an account? Register")).toBeTruthy();
+    expect(screen.getByTestId('login-submit')).toBeTruthy();
   });
 
   it('shows validation error for empty fields', async () => {
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please fill in all fields');
@@ -66,9 +67,9 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.changeText(screen.getByDisplayValue(''), 'test@example.com');
-    fireEvent.changeText(screen.getByDisplayValue(''), 'password123');
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.changeText(screen.getByTestId('login-email'), 'test@example.com');
+    fireEvent.changeText(screen.getByTestId('login-password'), 'password123');
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     await waitFor(() => {
       expect(apiService.login).toHaveBeenCalledWith('test@example.com', 'password123');
@@ -86,9 +87,9 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.changeText(screen.getByDisplayValue(''), 'test@example.com');
-    fireEvent.changeText(screen.getByDisplayValue(''), 'password123');
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.changeText(screen.getByTestId('login-email'), 'test@example.com');
+    fireEvent.changeText(screen.getByTestId('login-password'), 'password123');
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     await waitFor(() => {
       expect(mockAuthContext.signIn).toHaveBeenCalledWith('test-token', { id: 1, email: 'test@example.com' });
@@ -103,9 +104,9 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.changeText(screen.getByDisplayValue(''), 'test@example.com');
-    fireEvent.changeText(screen.getByDisplayValue(''), 'wrongpassword');
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.changeText(screen.getByTestId('login-email'), 'test@example.com');
+    fireEvent.changeText(screen.getByTestId('login-password'), 'wrongpassword');
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith('Login Failed', 'Invalid credentials');
@@ -117,9 +118,9 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.changeText(screen.getByDisplayValue(''), 'test@example.com');
-    fireEvent.changeText(screen.getByDisplayValue(''), 'password123');
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.changeText(screen.getByTestId('login-email'), 'test@example.com');
+    fireEvent.changeText(screen.getByTestId('login-password'), 'password123');
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Network error. Please try again.');
@@ -141,12 +142,12 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen navigation={mockNavigation} />);
     
-    fireEvent.changeText(screen.getByDisplayValue(''), 'test@example.com');
-    fireEvent.changeText(screen.getByDisplayValue(''), 'password123');
-    fireEvent.press(screen.getByText('Sign In'));
+    fireEvent.changeText(screen.getByTestId('login-email'), 'test@example.com');
+    fireEvent.changeText(screen.getByTestId('login-password'), 'password123');
+    fireEvent.press(screen.getByTestId('login-submit'));
     
     // Form should be disabled during loading
-    expect(screen.getByText('Sign In')).toBeTruthy();
+    expect(screen.getByTestId('login-submit')).toBeTruthy();
   });
 
   it('shows features section', () => {

@@ -16,7 +16,7 @@ describe('LoadingScreen', () => {
   });
 
   it('renders with card by default', () => {
-    const { getByTestId } = render(<LoadingScreen />);
+    render(<LoadingScreen />);
     
     // The card should be present
     expect(screen.getByText('Loading...')).toBeTruthy();

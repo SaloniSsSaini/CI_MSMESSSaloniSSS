@@ -4,8 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  PermissionsAndroid,
-  Platform,
   RefreshControl,
 } from 'react-native';
 import {
@@ -20,28 +18,28 @@ import {
   List,
   Divider,
   ProgressBar,
-  Badge,
-  Surface,
   IconButton,
 } from 'react-native-paper';
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
 import PrivacyFocusedSMSReader from '../services/PrivacyFocusedSMSReader';
 
-const SMSAnalysisScreen = ({ navigation }: any) => {
+const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
   const [smsData, setSmsData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [manualSms, setManualSms] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
   const [esgMetrics, setEsgMetrics] = useState<any>(null);
-  const [privacyStatus, setPrivacyStatus] = useState<any>(null);
+  const [_privacyStatus, setPrivacyStatus] = useState<any>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dataRetentionStatus, setDataRetentionStatus] = useState<any>(null);
 
   useEffect(() => {
     initializeSMSAnalysis();
+    // initializeSMSAnalysis intentionally runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeSMSAnalysis = async () => {

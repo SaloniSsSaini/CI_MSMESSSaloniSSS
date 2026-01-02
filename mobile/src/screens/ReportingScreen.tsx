@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   RefreshControl,
   Share
 } from 'react-native';
-import { Card, Title, Paragraph, Button, ProgressBar, Chip, DataTable, SegmentedButtons } from 'react-native-paper';
+import { Card, Title, Button, ProgressBar, Chip, DataTable, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
@@ -42,7 +42,6 @@ interface TrendData {
 const ReportingScreen: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dateRange, setDateRange] = useState('6months');
-  const [reportType, setReportType] = useState('comprehensive');
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [email, setEmail] = useState('');
@@ -124,7 +123,7 @@ const ReportingScreen: React.FC = () => {
     }
   };
 
-  const pieChartData = categoryData.map((item, index) => ({
+  const pieChartData = categoryData.map((item) => ({
     name: item.name,
     value: item.value,
     color: item.color,

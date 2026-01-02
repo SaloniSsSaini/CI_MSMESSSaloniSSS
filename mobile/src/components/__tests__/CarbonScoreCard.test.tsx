@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { CarbonScoreCard } from '../CarbonScoreCard';
 
 describe('CarbonScoreCard', () => {
@@ -22,9 +23,8 @@ describe('CarbonScoreCard', () => {
   it('displays correct score color', () => {
     const { getByText } = render(<CarbonScoreCard {...defaultProps} />);
     const scoreElement = getByText('75');
-    expect(scoreElement.props.style).toContainEqual(
-      expect.objectContaining({ color: '#4CAF50' })
-    );
+    const flattenedStyle = StyleSheet.flatten(scoreElement.props.style);
+    expect(flattenedStyle.color).toBe('#4CAF50');
   });
 
   it('shows correct message for excellent score', () => {

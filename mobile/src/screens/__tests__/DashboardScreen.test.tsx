@@ -76,7 +76,8 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Carbon Score')).toBeTruthy();
     expect(screen.getByText('75')).toBeTruthy();
     expect(screen.getByText('This Month')).toBeTruthy();
-    expect(screen.getByText('1000')).toBeTruthy();
+    // QuickStatsCard abbreviates thousands (e.g. 1000 -> 1.0K)
+    expect(screen.getByText('1.0K')).toBeTruthy();
   });
 
   it('renders error screen when API fails', async () => {
