@@ -12,6 +12,9 @@
 /build
 
 # misc
+.gradle/
+mobile/android/local.properties
+mobile/node_modules/@react-native/gradle-plugin/build/
 .DS_Store
 .env
 .env.*
