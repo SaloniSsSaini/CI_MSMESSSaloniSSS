@@ -13,7 +13,9 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        // Keep this pinned to a concrete version; Gradle cannot resolve a versionless AGP.
+        // React Native 0.72.x expects AGP 8.0.x.
+        classpath("com.android.tools.build:gradle:8.0.2")
         classpath("com.facebook.react:react-native-gradle-plugin")
     }
 }

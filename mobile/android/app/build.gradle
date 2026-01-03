@@ -93,6 +93,10 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     namespace "com.carbonintelligence"
+    // React Native's Gradle plugin adds BuildConfig fields; with AGP 8 this must be enabled.
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "com.carbonintelligence"
         minSdkVersion rootProject.ext.minSdkVersion

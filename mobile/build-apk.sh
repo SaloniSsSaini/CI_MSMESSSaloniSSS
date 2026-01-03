@@ -60,7 +60,7 @@ fi
 
 # Check Java
 if ! command -v java &> /dev/null; then
-    print_error "Java is not installed. Please install Java JDK 17-20."
+    print_error "Java is not installed. Please install Java JDK 17."
     exit 1
 fi
 

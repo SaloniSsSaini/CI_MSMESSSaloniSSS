@@ -19,7 +19,7 @@ fi
 # Check if Java is available
 if ! command -v java &> /dev/null; then
     echo "Error: Java is not installed or not in PATH."
-    echo "Please install Java JDK 8 or higher."
+    echo "Please install Java JDK 17 (required for Android/AGP builds)."
     exit 1
 fi
 
