@@ -75,6 +75,35 @@ const STATE_REGION_MAP = {
   'daman and diu': 'west-india'
 };
 
+const ORCHESTRATION_DEFAULTS = {
+  thresholds: {
+    minTransactionsForAnomaly: 20,
+    minTransactionsForTrends: 12,
+    energyShareHigh: 0.2,
+    wasteShareHigh: 0.1,
+    transportShareHigh: 0.15,
+    materialsShareHigh: 0.15,
+    manufacturingShareHigh: 0.12
+  },
+  weights: {
+    completeness: 0.4,
+    consistency: 0.3,
+    coverage: 0.3
+  },
+  orchestration: {
+    preferParallel: true,
+    continueOnPartialFailures: true,
+    emitRecommendations: true,
+    emitReport: true
+  },
+  tuning: {
+    anomalySensitivity: 'medium',
+    trendHorizonMonths: 6,
+    optimizationDepth: 'standard',
+    complianceStrictness: 'standard'
+  }
+};
+
 class MSMEEmissionsOrchestrationService {
   async orchestrateEmissions({
     msmeId,
@@ -96,13 +125,17 @@ class MSMEEmissionsOrchestrationService {
     const normalizedTransactions = transactions.map(transaction =>
       this.normalizeTransaction(transaction, msmeProfile)
     );
+    const orchestrationOptions = this.getOrchestrationOptions(contextOverrides?.orchestrationOptions);
+    const transactionStats = this.computeTransactionStats(normalizedTransactions);
+    const dataQuality = this.assessDataQuality(transactionStats, normalizedTransactions, orchestrationOptions.weights);
 
     const coordinationContext = {
       orchestrationId,
       startedAt: new Date(),
       interactions: [],
       previousResults: {},
-      warnings: []
+      warnings: [],
+      orchestrationOptions
     };
 
     const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
@@ -113,6 +146,10 @@ class MSMEEmissionsOrchestrationService {
     ]);
 
     const baseContext = this.buildBaseContext(msmeProfile, contextOverrides);
+    baseContext.transactionStats = transactionStats;
+    baseContext.dataQuality = dataQuality;
+    baseContext.orchestrationOptions = orchestrationOptions;
+
     const sectorProfile = await this.executeAgent(
       sectorAgentType,
       () => aiAgentService.sectorProfilerAgent({
@@ -159,6 +196,14 @@ class MSMEEmissionsOrchestrationService {
       context,
       behaviorOverrides
     );
+    context.behaviorSignals = this.buildBehaviorSignals(behaviorProfiles);
+
+    if (dataQuality.confidence < 0.5) {
+      coordinationContext.warnings.push({
+        message: 'Low data quality may affect orchestration accuracy.',
+        dataQuality
+      });
+    }
 
     const dataProcessing = await this.executeAgent(
       'data_processor',
@@ -167,7 +212,8 @@ class MSMEEmissionsOrchestrationService {
           transactions: normalizedTransactions,
           context,
           behaviorProfiles,
-          coordinationContext
+          coordinationContext,
+          orchestrationOptions
         }
       }),
       coordinationContext,
@@ -190,7 +236,8 @@ class MSMEEmissionsOrchestrationService {
           msmeData: msmeProfile,
           context,
           behaviorProfiles,
-          coordinationContext
+          coordinationContext,
+          orchestrationOptions
         }
       }),
       coordinationContext,
@@ -206,13 +253,18 @@ class MSMEEmissionsOrchestrationService {
       transactions: processedTransactions,
       msmeData: msmeProfile,
       context,
-      coordinationContext
+      coordinationContext,
+      processMachineryProfile,
+      transactionStats,
+      dataQuality,
+      orchestrationOptions
     };
 
     const orchestrationPlan = this.buildOrchestrationPlan({
       sectorProfile,
       analysisContext,
-      msmeProfile
+      msmeProfile,
+      orchestrationOptions
     });
 
     const parallelAgents = this.buildParallelAgentDefinitions(
@@ -244,7 +296,9 @@ class MSMEEmissionsOrchestrationService {
             optimization: parallelResults.optimization_advisor,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
-            coordinationContext
+            coordinationContext,
+            processMachineryProfile,
+            orchestrationOptions
           }
         }),
         coordinationContext,
@@ -267,7 +321,9 @@ class MSMEEmissionsOrchestrationService {
             recommendations: recommendations?.recommendations || recommendations,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
-            coordinationContext
+            coordinationContext,
+            processMachineryProfile,
+            orchestrationOptions
           }
         }),
         coordinationContext,
@@ -330,6 +386,124 @@ class MSMEEmissionsOrchestrationService {
     return normalized;
   }
 
+  getOrchestrationOptions(overrides = {}) {
+    return {
+      thresholds: {
+        ...ORCHESTRATION_DEFAULTS.thresholds,
+        ...(overrides.thresholds || {})
+      },
+      weights: {
+        ...ORCHESTRATION_DEFAULTS.weights,
+        ...(overrides.weights || {})
+      },
+      orchestration: {
+        ...ORCHESTRATION_DEFAULTS.orchestration,
+        ...(overrides.orchestration || {})
+      },
+      tuning: {
+        ...ORCHESTRATION_DEFAULTS.tuning,
+        ...(overrides.tuning || {})
+      }
+    };
+  }
+
+  computeTransactionStats(transactions) {
+    const stats = {
+      totalCount: transactions.length,
+      totalAmount: 0,
+      averageAmount: 0,
+      minAmount: null,
+      maxAmount: null,
+      categoryTotals: {},
+      categoryCounts: {},
+      missingCategoryCount: 0,
+      missingAmountCount: 0,
+      invalidAmountCount: 0
+    };
+
+    transactions.forEach(transaction => {
+      const category = (transaction.category || '').toLowerCase();
+      const rawAmount = transaction.amount;
+      const amount = Number(rawAmount);
+      const hasAmount = rawAmount !== null && rawAmount !== undefined && rawAmount !== '';
+      if (!category) {
+        stats.missingCategoryCount += 1;
+      } else {
+        stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
+        stats.categoryTotals[category] = (stats.categoryTotals[category] || 0) + (Number.isFinite(amount) ? amount : 0);
+      }
+
+      if (!hasAmount) {
+        stats.missingAmountCount += 1;
+      } else if (!Number.isFinite(amount)) {
+        stats.invalidAmountCount += 1;
+      } else {
+        stats.totalAmount += amount;
+        stats.minAmount = stats.minAmount === null ? amount : Math.min(stats.minAmount, amount);
+        stats.maxAmount = stats.maxAmount === null ? amount : Math.max(stats.maxAmount, amount);
+      }
+    });
+
+    stats.averageAmount = transactions.length > 0 ? stats.totalAmount / transactions.length : 0;
+
+    return stats;
+  }
+
+  assessDataQuality(stats, transactions, weights) {
+    const total = stats.totalCount || 0;
+    if (total === 0) {
+      return {
+        completeness: 0,
+        consistency: 0,
+        coverage: 0,
+        confidence: 0,
+        details: stats
+      };
+    }
+
+    const missingCategoryRate = stats.missingCategoryCount / total;
+    const invalidAmountRate = stats.invalidAmountCount / total;
+    const completeness = this.clamp(1 - (missingCategoryRate + invalidAmountRate) / 2);
+
+    const negativeAmountCount = transactions.filter(txn => Number(txn.amount) < 0).length;
+    const consistency = this.clamp(1 - (negativeAmountCount + invalidAmountRate) / total);
+
+    const uniqueBehaviors = new Set(
+      Object.keys(stats.categoryTotals).map(category => this.mapCategoryToBehavior(category))
+    );
+    const coverage = this.clamp(uniqueBehaviors.size / Object.keys(BEHAVIOR_DEFINITIONS).length);
+
+    const confidence = this.clamp(
+      completeness * weights.completeness +
+      consistency * weights.consistency +
+      coverage * weights.coverage
+    );
+
+    return {
+      completeness,
+      consistency,
+      coverage,
+      confidence,
+      details: stats
+    };
+  }
+
+  buildBehaviorSignals(behaviorProfiles) {
+    const signals = {};
+    Object.values(behaviorProfiles).forEach(profile => {
+      signals[profile.behavior] = {
+        emissionsShare: profile.emissionsShare,
+        emissionIntensity: profile.emissionIntensity,
+        severity: profile.severity
+      };
+    });
+    return signals;
+  }
+
+  clamp(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
   getSectorAgentType(businessDomain) {
     const normalized = (businessDomain || 'other').toLowerCase();
     return `sector_profiler_${normalized}`;
@@ -380,11 +554,15 @@ class MSMEEmissionsOrchestrationService {
     );
     context.sectorProfile = sectorProfile || null;
     context.processMachineryProfile = processMachineryProfile || null;
+    context.transactionStats = baseContext.transactionStats || null;
+    context.dataQuality = baseContext.dataQuality || null;
+    context.orchestrationOptions = baseContext.orchestrationOptions || this.getOrchestrationOptions();
     context.processContext = {
       ...(baseContext.processContext || {}),
       processes: processMachineryProfile?.processes || [],
       machinery: processMachineryProfile?.machinery || [],
-      emissionFactors: processMachineryProfile?.emissionFactors || []
+      emissionFactors: processMachineryProfile?.emissionFactors || [],
+      intensityProfile: processMachineryProfile?.intensityProfile || null
     };
 
     return context;
@@ -528,7 +706,7 @@ class MSMEEmissionsOrchestrationService {
     return profiles;
   }
 
-  buildOrchestrationPlan({ sectorProfile, analysisContext, msmeProfile }) {
+  buildOrchestrationPlan({ sectorProfile, analysisContext, msmeProfile, orchestrationOptions }) {
     const defaultParallelAgents = [
       'anomaly_detector',
       'trend_analyzer',
@@ -536,10 +714,12 @@ class MSMEEmissionsOrchestrationService {
       'optimization_advisor'
     ];
 
+    const thresholds = orchestrationOptions.thresholds;
     const sectorPlan = sectorProfile?.orchestrationPlan || {};
     const parallelAgents = new Set(sectorPlan.parallelAgents || defaultParallelAgents);
     const rationale = [];
 
+    const transactionCount = analysisContext.transactions?.length || 0;
     const behaviorProfiles = analysisContext.behaviorProfiles || {};
     const highSeverity = Object.values(behaviorProfiles).filter(profile => profile.severity === 'high');
     if (highSeverity.length > 0) {
@@ -547,19 +727,39 @@ class MSMEEmissionsOrchestrationService {
       rationale.push('High severity behaviors trigger anomaly detection.');
     }
 
-    if ((behaviorProfiles.energy?.emissionsShare || 0) > 0.2) {
+    if (transactionCount >= thresholds.minTransactionsForAnomaly) {
+      parallelAgents.add('anomaly_detector');
+      rationale.push('Sufficient transaction volume supports anomaly detection.');
+    }
+
+    if (transactionCount >= thresholds.minTransactionsForTrends) {
+      parallelAgents.add('trend_analyzer');
+      rationale.push('Transaction volume supports trend analysis.');
+    }
+
+    if ((behaviorProfiles.energy?.emissionsShare || 0) > thresholds.energyShareHigh) {
       parallelAgents.add('optimization_advisor');
       rationale.push('Energy emissions indicate optimization opportunities.');
     }
 
-    if ((behaviorProfiles.waste?.emissionsShare || 0) > 0.1) {
+    if ((behaviorProfiles.waste?.emissionsShare || 0) > thresholds.wasteShareHigh) {
       parallelAgents.add('compliance_monitor');
       rationale.push('Waste emissions warrant compliance review.');
     }
 
-    if ((behaviorProfiles.transportation?.emissionsShare || 0) > 0.15) {
+    if ((behaviorProfiles.transportation?.emissionsShare || 0) > thresholds.transportShareHigh) {
       parallelAgents.add('trend_analyzer');
       rationale.push('Transportation intensity adds trend monitoring.');
+    }
+
+    if ((behaviorProfiles.materials?.emissionsShare || 0) > thresholds.materialsShareHigh) {
+      parallelAgents.add('optimization_advisor');
+      rationale.push('Material emissions indicate optimization opportunity.');
+    }
+
+    if ((behaviorProfiles.manufacturing?.emissionsShare || 0) > thresholds.manufacturingShareHigh) {
+      parallelAgents.add('compliance_monitor');
+      rationale.push('Manufacturing emissions drive compliance review.');
     }
 
     if (msmeProfile?.environmentalCompliance &&
@@ -569,24 +769,35 @@ class MSMEEmissionsOrchestrationService {
       rationale.push('Missing compliance signals add regulatory checks.');
     }
 
+    if (analysisContext.dataQuality?.confidence < 0.6) {
+      rationale.push('Data quality below target; interpret results cautiously.');
+    }
+
     if (sectorProfile?.label) {
       rationale.push(`Sector orchestration aligned to ${sectorProfile.label}.`);
     }
 
+    const coordinationMode = orchestrationOptions.orchestration.preferParallel && parallelAgents.size > 1
+      ? 'parallel'
+      : 'sequential';
+
     return {
       sector: sectorProfile?.sector || msmeProfile?.businessDomain || 'other',
       parallelAgents: Array.from(parallelAgents),
+      coordinationMode,
       outputs: {
-        recommendations: true,
-        report: true,
+        recommendations: orchestrationOptions.orchestration.emitRecommendations,
+        report: orchestrationOptions.orchestration.emitReport,
         ...(sectorPlan.outputs || {})
       },
+      thresholds,
       rationale
     };
   }
 
   buildParallelAgentDefinitions(analysisContext, orchestrationPlan, coordinationContext) {
     const requestedAgents = orchestrationPlan?.parallelAgents || [];
+    const orchestrationOptions = analysisContext.orchestrationOptions || this.getOrchestrationOptions();
     const builders = {
       anomaly_detector: () => ({
         type: 'anomaly_detector',
@@ -598,7 +809,10 @@ class MSMEEmissionsOrchestrationService {
             carbonData: analysisContext.carbonData,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
-            coordinationContext
+            coordinationContext,
+            dataQuality: analysisContext.dataQuality,
+            orchestrationOptions,
+            thresholds: orchestrationOptions.thresholds
           }
         })
       }),
@@ -611,9 +825,13 @@ class MSMEEmissionsOrchestrationService {
             data: {
               carbonData: analysisContext.carbonData,
               behaviorProfiles: analysisContext.behaviorProfiles,
-              context: analysisContext.context
+              context: analysisContext.context,
+              processMachineryProfile: analysisContext.processMachineryProfile,
+              transactionStats: analysisContext.transactionStats,
+              dataQuality: analysisContext.dataQuality
             },
-            coordinationContext
+            coordinationContext,
+            orchestrationOptions
           }
         })
       }),
@@ -626,7 +844,9 @@ class MSMEEmissionsOrchestrationService {
             carbonData: analysisContext.carbonData,
             regulations: analysisContext.context.regulatoryContext,
             context: analysisContext.context,
-            coordinationContext
+            coordinationContext,
+            processMachineryProfile: analysisContext.processMachineryProfile,
+            orchestrationOptions
           }
         })
       }),
@@ -639,7 +859,9 @@ class MSMEEmissionsOrchestrationService {
             carbonData: analysisContext.carbonData,
             processes: analysisContext.context.processContext,
             context: analysisContext.context,
-            coordinationContext
+            coordinationContext,
+            processMachineryProfile: analysisContext.processMachineryProfile,
+            orchestrationOptions
           }
         })
       })
