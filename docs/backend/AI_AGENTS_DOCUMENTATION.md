@@ -331,6 +331,12 @@ Content-Type: application/json
 }
 ```
 
+### Orchestration Overview
+![MSME orchestration overview](images/orchestration-overview.svg)
+
+### Orchestration Parameters
+![MSME orchestration parameters](images/orchestration-parameters.svg)
+
 ### AI-Enhanced Carbon Analysis
 
 #### Comprehensive AI Analysis
