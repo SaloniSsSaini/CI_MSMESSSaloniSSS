@@ -3,6 +3,7 @@ const AITask = require('../models/AITask');
 const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
 const agentOptimizationService = require('./agentOptimizationService');
+const sectorProfilerAgent = require('./agents/sectorProfilerAgent');
 const logger = require('../utils/logger');
 
 class AIAgentService {
@@ -324,6 +325,10 @@ class AIAgentService {
 
       const enhancedTask = { ...task, input: enhancedInput };
 
+      if (agent.type.startsWith('sector_profiler_')) {
+        return await this.sectorProfilerAgent(enhancedTask);
+      }
+
       switch (agent.type) {
         case 'carbon_analyzer':
           return await this.carbonAnalyzerAgent(enhancedTask);
@@ -513,33 +518,37 @@ class AIAgentService {
       };
 
       let result;
-      switch (agent.type) {
-        case 'carbon_analyzer':
-          result = await this.carbonAnalyzerAgent(optimizedTask);
-          break;
-        case 'recommendation_engine':
-          result = await this.recommendationEngineAgent(optimizedTask);
-          break;
-        case 'data_processor':
-          result = await this.dataProcessorAgent(optimizedTask);
-          break;
-        case 'anomaly_detector':
-          result = await this.anomalyDetectorAgent(optimizedTask);
-          break;
-        case 'trend_analyzer':
-          result = await this.trendAnalyzerAgent(optimizedTask);
-          break;
-        case 'compliance_monitor':
-          result = await this.complianceMonitorAgent(optimizedTask);
-          break;
-        case 'optimization_advisor':
-          result = await this.optimizationAdvisorAgent(optimizedTask);
-          break;
-        case 'report_generator':
-          result = await this.reportGeneratorAgent(optimizedTask);
-          break;
-        default:
-          throw new Error(`Unknown agent type: ${agent.type}`);
+      if (agent.type.startsWith('sector_profiler_')) {
+        result = await this.sectorProfilerAgent(optimizedTask);
+      } else {
+        switch (agent.type) {
+          case 'carbon_analyzer':
+            result = await this.carbonAnalyzerAgent(optimizedTask);
+            break;
+          case 'recommendation_engine':
+            result = await this.recommendationEngineAgent(optimizedTask);
+            break;
+          case 'data_processor':
+            result = await this.dataProcessorAgent(optimizedTask);
+            break;
+          case 'anomaly_detector':
+            result = await this.anomalyDetectorAgent(optimizedTask);
+            break;
+          case 'trend_analyzer':
+            result = await this.trendAnalyzerAgent(optimizedTask);
+            break;
+          case 'compliance_monitor':
+            result = await this.complianceMonitorAgent(optimizedTask);
+            break;
+          case 'optimization_advisor':
+            result = await this.optimizationAdvisorAgent(optimizedTask);
+            break;
+          case 'report_generator':
+            result = await this.reportGeneratorAgent(optimizedTask);
+            break;
+          default:
+            throw new Error(`Unknown agent type: ${agent.type}`);
+        }
       }
 
       // Add optimization metadata to result
@@ -593,6 +602,15 @@ class AIAgentService {
     }
 
     return { error: 'Invalid input for carbon analyzer' };
+  }
+
+  async sectorProfilerAgent(task) {
+    const { input } = task;
+    if (!input || !input.msmeData) {
+      return { error: 'Invalid input for sector profiler' };
+    }
+
+    return sectorProfilerAgent.analyzeProfile(input);
   }
 
   async recommendationEngineAgent(task) {
@@ -1724,33 +1742,37 @@ class AIAgentService {
       const enhancedTask = { ...task, input: optimizedInput };
 
       let result;
-      switch (agent.type) {
-        case 'carbon_analyzer':
-          result = await this.carbonAnalyzerAgent(enhancedTask);
-          break;
-        case 'recommendation_engine':
-          result = await this.recommendationEngineAgent(enhancedTask);
-          break;
-        case 'data_processor':
-          result = await this.dataProcessorAgent(enhancedTask);
-          break;
-        case 'anomaly_detector':
-          result = await this.anomalyDetectorAgent(enhancedTask);
-          break;
-        case 'trend_analyzer':
-          result = await this.trendAnalyzerAgent(enhancedTask);
-          break;
-        case 'compliance_monitor':
-          result = await this.complianceMonitorAgent(enhancedTask);
-          break;
-        case 'optimization_advisor':
-          result = await this.optimizationAdvisorAgent(enhancedTask);
-          break;
-        case 'report_generator':
-          result = await this.reportGeneratorAgent(enhancedTask);
-          break;
-        default:
-          throw new Error(`Unknown agent type: ${agent.type}`);
+      if (agent.type.startsWith('sector_profiler_')) {
+        result = await this.sectorProfilerAgent(enhancedTask);
+      } else {
+        switch (agent.type) {
+          case 'carbon_analyzer':
+            result = await this.carbonAnalyzerAgent(enhancedTask);
+            break;
+          case 'recommendation_engine':
+            result = await this.recommendationEngineAgent(enhancedTask);
+            break;
+          case 'data_processor':
+            result = await this.dataProcessorAgent(enhancedTask);
+            break;
+          case 'anomaly_detector':
+            result = await this.anomalyDetectorAgent(enhancedTask);
+            break;
+          case 'trend_analyzer':
+            result = await this.trendAnalyzerAgent(enhancedTask);
+            break;
+          case 'compliance_monitor':
+            result = await this.complianceMonitorAgent(enhancedTask);
+            break;
+          case 'optimization_advisor':
+            result = await this.optimizationAdvisorAgent(enhancedTask);
+            break;
+          case 'report_generator':
+            result = await this.reportGeneratorAgent(enhancedTask);
+            break;
+          default:
+            throw new Error(`Unknown agent type: ${agent.type}`);
+        }
       }
 
       // Add optimization metadata

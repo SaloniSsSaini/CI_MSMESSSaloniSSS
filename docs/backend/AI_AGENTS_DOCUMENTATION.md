@@ -29,6 +29,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
    - Compliance Monitor Agent
    - Optimization Advisor Agent
    - Report Generator Agent
+   - Sector Profiler Agents (per MSME business domain)
 
 ## AI Agents
 
@@ -131,6 +132,16 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Chart and graph generation
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
+
+### 9. Sector Profiler Agents
+**Type:** `sector_profiler_<domain>`
+**Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
+
+**Capabilities:**
+- Sector profile analysis for registered MSMEs
+- Behavior weighting by MSME business domain
+- Orchestration planning recommendations
+- Context enrichment for multi-agent coordination
 
 ## API Endpoints
 

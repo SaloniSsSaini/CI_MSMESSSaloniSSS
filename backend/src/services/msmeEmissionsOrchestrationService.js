@@ -97,13 +97,6 @@ class MSMEEmissionsOrchestrationService {
       this.normalizeTransaction(transaction, msmeProfile)
     );
 
-    const context = this.buildContext(msmeProfile, contextOverrides);
-    const behaviorProfiles = this.buildBehaviorProfiles(
-      normalizedTransactions,
-      context,
-      behaviorOverrides
-    );
-
     const coordinationContext = {
       orchestrationId,
       startedAt: new Date(),
@@ -112,7 +105,33 @@ class MSMEEmissionsOrchestrationService {
       warnings: []
     };
 
-    const agentAvailability = await this.resolveAgentAvailability();
+    const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
+    const agentAvailability = await this.resolveAgentAvailability([sectorAgentType]);
+
+    const baseContext = this.buildBaseContext(msmeProfile, contextOverrides);
+    const sectorProfile = await this.executeAgent(
+      sectorAgentType,
+      () => aiAgentService.sectorProfilerAgent({
+        input: {
+          msmeData: msmeProfile,
+          transactions: normalizedTransactions,
+          context: baseContext
+        }
+      }),
+      coordinationContext,
+      {
+        stage: 'sector_profile',
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, sectorAgentType)
+      }
+    );
+
+    const context = this.buildContext(baseContext, sectorProfile, contextOverrides);
+    const behaviorProfiles = this.buildBehaviorProfiles(
+      normalizedTransactions,
+      context,
+      behaviorOverrides
+    );
 
     const dataProcessing = await this.executeAgent(
       'data_processor',
@@ -163,113 +182,75 @@ class MSMEEmissionsOrchestrationService {
       coordinationContext
     };
 
-    const parallelAgents = [
-      {
-        type: 'anomaly_detector',
-        stage: 'anomaly_detection',
-        allowFailure: true,
-        handler: () => aiAgentService.anomalyDetectorAgent({
+    const orchestrationPlan = this.buildOrchestrationPlan({
+      sectorProfile,
+      analysisContext,
+      msmeProfile
+    });
+
+    const parallelAgents = this.buildParallelAgentDefinitions(
+      analysisContext,
+      orchestrationPlan,
+      coordinationContext
+    );
+
+    const parallelResults = parallelAgents.length > 0
+      ? await this.executeParallelAgents(
+        parallelAgents,
+        coordinationContext,
+        agentAvailability
+      )
+      : {};
+
+    let recommendations = null;
+    if (orchestrationPlan.outputs?.recommendations !== false) {
+      recommendations = await this.executeAgent(
+        'recommendation_engine',
+        () => aiAgentService.recommendationEngineAgent({
           input: {
-            transactions: analysisContext.transactions,
             carbonData: analysisContext.carbonData,
+            transactions: analysisContext.transactions,
+            msmeData: analysisContext.msmeData,
+            trends: parallelResults.trend_analyzer?.trends,
+            anomalies: parallelResults.anomaly_detector,
+            compliance: parallelResults.compliance_monitor,
+            optimization: parallelResults.optimization_advisor,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
             coordinationContext
           }
-        })
-      },
-      {
-        type: 'trend_analyzer',
-        stage: 'trend_analysis',
-        allowFailure: true,
-        handler: () => aiAgentService.trendAnalyzerAgent({
-          input: {
-            data: {
-              carbonData: analysisContext.carbonData,
-              behaviorProfiles: analysisContext.behaviorProfiles,
-              context: analysisContext.context
-            },
-            coordinationContext
-          }
-        })
-      },
-      {
-        type: 'compliance_monitor',
-        stage: 'compliance_check',
-        allowFailure: true,
-        handler: () => aiAgentService.complianceMonitorAgent({
+        }),
+        coordinationContext,
+        {
+          stage: 'recommendation_generation',
+          allowFailure: true,
+          executionMode: this.getExecutionMode(agentAvailability, 'recommendation_engine')
+        }
+      );
+    }
+
+    let report = null;
+    if (orchestrationPlan.outputs?.report !== false) {
+      report = await this.executeAgent(
+        'report_generator',
+        () => aiAgentService.reportGeneratorAgent({
           input: {
             carbonData: analysisContext.carbonData,
-            regulations: context.regulatoryContext,
+            trends: parallelResults.trend_analyzer?.trends,
+            recommendations: recommendations?.recommendations || recommendations,
+            behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
             coordinationContext
           }
-        })
-      },
-      {
-        type: 'optimization_advisor',
-        stage: 'optimization_advice',
-        allowFailure: true,
-        handler: () => aiAgentService.optimizationAdvisorAgent({
-          input: {
-            carbonData: analysisContext.carbonData,
-            processes: context.processContext,
-            context: analysisContext.context,
-            coordinationContext
-          }
-        })
-      }
-    ];
-
-    const parallelResults = await this.executeParallelAgents(
-      parallelAgents,
-      coordinationContext,
-      agentAvailability
-    );
-
-    const recommendations = await this.executeAgent(
-      'recommendation_engine',
-      () => aiAgentService.recommendationEngineAgent({
-        input: {
-          carbonData: analysisContext.carbonData,
-          transactions: analysisContext.transactions,
-          msmeData: analysisContext.msmeData,
-          trends: parallelResults.trend_analyzer?.trends,
-          anomalies: parallelResults.anomaly_detector,
-          compliance: parallelResults.compliance_monitor,
-          optimization: parallelResults.optimization_advisor,
-          behaviorProfiles: analysisContext.behaviorProfiles,
-          context: analysisContext.context,
-          coordinationContext
+        }),
+        coordinationContext,
+        {
+          stage: 'report_generation',
+          allowFailure: true,
+          executionMode: this.getExecutionMode(agentAvailability, 'report_generator')
         }
-      }),
-      coordinationContext,
-      {
-        stage: 'recommendation_generation',
-        allowFailure: true,
-        executionMode: this.getExecutionMode(agentAvailability, 'recommendation_engine')
-      }
-    );
-
-    const report = await this.executeAgent(
-      'report_generator',
-      () => aiAgentService.reportGeneratorAgent({
-        input: {
-          carbonData: analysisContext.carbonData,
-          trends: parallelResults.trend_analyzer?.trends,
-          recommendations: recommendations?.recommendations || recommendations,
-          behaviorProfiles: analysisContext.behaviorProfiles,
-          context: analysisContext.context,
-          coordinationContext
-        }
-      }),
-      coordinationContext,
-      {
-        stage: 'report_generation',
-        allowFailure: true,
-        executionMode: this.getExecutionMode(agentAvailability, 'report_generator')
-      }
-    );
+      );
+    }
 
     const emissionsSummary = this.buildEmissionsSummary(
       behaviorProfiles,
@@ -281,10 +262,13 @@ class MSMEEmissionsOrchestrationService {
       msmeId: msmeProfile._id?.toString() || msmeId,
       msmeSnapshot: this.buildMSMESnapshot(msmeProfile),
       context,
+      sectorProfile,
       behaviorProfiles,
+      orchestrationPlan,
       emissionsSummary,
       agentAvailability,
       agentOutputs: {
+        sectorProfile,
         dataProcessing,
         carbonAnalysis,
         anomalies: parallelResults.anomaly_detector,
@@ -317,15 +301,23 @@ class MSMEEmissionsOrchestrationService {
     return normalized;
   }
 
-  buildContext(msmeProfile, overrides = {}) {
-    const locationState = msmeProfile?.contact?.address?.state || 'unknown';
-    const region = this.resolveRegion(locationState);
-    const season = overrides.season || this.getSeason(new Date());
+  getSectorAgentType(businessDomain) {
+    const normalized = (businessDomain || 'other').toLowerCase();
+    return `sector_profiler_${normalized}`;
+  }
 
-    const context = {
-      businessDomain: msmeProfile.businessDomain,
-      industry: msmeProfile.industry,
-      companyType: msmeProfile.companyType,
+  buildBaseContext(msmeProfile, overrides = {}) {
+    const locationState = msmeProfile?.contact?.address?.state || 'unknown';
+    const region = overrides.region || this.resolveRegion(locationState);
+    const season = overrides.season || this.getSeason(new Date());
+    const businessDomain = overrides.businessDomain || msmeProfile.businessDomain;
+    const industry = overrides.industry || msmeProfile.industry;
+    const companyType = overrides.companyType || msmeProfile.companyType;
+
+    return {
+      businessDomain,
+      industry,
+      companyType,
       location: {
         state: locationState,
         country: msmeProfile?.contact?.address?.country || 'India'
@@ -334,27 +326,42 @@ class MSMEEmissionsOrchestrationService {
       season,
       regulatoryContext: overrides.regulatoryContext || {
         region,
-        industry: msmeProfile.industry,
-        domain: msmeProfile.businessDomain
+        industry,
+        domain: businessDomain
       },
       processContext: overrides.processContext || {
         primaryProducts: msmeProfile?.business?.primaryProducts,
         manufacturingUnits: msmeProfile?.business?.manufacturingUnits
       }
     };
+  }
 
-    if (overrides.businessDomain) {
-      context.businessDomain = overrides.businessDomain;
-    }
-
-    if (overrides.region) {
-      context.region = overrides.region;
-    }
-
-    const behaviorWeights = overrides.behaviorWeights || this.deriveBehaviorWeights(context);
-    context.behaviorWeights = behaviorWeights;
+  buildContext(baseContext, sectorProfile, overrides = {}) {
+    const context = { ...baseContext };
+    const derivedWeights = this.deriveBehaviorWeights(context);
+    context.behaviorWeights = this.mergeBehaviorWeights(
+      derivedWeights,
+      sectorProfile?.behaviorWeights,
+      overrides.behaviorWeights
+    );
+    context.sectorProfile = sectorProfile || null;
 
     return context;
+  }
+
+  mergeBehaviorWeights(baseWeights, sectorWeights, overrideWeights) {
+    const merged = { ...baseWeights };
+    Object.entries(sectorWeights || {}).forEach(([key, value]) => {
+      if (Number.isFinite(value)) {
+        merged[key] = (merged[key] || 1) * value;
+      }
+    });
+    Object.entries(overrideWeights || {}).forEach(([key, value]) => {
+      if (Number.isFinite(value)) {
+        merged[key] = value;
+      }
+    });
+    return merged;
   }
 
   resolveRegion(state) {
@@ -480,6 +487,128 @@ class MSMEEmissionsOrchestrationService {
     return profiles;
   }
 
+  buildOrchestrationPlan({ sectorProfile, analysisContext, msmeProfile }) {
+    const defaultParallelAgents = [
+      'anomaly_detector',
+      'trend_analyzer',
+      'compliance_monitor',
+      'optimization_advisor'
+    ];
+
+    const sectorPlan = sectorProfile?.orchestrationPlan || {};
+    const parallelAgents = new Set(sectorPlan.parallelAgents || defaultParallelAgents);
+    const rationale = [];
+
+    const behaviorProfiles = analysisContext.behaviorProfiles || {};
+    const highSeverity = Object.values(behaviorProfiles).filter(profile => profile.severity === 'high');
+    if (highSeverity.length > 0) {
+      parallelAgents.add('anomaly_detector');
+      rationale.push('High severity behaviors trigger anomaly detection.');
+    }
+
+    if ((behaviorProfiles.energy?.emissionsShare || 0) > 0.2) {
+      parallelAgents.add('optimization_advisor');
+      rationale.push('Energy emissions indicate optimization opportunities.');
+    }
+
+    if ((behaviorProfiles.waste?.emissionsShare || 0) > 0.1) {
+      parallelAgents.add('compliance_monitor');
+      rationale.push('Waste emissions warrant compliance review.');
+    }
+
+    if ((behaviorProfiles.transportation?.emissionsShare || 0) > 0.15) {
+      parallelAgents.add('trend_analyzer');
+      rationale.push('Transportation intensity adds trend monitoring.');
+    }
+
+    if (msmeProfile?.environmentalCompliance &&
+        (!msmeProfile.environmentalCompliance.hasPollutionControlBoard ||
+         !msmeProfile.environmentalCompliance.hasEnvironmentalClearance)) {
+      parallelAgents.add('compliance_monitor');
+      rationale.push('Missing compliance signals add regulatory checks.');
+    }
+
+    if (sectorProfile?.label) {
+      rationale.push(`Sector orchestration aligned to ${sectorProfile.label}.`);
+    }
+
+    return {
+      sector: sectorProfile?.sector || msmeProfile?.businessDomain || 'other',
+      parallelAgents: Array.from(parallelAgents),
+      outputs: {
+        recommendations: true,
+        report: true,
+        ...(sectorPlan.outputs || {})
+      },
+      rationale
+    };
+  }
+
+  buildParallelAgentDefinitions(analysisContext, orchestrationPlan, coordinationContext) {
+    const requestedAgents = orchestrationPlan?.parallelAgents || [];
+    const builders = {
+      anomaly_detector: () => ({
+        type: 'anomaly_detector',
+        stage: 'anomaly_detection',
+        allowFailure: true,
+        handler: () => aiAgentService.anomalyDetectorAgent({
+          input: {
+            transactions: analysisContext.transactions,
+            carbonData: analysisContext.carbonData,
+            behaviorProfiles: analysisContext.behaviorProfiles,
+            context: analysisContext.context,
+            coordinationContext
+          }
+        })
+      }),
+      trend_analyzer: () => ({
+        type: 'trend_analyzer',
+        stage: 'trend_analysis',
+        allowFailure: true,
+        handler: () => aiAgentService.trendAnalyzerAgent({
+          input: {
+            data: {
+              carbonData: analysisContext.carbonData,
+              behaviorProfiles: analysisContext.behaviorProfiles,
+              context: analysisContext.context
+            },
+            coordinationContext
+          }
+        })
+      }),
+      compliance_monitor: () => ({
+        type: 'compliance_monitor',
+        stage: 'compliance_check',
+        allowFailure: true,
+        handler: () => aiAgentService.complianceMonitorAgent({
+          input: {
+            carbonData: analysisContext.carbonData,
+            regulations: analysisContext.context.regulatoryContext,
+            context: analysisContext.context,
+            coordinationContext
+          }
+        })
+      }),
+      optimization_advisor: () => ({
+        type: 'optimization_advisor',
+        stage: 'optimization_advice',
+        allowFailure: true,
+        handler: () => aiAgentService.optimizationAdvisorAgent({
+          input: {
+            carbonData: analysisContext.carbonData,
+            processes: analysisContext.context.processContext,
+            context: analysisContext.context,
+            coordinationContext
+          }
+        })
+      })
+    };
+
+    return requestedAgents
+      .map(agentType => builders[agentType]?.())
+      .filter(Boolean);
+  }
+
   mapCategoryToBehavior(category) {
     const normalized = (category || 'other').toLowerCase();
     const match = Object.entries(BEHAVIOR_DEFINITIONS)
@@ -570,7 +699,7 @@ class MSMEEmissionsOrchestrationService {
     });
   }
 
-  async resolveAgentAvailability() {
+  async resolveAgentAvailability(additionalTypes = []) {
     try {
       const agentTypes = [
         'data_processor',
@@ -582,15 +711,19 @@ class MSMEEmissionsOrchestrationService {
         'recommendation_engine',
         'report_generator'
       ];
+      const requestedTypes = [
+        ...agentTypes,
+        ...(additionalTypes || [])
+      ].filter(Boolean);
 
       const agents = await AIAgent.find({
-        type: { $in: agentTypes },
+        type: { $in: requestedTypes },
         isActive: true,
         status: 'active'
       }).select('type name').lean();
 
       const availability = {};
-      agentTypes.forEach(type => {
+      requestedTypes.forEach(type => {
         availability[type] = { available: false };
       });
 
