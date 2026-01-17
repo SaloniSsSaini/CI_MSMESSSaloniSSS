@@ -106,7 +106,11 @@ class MSMEEmissionsOrchestrationService {
     };
 
     const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
-    const agentAvailability = await this.resolveAgentAvailability([sectorAgentType]);
+    const processMachineryAgentType = this.getProcessMachineryAgentType(msmeProfile.businessDomain);
+    const agentAvailability = await this.resolveAgentAvailability([
+      sectorAgentType,
+      processMachineryAgentType
+    ]);
 
     const baseContext = this.buildBaseContext(msmeProfile, contextOverrides);
     const sectorProfile = await this.executeAgent(
@@ -126,7 +130,30 @@ class MSMEEmissionsOrchestrationService {
       }
     );
 
-    const context = this.buildContext(baseContext, sectorProfile, contextOverrides);
+    const processMachineryProfile = await this.executeAgent(
+      processMachineryAgentType,
+      () => aiAgentService.processMachineryProfilerAgent({
+        input: {
+          msmeData: msmeProfile,
+          transactions: normalizedTransactions,
+          context: baseContext,
+          sectorProfile
+        }
+      }),
+      coordinationContext,
+      {
+        stage: 'process_machinery_profile',
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, processMachineryAgentType)
+      }
+    );
+
+    const context = this.buildContext(
+      baseContext,
+      sectorProfile,
+      processMachineryProfile,
+      contextOverrides
+    );
     const behaviorProfiles = this.buildBehaviorProfiles(
       normalizedTransactions,
       context,
@@ -263,12 +290,14 @@ class MSMEEmissionsOrchestrationService {
       msmeSnapshot: this.buildMSMESnapshot(msmeProfile),
       context,
       sectorProfile,
+      processMachineryProfile,
       behaviorProfiles,
       orchestrationPlan,
       emissionsSummary,
       agentAvailability,
       agentOutputs: {
         sectorProfile,
+        processMachineryProfile,
         dataProcessing,
         carbonAnalysis,
         anomalies: parallelResults.anomaly_detector,
@@ -306,6 +335,11 @@ class MSMEEmissionsOrchestrationService {
     return `sector_profiler_${normalized}`;
   }
 
+  getProcessMachineryAgentType(businessDomain) {
+    const normalized = (businessDomain || 'other').toLowerCase();
+    return `process_machinery_profiler_${normalized}`;
+  }
+
   buildBaseContext(msmeProfile, overrides = {}) {
     const locationState = msmeProfile?.contact?.address?.state || 'unknown';
     const region = overrides.region || this.resolveRegion(locationState);
@@ -336,7 +370,7 @@ class MSMEEmissionsOrchestrationService {
     };
   }
 
-  buildContext(baseContext, sectorProfile, overrides = {}) {
+  buildContext(baseContext, sectorProfile, processMachineryProfile, overrides = {}) {
     const context = { ...baseContext };
     const derivedWeights = this.deriveBehaviorWeights(context);
     context.behaviorWeights = this.mergeBehaviorWeights(
@@ -345,6 +379,13 @@ class MSMEEmissionsOrchestrationService {
       overrides.behaviorWeights
     );
     context.sectorProfile = sectorProfile || null;
+    context.processMachineryProfile = processMachineryProfile || null;
+    context.processContext = {
+      ...(baseContext.processContext || {}),
+      processes: processMachineryProfile?.processes || [],
+      machinery: processMachineryProfile?.machinery || [],
+      emissionFactors: processMachineryProfile?.emissionFactors || []
+    };
 
     return context;
   }

@@ -143,6 +143,16 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Orchestration planning recommendations
 - Context enrichment for multi-agent coordination
 
+### 10. Process & Machinery Profiler Agents
+**Type:** `process_machinery_profiler_<domain>`
+**Purpose:** Identify sector processes, machinery, and emissions generation factors
+
+**Capabilities:**
+- Process mapping based on MSME profile and products
+- Machinery inventory and operational signals
+- Emission factor hints for energy, transport, and materials
+- Context enrichment for optimization and compliance agents
+
 ## API Endpoints
 
 ### AI Agent Management

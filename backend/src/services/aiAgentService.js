@@ -4,6 +4,7 @@ const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
 const agentOptimizationService = require('./agentOptimizationService');
 const sectorProfilerAgent = require('./agents/sectorProfilerAgent');
+const processMachineryProfilerAgent = require('./agents/processMachineryProfilerAgent');
 const logger = require('../utils/logger');
 
 class AIAgentService {
@@ -328,6 +329,9 @@ class AIAgentService {
       if (agent.type.startsWith('sector_profiler_')) {
         return await this.sectorProfilerAgent(enhancedTask);
       }
+      if (agent.type.startsWith('process_machinery_profiler_')) {
+        return await this.processMachineryProfilerAgent(enhancedTask);
+      }
 
       switch (agent.type) {
         case 'carbon_analyzer':
@@ -520,6 +524,8 @@ class AIAgentService {
       let result;
       if (agent.type.startsWith('sector_profiler_')) {
         result = await this.sectorProfilerAgent(optimizedTask);
+      } else if (agent.type.startsWith('process_machinery_profiler_')) {
+        result = await this.processMachineryProfilerAgent(optimizedTask);
       } else {
         switch (agent.type) {
           case 'carbon_analyzer':
@@ -611,6 +617,15 @@ class AIAgentService {
     }
 
     return sectorProfilerAgent.analyzeProfile(input);
+  }
+
+  async processMachineryProfilerAgent(task) {
+    const { input } = task;
+    if (!input || !input.msmeData) {
+      return { error: 'Invalid input for process/machinery profiler' };
+    }
+
+    return processMachineryProfilerAgent.analyzeProfile(input);
   }
 
   async recommendationEngineAgent(task) {
@@ -1744,6 +1759,8 @@ class AIAgentService {
       let result;
       if (agent.type.startsWith('sector_profiler_')) {
         result = await this.sectorProfilerAgent(enhancedTask);
+      } else if (agent.type.startsWith('process_machinery_profiler_')) {
+        result = await this.processMachineryProfilerAgent(enhancedTask);
       } else {
         switch (agent.type) {
           case 'carbon_analyzer':

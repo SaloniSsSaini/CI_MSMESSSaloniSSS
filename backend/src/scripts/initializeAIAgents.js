@@ -251,7 +251,31 @@ const sectorAgents = sectorProfiles.map(profile => ({
   }
 }));
 
-defaultAgents.push(...sectorAgents);
+const processMachineryAgents = sectorProfiles.map(profile => ({
+  name: `${profile.label} Process & Machinery Profiler Agent`,
+  type: `process_machinery_profiler_${profile.key}`,
+  description: `Profiles processes, machinery, and emissions drivers for ${profile.label} MSMEs`,
+  capabilities: [
+    'process_mapping',
+    'machinery_inventory',
+    'emission_factor_mapping',
+    'product_signal_analysis'
+  ],
+  configuration: {
+    model: 'process_machinery_profiler_v1',
+    parameters: {
+      sector: profile.key,
+      focusAreas: profile.focusAreas,
+      outputFormat: 'process_machinery_profile'
+    },
+    thresholds: {
+      minimumTransactions: 5,
+      confidenceThreshold: 0.6
+    }
+  }
+}));
+
+defaultAgents.push(...sectorAgents, ...processMachineryAgents);
 
 async function initializeAIAgents() {
   try {
