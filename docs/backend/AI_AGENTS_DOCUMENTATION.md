@@ -284,6 +284,32 @@ Content-Type: application/json
 }
 ```
 
+#### Contextual MSME Emissions Orchestration
+```http
+POST /api/ai-agents/orchestrate-msme-emissions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "msmeId": "64ff1d2a01a3b1a0e1234567",
+  "transactions": [
+    {
+      "category": "energy",
+      "amount": 1250,
+      "description": "Grid electricity bill"
+    }
+  ],
+  "behaviorOverrides": {
+    "transportation": {
+      "totalEmissions": 120.5
+    }
+  },
+  "contextOverrides": {
+    "season": "monsoon"
+  }
+}
+```
+
 ### AI-Enhanced Carbon Analysis
 
 #### Comprehensive AI Analysis
