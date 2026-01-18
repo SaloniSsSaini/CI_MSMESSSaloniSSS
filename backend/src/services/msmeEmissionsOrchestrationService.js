@@ -505,13 +505,11 @@ class MSMEEmissionsOrchestrationService {
   }
 
   getSectorAgentType(businessDomain) {
-    const normalized = (businessDomain || 'other').toLowerCase();
-    return `sector_profiler_${normalized}`;
+    return 'sector_profiler';
   }
 
   getProcessMachineryAgentType(businessDomain) {
-    const normalized = (businessDomain || 'other').toLowerCase();
-    return `process_machinery_profiler_${normalized}`;
+    return 'process_machinery_profiler';
   }
 
   buildBaseContext(msmeProfile, overrides = {}) {

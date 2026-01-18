@@ -105,17 +105,29 @@ class ProcessMachineryProfilerAgent {
       const sectorKey = (msmeData.businessDomain || 'other').toLowerCase();
       const baseProfile = PROCESS_MACHINERY_BY_SECTOR[sectorKey] || PROCESS_MACHINERY_BY_SECTOR.other;
       const productSignals = this.extractProductSignals(msmeData);
-      const enrichedProfile = this.enrichWithProducts(baseProfile, productSignals);
+      const processMapping = this.runProcessMapper(baseProfile, productSignals);
+      const machineryMapping = this.runMachineryMapper(baseProfile, productSignals);
+      const enrichedProfile = {
+        processes: processMapping.processes,
+        machinery: machineryMapping.machinery
+      };
       const activitySignals = this.deriveActivitySignals(transactions);
-      const emissionFactors = this.deriveEmissionFactors(enrichedProfile, activitySignals, context);
+      const emissionFactorMapping = this.runEmissionFactorMapper(enrichedProfile, activitySignals, context);
+      const intensityEstimator = this.runIntensityEstimator(enrichedProfile, activitySignals);
 
       return {
         sector: sectorKey,
         processes: enrichedProfile.processes,
         machinery: enrichedProfile.machinery,
         activitySignals,
-        emissionFactors,
-        intensityProfile: this.estimateIntensity(enrichedProfile, activitySignals),
+        emissionFactors: emissionFactorMapping.emissionFactors,
+        intensityProfile: intensityEstimator.intensityProfile,
+        subAgents: {
+          processMapper: processMapping,
+          machineryMapper: machineryMapping,
+          emissionFactorMapper: emissionFactorMapping,
+          intensityEstimator
+        },
         notes: this.buildNotes(enrichedProfile, productSignals, activitySignals),
         confidence: this.calculateConfidence(transactions, msmeData)
       };
@@ -151,6 +163,43 @@ class ProcessMachineryProfilerAgent {
     return {
       processes: Array.from(processes),
       machinery: Array.from(machinery)
+    };
+  }
+
+  runProcessMapper(baseProfile, productSignals) {
+    const enriched = this.enrichWithProducts(baseProfile, productSignals);
+    return {
+      processes: enriched.processes,
+      rationale: productSignals.length > 0
+        ? 'Processes derived from sector defaults and product hints.'
+        : 'Processes derived from sector defaults.'
+    };
+  }
+
+  runMachineryMapper(baseProfile, productSignals) {
+    const enriched = this.enrichWithProducts(baseProfile, productSignals);
+    return {
+      machinery: enriched.machinery,
+      rationale: productSignals.length > 0
+        ? 'Machinery derived from sector defaults and product hints.'
+        : 'Machinery derived from sector defaults.'
+    };
+  }
+
+  runEmissionFactorMapper(profile, activitySignals, context) {
+    return {
+      emissionFactors: this.deriveEmissionFactors(profile, activitySignals, context),
+      signals: {
+        transportShare: activitySignals.transportation || 0,
+        materialShare: activitySignals.raw_materials || 0
+      }
+    };
+  }
+
+  runIntensityEstimator(profile, activitySignals) {
+    return {
+      intensityProfile: this.estimateIntensity(profile, activitySignals),
+      signals: activitySignals
     };
   }
 

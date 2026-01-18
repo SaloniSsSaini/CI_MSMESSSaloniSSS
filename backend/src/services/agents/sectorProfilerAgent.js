@@ -259,8 +259,11 @@ class SectorProfilerAgent {
       const sectorKey = this.normalizeSector(msmeData.businessDomain);
       const sectorProfile = SECTOR_PROFILES[sectorKey] || SECTOR_PROFILES.other;
       const summary = this.summarizeTransactions(transactions);
-      const behaviorWeights = this.buildBehaviorWeights(sectorProfile, summary, context);
-      const orchestrationPlan = this.buildOrchestrationPlan(sectorProfile, summary, msmeData);
+      const sectorClassification = this.runSectorClassifier(sectorKey, sectorProfile, msmeData);
+      const behaviorWeighting = this.runBehaviorWeighting(sectorProfile, summary, context);
+      const orchestrationPlanning = this.runOrchestrationPlanner(sectorProfile, summary, msmeData);
+      const behaviorWeights = behaviorWeighting.behaviorWeights;
+      const orchestrationPlan = orchestrationPlanning.orchestrationPlan;
 
       return {
         sector: sectorKey,
@@ -268,6 +271,11 @@ class SectorProfilerAgent {
         focusAreas: sectorProfile.focusAreas,
         behaviorWeights,
         orchestrationPlan,
+        subAgents: {
+          sectorClassifier: sectorClassification,
+          behaviorWeighting,
+          orchestrationPlanner: orchestrationPlanning
+        },
         profile: {
           company: this.buildCompanySnapshot(msmeData),
           operations: this.buildOperationsSnapshot(msmeData),
@@ -314,6 +322,40 @@ class SectorProfilerAgent {
     });
 
     return summary;
+  }
+
+  runSectorClassifier(sectorKey, sectorProfile, msmeData) {
+    const confidence = msmeData.businessDomain ? 0.85 : 0.6;
+    return {
+      sector: sectorKey,
+      label: sectorProfile.label,
+      focusAreas: sectorProfile.focusAreas,
+      confidence,
+      rationale: msmeData.businessDomain
+        ? 'Sector inferred from MSME business domain.'
+        : 'Sector defaulted to other.'
+    };
+  }
+
+  runBehaviorWeighting(sectorProfile, summary, context) {
+    const behaviorWeights = this.buildBehaviorWeights(sectorProfile, summary, context);
+    return {
+      behaviorWeights,
+      signals: {
+        dominantCategories: Object.keys(summary.categoryTotals)
+      }
+    };
+  }
+
+  runOrchestrationPlanner(sectorProfile, summary, msmeData) {
+    const orchestrationPlan = this.buildOrchestrationPlan(sectorProfile, summary, msmeData);
+    return {
+      orchestrationPlan,
+      signals: {
+        transactionCount: summary.totalTransactions,
+        totalAmount: summary.totalAmount
+      }
+    };
   }
 
   buildBehaviorWeights(sectorProfile, summary, context) {

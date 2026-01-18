@@ -183,8 +183,8 @@ describe('MSME Emissions Orchestration Service', () => {
 
     MSME.findById.mockResolvedValue(msmeProfile);
     AIAgent.find.mockResolvedValue([
-      { type: 'sector_profiler_manufacturing', name: 'Sector Profiler' },
-      { type: 'process_machinery_profiler_manufacturing', name: 'Process Profiler' },
+      { type: 'sector_profiler', name: 'Sector Profiler' },
+      { type: 'process_machinery_profiler', name: 'Process Profiler' },
       { type: 'trend_analyzer', name: 'Trend Analyzer' }
     ]);
 

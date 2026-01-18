@@ -227,10 +227,10 @@ const sectorProfiles = [
   { key: 'other', label: 'Other', focusAreas: ['energy', 'transportation'] }
 ];
 
-const sectorAgents = sectorProfiles.map(profile => ({
-  name: `${profile.label} Sector Profiler Agent`,
-  type: `sector_profiler_${profile.key}`,
-  description: `Profiles MSME operations and emission drivers in the ${profile.label} sector`,
+const sectorProfilerAgent = {
+  name: 'Unified Sector Profiler Agent',
+  type: 'sector_profiler',
+  description: 'Profiles MSME operations and emission drivers across all MSME sectors',
   capabilities: [
     'sector_profile',
     'behavior_weighting',
@@ -238,10 +238,13 @@ const sectorAgents = sectorProfiles.map(profile => ({
     'msme_context_enrichment'
   ],
   configuration: {
-    model: 'sector_profiler_v1',
+    model: 'sector_profiler_v2',
     parameters: {
-      sector: profile.key,
-      focusAreas: profile.focusAreas,
+      supportedSectors: sectorProfiles.map(profile => profile.key),
+      focusAreas: sectorProfiles.reduce((acc, profile) => {
+        acc[profile.key] = profile.focusAreas;
+        return acc;
+      }, {}),
       outputFormat: 'behavioral_profile'
     },
     thresholds: {
@@ -249,12 +252,12 @@ const sectorAgents = sectorProfiles.map(profile => ({
       confidenceThreshold: 0.6
     }
   }
-}));
+};
 
-const processMachineryAgents = sectorProfiles.map(profile => ({
-  name: `${profile.label} Process & Machinery Profiler Agent`,
-  type: `process_machinery_profiler_${profile.key}`,
-  description: `Profiles processes, machinery, and emissions drivers for ${profile.label} MSMEs`,
+const processMachineryProfilerAgent = {
+  name: 'Unified Process & Machinery Profiler Agent',
+  type: 'process_machinery_profiler',
+  description: 'Profiles processes, machinery, and emissions drivers for all MSME sectors',
   capabilities: [
     'process_mapping',
     'machinery_inventory',
@@ -262,10 +265,13 @@ const processMachineryAgents = sectorProfiles.map(profile => ({
     'product_signal_analysis'
   ],
   configuration: {
-    model: 'process_machinery_profiler_v1',
+    model: 'process_machinery_profiler_v2',
     parameters: {
-      sector: profile.key,
-      focusAreas: profile.focusAreas,
+      supportedSectors: sectorProfiles.map(profile => profile.key),
+      focusAreas: sectorProfiles.reduce((acc, profile) => {
+        acc[profile.key] = profile.focusAreas;
+        return acc;
+      }, {}),
       outputFormat: 'process_machinery_profile'
     },
     thresholds: {
@@ -273,9 +279,9 @@ const processMachineryAgents = sectorProfiles.map(profile => ({
       confidenceThreshold: 0.6
     }
   }
-}));
+};
 
-defaultAgents.push(...sectorAgents, ...processMachineryAgents);
+defaultAgents.push(sectorProfilerAgent, processMachineryProfilerAgent);
 
 async function initializeAIAgents() {
   try {

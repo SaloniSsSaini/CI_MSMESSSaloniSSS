@@ -532,12 +532,12 @@ class AIAgentService {
   }
 
   async sectorProfilerAgent(task) {
-    const handler = agentRegistry.getHandler('sector_profiler_other');
+    const handler = agentRegistry.getHandler('sector_profiler');
     return handler ? handler(task) : { error: 'Sector profiler handler not available' };
   }
 
   async processMachineryProfilerAgent(task) {
-    const handler = agentRegistry.getHandler('process_machinery_profiler_other');
+    const handler = agentRegistry.getHandler('process_machinery_profiler');
     return handler ? handler(task) : { error: 'Process/machinery profiler handler not available' };
   }
 

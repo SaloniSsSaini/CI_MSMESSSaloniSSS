@@ -133,9 +133,14 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
 
-### 9. Sector Profiler Agents
-**Type:** `sector_profiler_<domain>`
+### 9. Unified Sector Profiler Agent
+**Type:** `sector_profiler`
 **Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
+
+**Sub-agents (internal):**
+- Sector classifier
+- Behavior weighting planner
+- Orchestration planning advisor
 
 **Capabilities:**
 - Sector profile analysis for registered MSMEs
@@ -143,9 +148,14 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Orchestration planning recommendations
 - Context enrichment for multi-agent coordination
 
-### 10. Process & Machinery Profiler Agents
-**Type:** `process_machinery_profiler_<domain>`
+### 10. Unified Process & Machinery Profiler Agent
+**Type:** `process_machinery_profiler`
 **Purpose:** Identify sector processes, machinery, and emissions generation factors
+
+**Sub-agents (internal):**
+- Process mapper
+- Machinery inventory builder
+- Emission factor hinting
 
 **Capabilities:**
 - Process mapping based on MSME profile and products
