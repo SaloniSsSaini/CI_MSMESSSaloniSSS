@@ -115,6 +115,7 @@ const AnalyticsScreen = ({ navigation: _navigation }: any) => {
   }
 
   return (
+    // <></>
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
@@ -138,22 +139,40 @@ const AnalyticsScreen = ({ navigation: _navigation }: any) => {
 
         {/* Chart Selection */}
         <View style={styles.chartSelection}>
-          <Chip
+          {/* <Chip
             selected={selectedChart === 'overview'}
             onPress={() => setSelectedChart('overview')}
             style={styles.chartChip}
           >
             Overview
+          </Chip> */}
+          {/* <Chip
+            mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            onPress={() => setSelectedChart('overview')}
+            style={styles.chartChip}
+          >
+            Overview
+          </Chip> */}
+          <Chip
+            onPress={() => setSelectedChart('overview')}
+            style={[
+              styles.chartChip,
+              selectedChart === 'overview' && styles.selectedChip
+            ]}
+          >
+            Overview
           </Chip>
           <Chip
-            selected={selectedChart === 'trends'}
+            // mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            // selected={selectedChart === 'trends'}
             onPress={() => setSelectedChart('trends')}
             style={styles.chartChip}
           >
             Trends
           </Chip>
           <Chip
-            selected={selectedChart === 'categories'}
+            // mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            // selected={selectedChart === 'categories'}
             onPress={() => setSelectedChart('categories')}
             style={styles.chartChip}
           >

@@ -266,7 +266,7 @@ const EmailAnalysisScreen = ({ navigation: _navigation }: any) => {
               mode="outlined"
               onPress={connectEmailAccount}
               style={styles.connectButton}
-              icon="email"
+              // icon="email"
             >
               Connect Email Account
             </Button>

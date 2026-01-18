@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { Card, Button, ProgressBar, Chip, Avatar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// import Icon from 'react-native-vector-icons/material-icons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
 
 const { width } = Dimensions.get('window');
 

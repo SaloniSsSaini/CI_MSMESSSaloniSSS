@@ -46,13 +46,14 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
     await checkConsentStatus();
     await loadSMSData();
     await loadAnalytics();
-    await loadESGMetrics();
+    // await loadESGMetrics();
     await checkDataRetentionStatus();
   };
 
   const checkConsentStatus = async () => {
     try {
       const consentData = await PrivacyFocusedSMSReader.getConsentStatus();
+      console.log('Consent Data:', consentData)
       setConsentGiven(consentData?.consent || false);
       setPrivacyStatus(consentData);
     } catch (error) {
@@ -124,7 +125,7 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
         if (consentGranted) {
           setConsentGiven(true);
           await loadSMSData();
-          await loadESGMetrics();
+          // await loadESGMetrics();
         }
       }
       return permissionGranted;
@@ -184,7 +185,7 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
         setManualSms('');
         await loadSMSData();
         await loadAnalytics();
-        await loadESGMetrics();
+        // await loadESGMetrics();
       } else {
         Alert.alert('Error', 'Failed to process SMS');
       }
@@ -249,14 +250,14 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
           <Card.Content>
             <View style={styles.privacyHeader}>
               <Title style={styles.cardTitle}>Privacy & Consent</Title>
-              <IconButton
+              {/* <IconButton
                 icon={consentGiven ? "shield-check" : "shield-alert"}
                 iconColor={consentGiven ? colors.success : colors.warning}
                 size={24}
-              />
+              /> */}
             </View>
             <View style={styles.privacyStatus}>
-              <Chip
+              {/* <Chip
                 icon={consentGiven ? "check-circle" : "alert-circle"}
                 mode="outlined"
                 style={[
@@ -266,7 +267,7 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
                 textStyle={{ color: consentGiven ? colors.success : colors.warning }}
               >
                 {consentGiven ? "Consent Given" : "Consent Required"}
-              </Chip>
+              </Chip> */}
               {dataRetentionStatus && (
                 <Text style={styles.retentionText}>
                   Data expires in {dataRetentionStatus.daysRemaining} days
@@ -488,6 +489,30 @@ const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  privacyHeader: {
+    backgroundColor: "transparent"
+  },
+  privacyStatus: {
+    backgroundColor: "transparent"
+  },
+  consentChip: {
+    backgroundColor: "transparent"
+  },
+  progressBar :{
+    backgroundColor: "transparent"
+  },
+  privacyActions:{
+
+  },
+  retentionText:{
+
+  },
+  consentButton: {
+
+  },
+  revokeButton: {
+
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -601,6 +626,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.primary,
+  },
+  esgItem: {
+    backgroundColor: "red"
+  },
+  esgGrid: {
+
+  },
+  esgScore: {
+
+  },
+  esgLabel:{
+
+  },
+  esgChip: {
+
   },
 });
 

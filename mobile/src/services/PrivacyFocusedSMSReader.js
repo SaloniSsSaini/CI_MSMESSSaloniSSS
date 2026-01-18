@@ -542,12 +542,16 @@ class PrivacyFocusedSMSReader {
   async getDataRetentionStatus() {
     try {
       const storageData = await AsyncStorage.getItem('processed_sms_data');
+      console.log('Retrived storage data for retention status:', storageData);
       if (storageData) {
         const parsed = JSON.parse(storageData);
         const storedAt = new Date(parsed.storedAt);
         const expirationDate = new Date(storedAt.getTime() + (this.dataRetentionDays * 24 * 60 * 60 * 1000));
         const daysRemaining = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000));
-        
+        console.log('Data Retention Status:', {
+          storedAt: parsed.storedAt,
+          expirationDate: expirationDate.toISOString(),
+        })
         return {
           storedAt: parsed.storedAt,
           expirationDate: expirationDate.toISOString(),

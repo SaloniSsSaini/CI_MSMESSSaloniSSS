@@ -84,7 +84,7 @@ const CarbonTradingScreen = ({ navigation: _navigation }: any) => {
       }
 
     } catch (error) {
-      console.error('Error loading trading data:', error);
+      // console.error('Error loading trading data:', error);
       Alert.alert('Error', 'Failed to load trading data');
     } finally {
       setIsLoading(false);

@@ -36,23 +36,57 @@ export const DashboardScreen = ({ navigation }: any) => {
     loadDashboardData();
   }, []);
 
+  // const loadDashboardData = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     setError(null);
+  //     const response = await apiService?.getDashboard();
+  //     console.log(response)
+  //     if (response?.success) {
+  //       setDashboardData(response?.data);
+  //     } else {
+  //       setError(response?.message || 'Failed to load dashboard data');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading dashboard:', error);
+  //     setError('Network error. Please check your connection and try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const loadDashboardData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await apiService.getDashboard();
-      if (response.success) {
-        setDashboardData(response.data);
-      } else {
-        setError(response.message || 'Failed to load dashboard data');
-      }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-      setError('Network error. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    if (!apiService) {
+      throw new Error('API service not available');
     }
-  };
+    
+    const response = await apiService.getDashboard();
+    
+    if (!response) {
+      throw new Error('No response from server');
+    }
+    
+    if (response.success) {
+      setDashboardData(response.data);
+    } else {
+      throw new Error(response.message || 'Failed to load dashboard data');
+    }
+  } catch (error: any) {
+    console.error('Error loading dashboard:', error);
+    setError(error.message || 'Network error. Please check your connection and try again.');
+    
+    // Optionally: Log to monitoring service
+    // logError('DashboardLoadError', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -266,6 +300,7 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
   },
   welcomeCard: {
+    borderRadius: 12,
     margin: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
@@ -286,8 +321,10 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   card: {
+    // borderWidth: 1,
     margin: theme.spacing.md,
     marginTop: 0,
+    borderRadius: 12,
   },
   cardTitle: {
     fontSize: 18,
