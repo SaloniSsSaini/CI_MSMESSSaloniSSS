@@ -932,3 +932,19 @@
 {"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:43.294Z"}
 {"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:52.389Z"}
 {"level":"info","message":"GET /api/msme/profile - ::1","service":"carbon-intelligence-backend","timestamp":"2025-12-02T14:09:52.401Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:41.244Z"}
+{"level":"warn","message":"MSG91 notifications are disabled; SMS dispatch will be skipped","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.627Z"}
+{"level":"info","message":"Real-time carbon monitoring service initialized","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.846Z"}
+{"level":"info","message":"Server running on port 5000","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.859Z"}
+{"level":"info","message":"Environment: development","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.860Z"}
+{"level":"info","message":"Agent Optimization Service initialized","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.861Z"}
+{"level":"info","message":"MongoDB Connected: localhost","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:43.953Z"}
+{"level":"info","message":"Registered AI Agent: Carbon Analyzer Agent (carbon_analyzer)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.173Z"}
+{"level":"info","message":"Registered AI Agent: Recommendation Engine Agent (recommendation_engine)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.178Z"}
+{"level":"info","message":"Registered AI Agent: Data Processor Agent (data_processor)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.182Z"}
+{"level":"info","message":"Registered AI Agent: Anomaly Detector Agent (anomaly_detector)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.186Z"}
+{"level":"info","message":"Registered AI Agent: Trend Analyzer Agent (trend_analyzer)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.193Z"}
+{"level":"info","message":"Registered AI Agent: Compliance Monitor Agent (compliance_monitor)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.200Z"}
+{"level":"info","message":"Registered AI Agent: Optimization Advisor Agent (optimization_advisor)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.205Z"}
+{"level":"info","message":"Registered AI Agent: Report Generator Agent (report_generator)","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.207Z"}
+{"level":"info","message":"AI Agent Service initialized with 8 agents","service":"carbon-intelligence-backend","timestamp":"2026-01-21T14:36:44.211Z"}
