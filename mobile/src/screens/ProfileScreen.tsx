@@ -20,9 +20,9 @@ import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme/theme';
 import { apiService } from '../services/apiService';
 
-const ProfileScreen = ({ navigation }: any) => {
+const ProfileScreen = ({ navigation: _navigation }: any) => {
   const { user, signOut } = useAuth();
-  const [profileData, setProfileData] = useState<any>(null);
+  const [_profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [autoSync, setAutoSync] = useState(true);

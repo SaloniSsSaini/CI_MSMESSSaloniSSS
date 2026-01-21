@@ -17,7 +17,6 @@ import {
   ActivityIndicator,
   SegmentedButtons,
 } from 'react-native-paper';
-import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme/theme';
 import { apiService } from '../services/apiService';
 
@@ -34,7 +33,6 @@ const RegisterScreen = ({ navigation }: any) => {
     },
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
 
   const handleInputChange = (field: string, value: string) => {
     if (field.includes('.')) {

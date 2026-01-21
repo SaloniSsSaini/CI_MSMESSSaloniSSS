@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Dimensions,
   Alert,
 } from 'react-native';
 import {
@@ -15,18 +14,11 @@ import {
   ActivityIndicator,
   ProgressBar,
   Chip,
-  List,
-  Divider,
   TextInput,
   SegmentedButtons,
-  Surface,
-  IconButton,
 } from 'react-native-paper';
-import { LineChart } from 'react-native-chart-kit';
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
-
-const { width } = Dimensions.get('window');
 
 interface CarbonOffset {
   id: string;
@@ -51,7 +43,7 @@ interface TradingPortfolio {
   lastPurchase: string;
 }
 
-const CarbonTradingScreen = ({ navigation }: any) => {
+const CarbonTradingScreen = ({ navigation: _navigation }: any) => {
   const [currentEmissions, setCurrentEmissions] = useState(0);
   const [carbonScore, setCarbonScore] = useState(0);
   const [portfolio, setPortfolio] = useState<TradingPortfolio | null>(null);
@@ -92,7 +84,7 @@ const CarbonTradingScreen = ({ navigation }: any) => {
       }
 
     } catch (error) {
-      console.error('Error loading trading data:', error);
+      // console.error('Error loading trading data:', error);
       Alert.alert('Error', 'Failed to load trading data');
     } finally {
       setIsLoading(false);

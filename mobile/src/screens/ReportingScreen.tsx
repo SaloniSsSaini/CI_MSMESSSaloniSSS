@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,9 @@ import {
   RefreshControl,
   Share
 } from 'react-native';
-import { Card, Title, Paragraph, Button, ProgressBar, Chip, DataTable, SegmentedButtons } from 'react-native-paper';
+import { Card, Button, ProgressBar, Chip, DataTable, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// import Icon from 'react-native-vector-icons/material-icons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 
@@ -42,7 +43,6 @@ interface TrendData {
 const ReportingScreen: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dateRange, setDateRange] = useState('6months');
-  const [reportType, setReportType] = useState('comprehensive');
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [email, setEmail] = useState('');
@@ -124,7 +124,7 @@ const ReportingScreen: React.FC = () => {
     }
   };
 
-  const pieChartData = categoryData.map((item, index) => ({
+  const pieChartData = categoryData.map((item) => ({
     name: item.name,
     value: item.value,
     color: item.color,
@@ -211,7 +211,7 @@ const ReportingScreen: React.FC = () => {
       {/* Carbon Footprint Trend */}
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Carbon Footprint Trend</Title>
+          <Text >Carbon Footprint Trend</Text>
           <LineChart
             data={lineChartData}
             width={width - 80}
@@ -224,9 +224,11 @@ const ReportingScreen: React.FC = () => {
       </Card>
 
       {/* Emissions by Category */}
-      <Card style={styles.chartCard}>
+      <Card 
+      style={styles.chartCard}
+      >
         <Card.Content>
-          <Title>Emissions by Category</Title>
+          <Text >Emissions by Category</Text>
           <PieChart
             data={pieChartData}
             width={width - 80}
@@ -243,7 +245,7 @@ const ReportingScreen: React.FC = () => {
       {/* Key Performance Indicators */}
       <Card style={styles.kpiCard}>
         <Card.Content>
-          <Title>Key Performance Indicators</Title>
+          <Text >Key Performance Indicators</Text>
           {trendData.map((trend, index) => (
             <View key={index} style={styles.kpiItem}>
               <Text style={styles.kpiValue}>{trend.current.toFixed(1)} tCO₂</Text>
@@ -273,7 +275,7 @@ const ReportingScreen: React.FC = () => {
       {/* Monthly Analysis */}
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Monthly Carbon Footprint Analysis</Title>
+          <Text >Monthly Carbon Footprint Analysis</Text>
           <LineChart
             data={lineChartData}
             width={width - 80}
@@ -288,7 +290,7 @@ const ReportingScreen: React.FC = () => {
       {/* Reduction Progress */}
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Reduction Progress</Title>
+          <Text >Reduction Progress</Text>
           <BarChart
             data={barChartData}
             width={width - 80}
@@ -302,7 +304,7 @@ const ReportingScreen: React.FC = () => {
       {/* Category Breakdown */}
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Category Breakdown</Title>
+          <Text >Category Breakdown</Text>
           <PieChart
             data={pieChartData}
             width={width - 80}
@@ -321,7 +323,7 @@ const ReportingScreen: React.FC = () => {
   const renderRecommendationsTab = () => (
     <Card style={styles.tableCard}>
       <Card.Content>
-        <Title>Sustainability Recommendations</Title>
+        <Text >Sustainability Recommendations</Text>
         <DataTable>
           <DataTable.Header>
             <DataTable.Title>Recommendation</DataTable.Title>
@@ -365,7 +367,7 @@ const ReportingScreen: React.FC = () => {
     <View>
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Performance Trends</Title>
+          <Text >Performance Trends</Text>
           <LineChart
             data={lineChartData}
             width={width - 80}
@@ -384,7 +386,7 @@ const ReportingScreen: React.FC = () => {
       {/* Industry Comparison */}
       <Card style={styles.comparisonCard}>
         <Card.Content>
-          <Title>Industry Comparison</Title>
+          <Text >Industry Comparison</Text>
           <Text style={styles.comparisonSubtitle}>Your Performance vs Industry Average</Text>
           
           <View style={styles.comparisonItem}>
@@ -408,7 +410,7 @@ const ReportingScreen: React.FC = () => {
       {/* Goal Progress */}
       <Card style={styles.comparisonCard}>
         <Card.Content>
-          <Title>Goal Progress</Title>
+          <Text >Goal Progress</Text>
           <Text style={styles.comparisonSubtitle}>Annual Carbon Reduction Goal</Text>
           
           <View style={styles.comparisonItem}>
@@ -444,7 +446,7 @@ const ReportingScreen: React.FC = () => {
         <View style={styles.actionButtons}>
           <Button
             mode="outlined"
-            icon="download"
+            // icon="download"
             onPress={() => setExportModalVisible(true)}
             style={styles.actionButton}
           >
@@ -452,7 +454,7 @@ const ReportingScreen: React.FC = () => {
           </Button>
           <Button
             mode="outlined"
-            icon="email"
+            // icon="email"
             onPress={() => setEmailModalVisible(true)}
             style={styles.actionButton}
           >
@@ -460,7 +462,8 @@ const ReportingScreen: React.FC = () => {
           </Button>
           <Button
             mode="outlined"
-            icon="print"
+            // icon="share"
+            // icon="print"
             onPress={() => Alert.alert('Print', 'Print functionality would be implemented here')}
             style={styles.actionButton}
           >
@@ -471,7 +474,7 @@ const ReportingScreen: React.FC = () => {
         {/* Filters */}
         <Card style={styles.filterCard}>
           <Card.Content>
-            <Title>Report Filters</Title>
+            <Text >Report Filters</Text>
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>Date Range:</Text>
               <SegmentedButtons

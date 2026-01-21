@@ -44,36 +44,19 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
     return colors[category as keyof typeof colors] || colors.other;
   };
 
-  const getTransactionTypeIcon = (type: string) => {
-    switch (type) {
-      case 'purchase':
-        return 'shopping';
-      case 'sale':
-        return 'trending-up';
-      case 'expense':
-        return 'credit-card';
-      case 'utility':
-        return 'flash';
-      case 'transport':
-        return 'truck';
-      default:
-        return 'receipt';
-    }
-  };
-
   return (
     <Card style={styles.card}>
       <Card.Content>
         <View style={styles.header}>
           <Text style={styles.title}>Recent Transactions</Text>
-          <Button
+          {/* <Button
             mode="text"
             onPress={onViewAll}
             compact
             textColor={theme.colors.primary}
           >
             View All
-          </Button>
+          </Button> */}
         </View>
 
         {transactions.length === 0 ? (
@@ -146,6 +129,7 @@ const styles = StyleSheet.create({
   card: {
     margin: theme.spacing.md,
     marginTop: 0,
+    borderRadius: 12,
   },
   header: {
     flexDirection: 'row',

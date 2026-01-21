@@ -25,11 +25,11 @@ This project consists of three main components:
 - **Deploy**: Ready to serve with static server
 
 ### ⚠️ Mobile APK (Partially Completed)
-- **Location**: `/workspace/mobile/CarbonIntelligenceExpo/`
+- **Location**: `/workspace/mobile/`
 - **Status**: Project structure created, requires Android SDK
 - **Dependencies**: Installed and verified
-- **Android Project**: Generated via `expo prebuild`
-- **Build Script**: `/workspace/build-apk.sh` (ready to use when Android SDK is available)
+- **Android Project**: React Native CLI project (`android/` directory)
+- **Build Script**: `/workspace/mobile/build-apk.sh` (ready to use when Android SDK is available)
 
 ## Build Commands
 
@@ -51,7 +51,7 @@ npm run build
 ```bash
 # Prerequisites: Android SDK must be installed
 export ANDROID_HOME=/path/to/android-sdk
-cd /workspace
+cd /workspace/mobile
 ./build-apk.sh
 ```
 
@@ -78,7 +78,6 @@ cd /workspace
 /workspace/
 ├── backend/                 # Node.js API server
 ├── mobile/                  # React Native mobile app
-│   └── CarbonIntelligenceExpo/
 ├── src/                     # React web app source
 ├── build/                   # Built React web app
 ├── build-apk.sh            # Mobile APK build script

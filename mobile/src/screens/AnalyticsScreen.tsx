@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -24,18 +24,14 @@ import { apiService } from '../services/apiService';
 
 const { width } = Dimensions.get('window');
 
-const AnalyticsScreen = ({ navigation }: any) => {
+const AnalyticsScreen = ({ navigation: _navigation }: any) => {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [selectedChart, setSelectedChart] = useState('overview');
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [selectedPeriod]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       setIsLoading(true);
       const [overviewResponse, trendsResponse, insightsResponse] = await Promise.all([
@@ -56,7 +52,11 @@ const AnalyticsScreen = ({ navigation }: any) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -115,6 +115,7 @@ const AnalyticsScreen = ({ navigation }: any) => {
   }
 
   return (
+    // <></>
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
@@ -138,22 +139,40 @@ const AnalyticsScreen = ({ navigation }: any) => {
 
         {/* Chart Selection */}
         <View style={styles.chartSelection}>
-          <Chip
+          {/* <Chip
             selected={selectedChart === 'overview'}
             onPress={() => setSelectedChart('overview')}
             style={styles.chartChip}
           >
             Overview
+          </Chip> */}
+          {/* <Chip
+            mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            onPress={() => setSelectedChart('overview')}
+            style={styles.chartChip}
+          >
+            Overview
+          </Chip> */}
+          <Chip
+            onPress={() => setSelectedChart('overview')}
+            style={[
+              styles.chartChip,
+              selectedChart === 'overview' && styles.selectedChip
+            ]}
+          >
+            Overview
           </Chip>
           <Chip
-            selected={selectedChart === 'trends'}
+            // mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            // selected={selectedChart === 'trends'}
             onPress={() => setSelectedChart('trends')}
             style={styles.chartChip}
           >
             Trends
           </Chip>
           <Chip
-            selected={selectedChart === 'categories'}
+            // mode={selectedChart === 'overview' ? 'flat' : 'outlined'}
+            // selected={selectedChart === 'categories'}
             onPress={() => setSelectedChart('categories')}
             style={styles.chartChip}
           >

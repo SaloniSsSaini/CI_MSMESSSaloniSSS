@@ -1,6 +1,20 @@
 // Jest matchers are now built into @testing-library/react-native v12.4+
 import 'react-native-gesture-handler/jestSetup';
 
+// Many RN components schedule timers (e.g. Animated). Use fake timers and flush them
+// to avoid "Jest environment has been torn down" errors at the end of the run.
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  // Avoid timers firing after Jest teardown (common with Animated/react-native-paper).
+  // Clearing timers is safer than running them, since running them can trigger React
+  // state updates outside of act().
+  jest.clearAllTimers();
+  jest.useRealTimers();
+});
+
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');

@@ -32,15 +32,12 @@ This directory contains all documentation for the Carbon Intelligence project, o
 - **ARCHIVE_SUMMARY.md** - Summary of archived CI/CD configurations
 - **README.md** - CI/CD archive documentation
 
-### Mist Generator Documentation (`/mist-gen/`)
-- **EXECUTIVE_SUMMARY.md** - Executive summary of mist generator solutions
-- **README.md** - Mist generator project overview
-- **RESEARCH_SUMMARY.md** - Research findings and analysis
-- **TECHNICAL_IMPLEMENTATION_GUIDE.md** - Technical implementation details
-- **WATER_RECYCLING_RESEARCH_OPPORTUNITIES.md** - Water recycling research opportunities
-
 ### Mobile Documentation (`/mobile/`)
 - **README.md** - Mobile application documentation
+
+### Pitches (`/pitches/`)
+- **README.md** - Index of pitch materials
+- **customer-*.md / investor-*.md** - Pitch docs for different audiences
 
 ## Quick Navigation
 
@@ -48,7 +45,7 @@ This directory contains all documentation for the Carbon Intelligence project, o
 - For backend development: See `backend/` directory
 - For mobile development: See `mobile/README.md`
 - For project overview: See `root/PROJECT_SUMMARY.md`
-- For mist generator solutions: See `mist-gen/` directory
+- For pitch decks/materials: See `pitches/README.md`
 
 ## Contributing
 

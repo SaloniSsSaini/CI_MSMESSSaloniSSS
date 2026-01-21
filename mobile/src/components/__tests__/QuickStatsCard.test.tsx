@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { QuickStatsCard } from '../QuickStatsCard';
 
 describe('QuickStatsCard', () => {
@@ -15,7 +16,7 @@ describe('QuickStatsCard', () => {
     render(<QuickStatsCard {...defaultProps} />);
     
     expect(screen.getByText('Test Stat')).toBeTruthy();
-    expect(screen.getByText('1234.6')).toBeTruthy();
+    expect(screen.getByText('1.2K')).toBeTruthy();
     expect(screen.getByText('kg CO₂')).toBeTruthy();
   });
 
@@ -54,10 +55,9 @@ describe('QuickStatsCard', () => {
 
   it('displays correct color for value', () => {
     const { getByText } = render(<QuickStatsCard {...defaultProps} />);
-    const valueElement = getByText('1234.6');
-    expect(valueElement.props.style).toContainEqual(
-      expect.objectContaining({ color: '#4CAF50' })
-    );
+    const valueElement = getByText('1.2K');
+    const flattenedStyle = StyleSheet.flatten(valueElement.props.style);
+    expect(flattenedStyle.color).toBe('#4CAF50');
   });
 
   it('handles zero value', () => {

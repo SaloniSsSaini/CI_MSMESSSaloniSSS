@@ -17,10 +17,10 @@ import {
   ActivityIndicator,
 } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
-import { theme, colors } from '../theme/theme';
+import { theme } from '../theme/theme';
 import { apiService } from '../services/apiService';
 
-const LoginScreen = ({ navigation }: any) => {
+export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +75,7 @@ const LoginScreen = ({ navigation }: any) => {
               autoCapitalize="none"
               style={styles.input}
               disabled={isLoading}
+              testID="login-email"
             />
             
             <TextInput
@@ -85,6 +86,7 @@ const LoginScreen = ({ navigation }: any) => {
               secureTextEntry
               style={styles.input}
               disabled={isLoading}
+              testID="login-password"
             />
             
             <Button
@@ -93,6 +95,7 @@ const LoginScreen = ({ navigation }: any) => {
               style={styles.loginButton}
               disabled={isLoading}
               contentStyle={styles.buttonContent}
+              testID="login-submit"
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" />

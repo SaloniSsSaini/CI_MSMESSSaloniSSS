@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Text, ProgressBar } from 'react-native-paper';
-import { theme, colors } from '../theme/theme';
+import { theme } from '../theme/theme';
 import * as Animatable from 'react-native-animatable';
 
 interface CarbonScoreCardProps {
@@ -18,7 +18,9 @@ export const CarbonScoreCard: React.FC<CarbonScoreCardProps> = ({
   lastAssessment,
 }) => {
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Never';
+    if (!dateString) {
+      return 'Never';
+    }
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',

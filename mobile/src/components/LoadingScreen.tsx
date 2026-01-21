@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { ActivityIndicator, Text, Card } from 'react-native-paper';
 import { theme } from '../theme/theme';
 import * as Animatable from 'react-native-animatable';
-
-const { width, height } = Dimensions.get('window');
 
 interface LoadingScreenProps {
   message?: string;

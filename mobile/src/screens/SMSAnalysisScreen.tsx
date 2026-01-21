@@ -4,8 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  PermissionsAndroid,
-  Platform,
   RefreshControl,
 } from 'react-native';
 import {
@@ -20,41 +18,42 @@ import {
   List,
   Divider,
   ProgressBar,
-  Badge,
-  Surface,
   IconButton,
 } from 'react-native-paper';
 import { theme, colors } from '../theme/theme';
 import { apiService } from '../services/apiService';
 import PrivacyFocusedSMSReader from '../services/PrivacyFocusedSMSReader';
 
-const SMSAnalysisScreen = ({ navigation }: any) => {
+const SMSAnalysisScreen = ({ navigation: _navigation }: any) => {
   const [smsData, setSmsData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [manualSms, setManualSms] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
   const [esgMetrics, setEsgMetrics] = useState<any>(null);
-  const [privacyStatus, setPrivacyStatus] = useState<any>(null);
+  const [_privacyStatus, setPrivacyStatus] = useState<any>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dataRetentionStatus, setDataRetentionStatus] = useState<any>(null);
 
   useEffect(() => {
     initializeSMSAnalysis();
+    // initializeSMSAnalysis intentionally runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeSMSAnalysis = async () => {
     await checkConsentStatus();
     await loadSMSData();
     await loadAnalytics();
-    await loadESGMetrics();
+    // await loadESGMetrics();
     await checkDataRetentionStatus();
   };
 
   const checkConsentStatus = async () => {
     try {
       const consentData = await PrivacyFocusedSMSReader.getConsentStatus();
+      console.log('Consent Data:', consentData)
       setConsentGiven(consentData?.consent || false);
       setPrivacyStatus(consentData);
     } catch (error) {
@@ -126,7 +125,7 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
         if (consentGranted) {
           setConsentGiven(true);
           await loadSMSData();
-          await loadESGMetrics();
+          // await loadESGMetrics();
         }
       }
       return permissionGranted;
@@ -186,7 +185,7 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
         setManualSms('');
         await loadSMSData();
         await loadAnalytics();
-        await loadESGMetrics();
+        // await loadESGMetrics();
       } else {
         Alert.alert('Error', 'Failed to process SMS');
       }
@@ -251,14 +250,14 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
           <Card.Content>
             <View style={styles.privacyHeader}>
               <Title style={styles.cardTitle}>Privacy & Consent</Title>
-              <IconButton
+              {/* <IconButton
                 icon={consentGiven ? "shield-check" : "shield-alert"}
                 iconColor={consentGiven ? colors.success : colors.warning}
                 size={24}
-              />
+              /> */}
             </View>
             <View style={styles.privacyStatus}>
-              <Chip
+              {/* <Chip
                 icon={consentGiven ? "check-circle" : "alert-circle"}
                 mode="outlined"
                 style={[
@@ -268,7 +267,7 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
                 textStyle={{ color: consentGiven ? colors.success : colors.warning }}
               >
                 {consentGiven ? "Consent Given" : "Consent Required"}
-              </Chip>
+              </Chip> */}
               {dataRetentionStatus && (
                 <Text style={styles.retentionText}>
                   Data expires in {dataRetentionStatus.daysRemaining} days
@@ -490,6 +489,30 @@ const SMSAnalysisScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  privacyHeader: {
+    backgroundColor: "transparent"
+  },
+  privacyStatus: {
+    backgroundColor: "transparent"
+  },
+  consentChip: {
+    backgroundColor: "transparent"
+  },
+  progressBar :{
+    backgroundColor: "transparent"
+  },
+  privacyActions:{
+
+  },
+  retentionText:{
+
+  },
+  consentButton: {
+
+  },
+  revokeButton: {
+
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -603,6 +626,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.primary,
+  },
+  esgItem: {
+    backgroundColor: "red"
+  },
+  esgGrid: {
+
+  },
+  esgScore: {
+
+  },
+  esgLabel:{
+
+  },
+  esgChip: {
+
   },
 });
 
