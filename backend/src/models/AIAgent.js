@@ -16,7 +16,9 @@ const aiAgentSchema = new mongoose.Schema({
       'trend_analyzer',
       'compliance_monitor',
       'optimization_advisor',
-      'report_generator'
+      'report_generator',
+      'sector_profiler',
+      'process_machinery_profiler'
     ],
     required: true
   },

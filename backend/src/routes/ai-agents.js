@@ -6,6 +6,7 @@ const AITask = require('../models/AITask');
 const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
 const aiAgentService = require('../services/aiAgentService');
+const msmeEmissionsOrchestrationService = require('../services/msmeEmissionsOrchestrationService');
 const logger = require('../utils/logger');
 
 // @route   GET /api/ai-agents
@@ -445,6 +446,58 @@ router.post('/process-data', auth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Data processing error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai-agents/orchestrate-msme-emissions
+// @desc    Orchestrate multi-agent emissions analysis by MSME context
+// @access  Private
+router.post('/orchestrate-msme-emissions', auth, async (req, res) => {
+  try {
+    const {
+      msmeId,
+      msmeData,
+      transactions,
+      behaviorOverrides,
+      contextOverrides
+    } = req.body;
+
+    const resolvedMsmeId = msmeId || req.user?.msmeId || msmeData?._id;
+
+    if (!resolvedMsmeId && !msmeData) {
+      return res.status(400).json({
+        success: false,
+        message: 'MSME ID or MSME profile data is required'
+      });
+    }
+
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transactions data is required for orchestration'
+      });
+    }
+
+    const result = await msmeEmissionsOrchestrationService.orchestrateEmissions({
+      msmeId: resolvedMsmeId,
+      msmeData,
+      transactions,
+      behaviorOverrides,
+      contextOverrides
+    });
+
+    res.json({
+      success: true,
+      message: 'MSME emissions orchestration completed',
+      data: result
+    });
+  } catch (error) {
+    logger.error('MSME emissions orchestration error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

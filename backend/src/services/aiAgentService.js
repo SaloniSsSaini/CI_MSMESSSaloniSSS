@@ -3,6 +3,7 @@ const AITask = require('../models/AITask');
 const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
 const agentOptimizationService = require('./agentOptimizationService');
+const agentRegistry = require('./agents/registry');
 const logger = require('../utils/logger');
 
 class AIAgentService {
@@ -324,26 +325,12 @@ class AIAgentService {
 
       const enhancedTask = { ...task, input: enhancedInput };
 
-      switch (agent.type) {
-        case 'carbon_analyzer':
-          return await this.carbonAnalyzerAgent(enhancedTask);
-        case 'recommendation_engine':
-          return await this.recommendationEngineAgent(enhancedTask);
-        case 'data_processor':
-          return await this.dataProcessorAgent(enhancedTask);
-        case 'anomaly_detector':
-          return await this.anomalyDetectorAgent(enhancedTask);
-        case 'trend_analyzer':
-          return await this.trendAnalyzerAgent(enhancedTask);
-        case 'compliance_monitor':
-          return await this.complianceMonitorAgent(enhancedTask);
-        case 'optimization_advisor':
-          return await this.optimizationAdvisorAgent(enhancedTask);
-        case 'report_generator':
-          return await this.reportGeneratorAgent(enhancedTask);
-        default:
-          throw new Error(`Unknown agent type: ${agent.type}`);
+      const handler = agentRegistry.getHandler(agent.type);
+      if (!handler) {
+        throw new Error(`Unknown agent type: ${agent.type}`);
       }
+
+      return await handler(enhancedTask);
     } finally {
       const duration = Date.now() - startTime;
       task.results = {
@@ -512,35 +499,12 @@ class AIAgentService {
         }
       };
 
-      let result;
-      switch (agent.type) {
-        case 'carbon_analyzer':
-          result = await this.carbonAnalyzerAgent(optimizedTask);
-          break;
-        case 'recommendation_engine':
-          result = await this.recommendationEngineAgent(optimizedTask);
-          break;
-        case 'data_processor':
-          result = await this.dataProcessorAgent(optimizedTask);
-          break;
-        case 'anomaly_detector':
-          result = await this.anomalyDetectorAgent(optimizedTask);
-          break;
-        case 'trend_analyzer':
-          result = await this.trendAnalyzerAgent(optimizedTask);
-          break;
-        case 'compliance_monitor':
-          result = await this.complianceMonitorAgent(optimizedTask);
-          break;
-        case 'optimization_advisor':
-          result = await this.optimizationAdvisorAgent(optimizedTask);
-          break;
-        case 'report_generator':
-          result = await this.reportGeneratorAgent(optimizedTask);
-          break;
-        default:
-          throw new Error(`Unknown agent type: ${agent.type}`);
+      const handler = agentRegistry.getHandler(agent.type);
+      if (!handler) {
+        throw new Error(`Unknown agent type: ${agent.type}`);
       }
+
+      const result = await handler(optimizedTask);
 
       // Add optimization metadata to result
       result.optimization = {
@@ -563,215 +527,53 @@ class AIAgentService {
 
   // Agent implementations
   async carbonAnalyzerAgent(task) {
-    const carbonCalculationService = require('./carbonCalculationService');
-    const { input } = task;
+    const handler = agentRegistry.getHandler('carbon_analyzer');
+    return handler ? handler(task) : { error: 'Carbon analyzer handler not available' };
+  }
 
-    if (input.transactions) {
-      // Analyze multiple transactions
-      const analysis = {
-        totalEmissions: 0,
-        categoryBreakdown: {},
-        recommendations: [],
-        insights: []
-      };
+  async sectorProfilerAgent(task) {
+    const handler = agentRegistry.getHandler('sector_profiler');
+    return handler ? handler(task) : { error: 'Sector profiler handler not available' };
+  }
 
-      for (const transaction of input.transactions) {
-        const carbonData = carbonCalculationService.calculateTransactionCarbonFootprint(transaction);
-        analysis.totalEmissions += carbonData.co2Emissions;
-        
-        if (!analysis.categoryBreakdown[transaction.category]) {
-          analysis.categoryBreakdown[transaction.category] = 0;
-        }
-        analysis.categoryBreakdown[transaction.category] += carbonData.co2Emissions;
-      }
-
-      // Generate insights
-      analysis.insights = this.generateCarbonInsights(analysis);
-      analysis.recommendations = this.generateCarbonRecommendations(analysis);
-
-      return analysis;
-    }
-
-    return { error: 'Invalid input for carbon analyzer' };
+  async processMachineryProfilerAgent(task) {
+    const handler = agentRegistry.getHandler('process_machinery_profiler');
+    return handler ? handler(task) : { error: 'Process/machinery profiler handler not available' };
   }
 
   async recommendationEngineAgent(task) {
-    const { input } = task;
-    
-    const recommendations = [];
-    
-    if (input.carbonData) {
-      // Generate recommendations based on carbon data
-      recommendations.push(...this.generateSustainabilityRecommendations(input.carbonData));
-    }
-
-    if (input.transactions) {
-      // Generate recommendations based on transaction patterns
-      recommendations.push(...this.generateTransactionRecommendations(input.transactions));
-    }
-
-    // Sort by priority and potential impact
-    recommendations.sort((a, b) => {
-      const priorityWeight = { high: 3, medium: 2, low: 1 };
-      return (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
-    });
-
-    return {
-      recommendations: recommendations.slice(0, 10), // Top 10 recommendations
-      totalGenerated: recommendations.length,
-      categories: [...new Set(recommendations.map(r => r.category))]
-    };
+    const handler = agentRegistry.getHandler('recommendation_engine');
+    return handler ? handler(task) : { error: 'Recommendation handler not available' };
   }
 
   async dataProcessorAgent(task) {
-    const { input } = task;
-    
-    const processedData = {
-      cleaned: [],
-      classified: [],
-      enriched: [],
-      validated: []
-    };
-
-    if (input.transactions) {
-      for (const transaction of input.transactions) {
-        // Clean and validate transaction data
-        const cleaned = this.cleanTransactionData(transaction);
-        processedData.cleaned.push(cleaned);
-
-        // Classify transaction
-        const classified = this.classifyTransaction(cleaned);
-        processedData.classified.push(classified);
-
-        // Enrich with additional data
-        const enriched = this.enrichTransactionData(classified);
-        processedData.enriched.push(enriched);
-
-        // Validate for carbon calculation
-        const validated = this.validateForCarbonCalculation(enriched);
-        processedData.validated.push(validated);
-      }
-    }
-
-    return processedData;
+    const handler = agentRegistry.getHandler('data_processor');
+    return handler ? handler(task) : { error: 'Data processor handler not available' };
   }
 
   async anomalyDetectorAgent(task) {
-    const { input } = task;
-    
-    const anomalies = [];
-
-    if (input.transactions) {
-      // Detect unusual patterns in transactions
-      const patterns = this.analyzeTransactionPatterns(input.transactions);
-      
-      // Check for anomalies
-      anomalies.push(...this.detectEmissionAnomalies(patterns));
-      anomalies.push(...this.detectSpendingAnomalies(patterns));
-      anomalies.push(...this.detectFrequencyAnomalies(patterns));
-    }
-
-    return {
-      anomalies,
-      totalDetected: anomalies.length,
-      severity: this.calculateAnomalySeverity(anomalies)
-    };
+    const handler = agentRegistry.getHandler('anomaly_detector');
+    return handler ? handler(task) : { error: 'Anomaly detector handler not available' };
   }
 
   async trendAnalyzerAgent(task) {
-    const { input } = task;
-    
-    const trends = {
-      emissions: this.analyzeEmissionTrends(input.data),
-      spending: this.analyzeSpendingTrends(input.data),
-      efficiency: this.analyzeEfficiencyTrends(input.data),
-      sustainability: this.analyzeSustainabilityTrends(input.data)
-    };
-
-    return {
-      trends,
-      predictions: this.generateTrendPredictions(trends),
-      insights: this.generateTrendInsights(trends)
-    };
+    const handler = agentRegistry.getHandler('trend_analyzer');
+    return handler ? handler(task) : { error: 'Trend analyzer handler not available' };
   }
 
   async complianceMonitorAgent(task) {
-    const { input } = task;
-    
-    const compliance = {
-      status: 'compliant',
-      issues: [],
-      recommendations: []
-    };
-
-    // Check environmental compliance
-    if (input.carbonData) {
-      const envCompliance = this.checkEnvironmentalCompliance(input.carbonData);
-      compliance.issues.push(...envCompliance.issues);
-      compliance.recommendations.push(...envCompliance.recommendations);
-    }
-
-    // Check regulatory compliance
-    if (input.regulations) {
-      const regCompliance = this.checkRegulatoryCompliance(input.regulations, input.data);
-      compliance.issues.push(...regCompliance.issues);
-      compliance.recommendations.push(...regCompliance.recommendations);
-    }
-
-    if (compliance.issues.length > 0) {
-      compliance.status = 'non_compliant';
-    }
-
-    return compliance;
+    const handler = agentRegistry.getHandler('compliance_monitor');
+    return handler ? handler(task) : { error: 'Compliance monitor handler not available' };
   }
 
   async optimizationAdvisorAgent(task) {
-    const { input } = task;
-    
-    const optimizations = [];
-
-    if (input.carbonData) {
-      optimizations.push(...this.suggestEnergyOptimizations(input.carbonData));
-      optimizations.push(...this.suggestWasteOptimizations(input.carbonData));
-      optimizations.push(...this.suggestTransportOptimizations(input.carbonData));
-    }
-
-    if (input.processes) {
-      optimizations.push(...this.suggestProcessOptimizations(input.processes));
-    }
-
-    return {
-      optimizations,
-      potentialSavings: this.calculatePotentialSavings(optimizations),
-      implementationPriority: this.prioritizeOptimizations(optimizations)
-    };
+    const handler = agentRegistry.getHandler('optimization_advisor');
+    return handler ? handler(task) : { error: 'Optimization advisor handler not available' };
   }
 
   async reportGeneratorAgent(task) {
-    const { input } = task;
-    
-    const report = {
-      summary: this.generateReportSummary(input),
-      sections: [],
-      charts: [],
-      recommendations: []
-    };
-
-    if (input.carbonData) {
-      report.sections.push(this.generateCarbonSection(input.carbonData));
-      report.charts.push(...this.generateCarbonCharts(input.carbonData));
-    }
-
-    if (input.trends) {
-      report.sections.push(this.generateTrendsSection(input.trends));
-      report.charts.push(...this.generateTrendCharts(input.trends));
-    }
-
-    if (input.recommendations) {
-      report.sections.push(this.generateRecommendationsSection(input.recommendations));
-    }
-
-    return report;
+    const handler = agentRegistry.getHandler('report_generator');
+    return handler ? handler(task) : { error: 'Report generator handler not available' };
   }
 
   // Helper methods
@@ -1723,35 +1525,12 @@ class AIAgentService {
 
       const enhancedTask = { ...task, input: optimizedInput };
 
-      let result;
-      switch (agent.type) {
-        case 'carbon_analyzer':
-          result = await this.carbonAnalyzerAgent(enhancedTask);
-          break;
-        case 'recommendation_engine':
-          result = await this.recommendationEngineAgent(enhancedTask);
-          break;
-        case 'data_processor':
-          result = await this.dataProcessorAgent(enhancedTask);
-          break;
-        case 'anomaly_detector':
-          result = await this.anomalyDetectorAgent(enhancedTask);
-          break;
-        case 'trend_analyzer':
-          result = await this.trendAnalyzerAgent(enhancedTask);
-          break;
-        case 'compliance_monitor':
-          result = await this.complianceMonitorAgent(enhancedTask);
-          break;
-        case 'optimization_advisor':
-          result = await this.optimizationAdvisorAgent(enhancedTask);
-          break;
-        case 'report_generator':
-          result = await this.reportGeneratorAgent(enhancedTask);
-          break;
-        default:
-          throw new Error(`Unknown agent type: ${agent.type}`);
+      const handler = agentRegistry.getHandler(agent.type);
+      if (!handler) {
+        throw new Error(`Unknown agent type: ${agent.type}`);
       }
+
+      const result = await handler(enhancedTask);
 
       // Add optimization metadata
       result.optimization = {

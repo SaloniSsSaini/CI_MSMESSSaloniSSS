@@ -29,6 +29,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
    - Compliance Monitor Agent
    - Optimization Advisor Agent
    - Report Generator Agent
+   - Sector Profiler Agents (per MSME business domain)
 
 ## AI Agents
 
@@ -131,6 +132,36 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Chart and graph generation
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
+
+### 9. Unified Sector Profiler Agent
+**Type:** `sector_profiler`
+**Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
+
+**Sub-agents (internal):**
+- Sector classifier
+- Behavior weighting planner
+- Orchestration planning advisor
+
+**Capabilities:**
+- Sector profile analysis for registered MSMEs
+- Behavior weighting by MSME business domain
+- Orchestration planning recommendations
+- Context enrichment for multi-agent coordination
+
+### 10. Unified Process & Machinery Profiler Agent
+**Type:** `process_machinery_profiler`
+**Purpose:** Identify sector processes, machinery, and emissions generation factors
+
+**Sub-agents (internal):**
+- Process mapper
+- Machinery inventory builder
+- Emission factor hinting
+
+**Capabilities:**
+- Process mapping based on MSME profile and products
+- Machinery inventory and operational signals
+- Emission factor hints for energy, transport, and materials
+- Context enrichment for optimization and compliance agents
 
 ## API Endpoints
 
@@ -283,6 +314,38 @@ Content-Type: application/json
   ]
 }
 ```
+
+#### Contextual MSME Emissions Orchestration
+```http
+POST /api/ai-agents/orchestrate-msme-emissions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "msmeId": "64ff1d2a01a3b1a0e1234567",
+  "transactions": [
+    {
+      "category": "energy",
+      "amount": 1250,
+      "description": "Grid electricity bill"
+    }
+  ],
+  "behaviorOverrides": {
+    "transportation": {
+      "totalEmissions": 120.5
+    }
+  },
+  "contextOverrides": {
+    "season": "monsoon"
+  }
+}
+```
+
+### Orchestration Overview
+![MSME orchestration overview](images/orchestration-overview.svg)
+
+### Orchestration Parameters
+![MSME orchestration parameters](images/orchestration-parameters.svg)
 
 ### AI-Enhanced Carbon Analysis
 

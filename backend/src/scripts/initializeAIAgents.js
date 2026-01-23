@@ -204,6 +204,85 @@ const defaultAgents = [
   }
 ];
 
+const sectorProfiles = [
+  { key: 'manufacturing', label: 'Manufacturing', focusAreas: ['energy', 'materials', 'waste'] },
+  { key: 'trading', label: 'Trading', focusAreas: ['transportation', 'materials'] },
+  { key: 'services', label: 'Services', focusAreas: ['energy', 'other'] },
+  { key: 'export_import', label: 'Export/Import', focusAreas: ['transportation', 'energy'] },
+  { key: 'retail', label: 'Retail', focusAreas: ['transportation', 'materials'] },
+  { key: 'wholesale', label: 'Wholesale', focusAreas: ['transportation', 'materials'] },
+  { key: 'e_commerce', label: 'E-Commerce', focusAreas: ['transportation', 'energy'] },
+  { key: 'consulting', label: 'Consulting', focusAreas: ['transportation', 'other'] },
+  { key: 'logistics', label: 'Logistics', focusAreas: ['transportation', 'energy'] },
+  { key: 'agriculture', label: 'Agriculture', focusAreas: ['water', 'energy'] },
+  { key: 'handicrafts', label: 'Handicrafts', focusAreas: ['materials', 'energy'] },
+  { key: 'food_processing', label: 'Food Processing', focusAreas: ['energy', 'water'] },
+  { key: 'textiles', label: 'Textiles', focusAreas: ['energy', 'water'] },
+  { key: 'electronics', label: 'Electronics', focusAreas: ['energy', 'materials'] },
+  { key: 'automotive', label: 'Automotive', focusAreas: ['energy', 'materials'] },
+  { key: 'construction', label: 'Construction', focusAreas: ['materials', 'waste'] },
+  { key: 'healthcare', label: 'Healthcare', focusAreas: ['energy', 'waste'] },
+  { key: 'education', label: 'Education', focusAreas: ['energy', 'other'] },
+  { key: 'tourism', label: 'Tourism', focusAreas: ['transportation', 'energy'] },
+  { key: 'other', label: 'Other', focusAreas: ['energy', 'transportation'] }
+];
+
+const sectorProfilerAgent = {
+  name: 'Unified Sector Profiler Agent',
+  type: 'sector_profiler',
+  description: 'Profiles MSME operations and emission drivers across all MSME sectors',
+  capabilities: [
+    'sector_profile',
+    'behavior_weighting',
+    'orchestration_planning',
+    'msme_context_enrichment'
+  ],
+  configuration: {
+    model: 'sector_profiler_v2',
+    parameters: {
+      supportedSectors: sectorProfiles.map(profile => profile.key),
+      focusAreas: sectorProfiles.reduce((acc, profile) => {
+        acc[profile.key] = profile.focusAreas;
+        return acc;
+      }, {}),
+      outputFormat: 'behavioral_profile'
+    },
+    thresholds: {
+      minimumTransactions: 5,
+      confidenceThreshold: 0.6
+    }
+  }
+};
+
+const processMachineryProfilerAgent = {
+  name: 'Unified Process & Machinery Profiler Agent',
+  type: 'process_machinery_profiler',
+  description: 'Profiles processes, machinery, and emissions drivers for all MSME sectors',
+  capabilities: [
+    'process_mapping',
+    'machinery_inventory',
+    'emission_factor_mapping',
+    'product_signal_analysis'
+  ],
+  configuration: {
+    model: 'process_machinery_profiler_v2',
+    parameters: {
+      supportedSectors: sectorProfiles.map(profile => profile.key),
+      focusAreas: sectorProfiles.reduce((acc, profile) => {
+        acc[profile.key] = profile.focusAreas;
+        return acc;
+      }, {}),
+      outputFormat: 'process_machinery_profile'
+    },
+    thresholds: {
+      minimumTransactions: 5,
+      confidenceThreshold: 0.6
+    }
+  }
+};
+
+defaultAgents.push(sectorProfilerAgent, processMachineryProfilerAgent);
+
 async function initializeAIAgents() {
   try {
     // Connect to MongoDB
