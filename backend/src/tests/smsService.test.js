@@ -100,6 +100,38 @@ describe('SMS Service', () => {
     });
   });
 
+  describe('transaction type classification', () => {
+    test.each([
+      ['purchase', 'Rs. 12000 paid to supplier for purchase order 778'],
+      ['sale', 'Rs. 5000 received payment from customer ABC'],
+      ['expense', 'Rs. 800 service charge applied for maintenance'],
+      ['utility', 'Electricity bill of Rs. 1500 debited'],
+      ['transport', 'Fuel purchase Rs. 2000 for transport service'],
+      ['investment', 'Equity investment of Rs. 50000 received'],
+      ['other', 'OTP 123456 for login verification']
+    ])('should classify %s transactions', async (expectedType, text) => {
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+      expect(result.transactionType).toBe(expectedType);
+    });
+  });
+
+  describe('sector/category detection', () => {
+    test.each([
+      ['energy', 'Electricity bill payment Rs. 1000'],
+      ['water', 'Water bill payment Rs. 500'],
+      ['transportation', 'Diesel fuel purchase Rs. 2000'],
+      ['waste_management', 'Waste disposal charges Rs. 300'],
+      ['equipment', 'Machinery equipment purchase Rs. 5000'],
+      ['raw_materials', 'Purchased steel sheets for Rs. 9000'],
+      ['maintenance', 'Maintenance and repair service charge Rs. 1200'],
+      ['utilities', 'Internet bill payment Rs. 800'],
+      ['other', 'Administrative fee charged Rs. 400']
+    ])('should categorize %s sector messages', async (expectedCategory, text) => {
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123');
+      expect(result.category).toBe(expectedCategory);
+    });
+  });
+
   describe('extractVendorName', () => {
     test('should extract vendor name from "from" pattern', () => {
       const text = 'Payment received from ABC Company';
@@ -189,6 +221,22 @@ describe('SMS Service', () => {
       const result = service.determineCategory(text, transactionType);
 
       expect(result).toBe('raw_materials');
+    });
+
+    test('should categorize maintenance transactions', () => {
+      const text = 'maintenance and repair charges';
+      const transactionType = 'expense';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('maintenance');
+    });
+
+    test('should categorize utilities transactions', () => {
+      const text = 'internet bill payment';
+      const transactionType = 'utility';
+      const result = service.determineCategory(text, transactionType);
+
+      expect(result).toBe('utilities');
     });
   });
 

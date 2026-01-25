@@ -33,8 +33,14 @@ class SMSService {
       transport: [
         'fuel', 'diesel', 'petrol', 'transport', 'shipping', 'logistics',
         'delivery', 'freight', 'vehicle'
+      ],
+      investment: [
+        'investment', 'capital infusion', 'equity', 'seed funding', 'loan disbursed',
+        'funding received', 'venture', 'series'
       ]
     };
+
+    this.transactionTypePatterns = patterns;
 
     // Train classifier with patterns
     Object.entries(patterns).forEach(([type, keywords]) => {
@@ -83,7 +89,7 @@ class SMSService {
     const extractedDate = dateMatch ? new Date(dateMatch[1]) : new Date(timestamp);
     
     // Classify transaction type
-    const transactionType = this.classifier.classify(cleanText);
+    const transactionType = this.classifyTransactionType(cleanText);
     
     // Extract vendor/merchant name
     const vendorName = this.extractVendorName(cleanText, sender);
@@ -129,7 +135,8 @@ class SMSService {
           dateMatch: dateMatch?.[0],
           sender: sender
         },
-        confidence
+        confidence,
+        transactionTypeConfidence: this.calculateTransactionTypeConfidence(cleanText, transactionType)
       },
       tags: this.extractTags(cleanText)
     };
@@ -181,7 +188,7 @@ class SMSService {
       'purchase': 'raw_materials',
       'sale': 'other',
       'expense': 'other',
-      'utility': 'energy',
+      'utility': 'utilities',
       'transport': 'transportation'
     };
     
@@ -191,6 +198,10 @@ class SMSService {
     if (text.includes('fuel') || text.includes('diesel') || text.includes('petrol')) return 'transportation';
     if (text.includes('waste') || text.includes('recycling')) return 'waste_management';
     if (text.includes('equipment') || text.includes('machinery')) return 'equipment';
+    if (text.includes('maintenance') || text.includes('repair')) return 'maintenance';
+    if (text.includes('internet') || text.includes('phone') || text.includes('telecom') || text.includes('broadband')) {
+      return 'utilities';
+    }
     
     return categoryMap[transactionType] || 'other';
   }
@@ -319,6 +330,38 @@ class SMSService {
     if (text.includes('rs') || text.includes('₹') || text.includes('inr')) confidence += 0.1;
     
     return Math.min(1, Math.max(0, confidence));
+  }
+
+  classifyTransactionType(text) {
+    const patternGroups = Object.values(this.transactionTypePatterns || {});
+    const hasKnownKeyword = patternGroups.some(keywords => keywords.some(keyword => text.includes(keyword)));
+    if (!hasKnownKeyword) {
+      return 'other';
+    }
+
+    const classifications = this.classifier.getClassifications(text);
+    if (!classifications || classifications.length === 0) {
+      return 'other';
+    }
+
+    const [top, runnerUp] = classifications.sort((a, b) => b.value - a.value);
+    const total = (top?.value || 0) + (runnerUp?.value || 0);
+    const confidence = total > 0 ? (top.value / total) : 0;
+
+    if (confidence < 0.4) {
+      return 'other';
+    }
+
+    return top.label || 'other';
+  }
+
+  calculateTransactionTypeConfidence(text, transactionType) {
+    if (!text) return 0;
+    const classifications = this.classifier.getClassifications(text);
+    const match = classifications.find(item => item.label === transactionType);
+    if (!match) return 0;
+    const total = classifications.reduce((sum, item) => sum + (item.value || 0), 0);
+    return total > 0 ? match.value / total : 0;
   }
 }
 
