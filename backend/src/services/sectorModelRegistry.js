@@ -41,8 +41,8 @@ const SECTOR_MODELS = {
   manufacturing: buildSectorModel({
     key: 'manufacturing',
     label: 'Manufacturing',
-    processes: ['assembly', 'fabrication', 'finishing', 'quality_control'],
-    machinery: ['cnc_machines', 'boilers', 'compressors', 'generators'],
+    processes: ['assembly', 'fabrication', 'finishing', 'quality_control', 'material_preparation', 'machining', 'coating', 'packaging', 'inspection'],
+    machinery: ['cnc_machines', 'boilers', 'compressors', 'generators', 'conveyors', 'furnaces', 'chillers', 'pumps'],
     inputs: ['metals', 'plastics', 'chemicals', 'packaging'],
     outputs: ['finished_goods', 'byproducts'],
     transactionTypes: {
@@ -56,8 +56,8 @@ const SECTOR_MODELS = {
   trading: buildSectorModel({
     key: 'trading',
     label: 'Trading',
-    processes: ['procurement', 'inventory_management', 'distribution'],
-    machinery: ['forklifts', 'scanners', 'warehouse_racks'],
+    processes: ['procurement', 'inventory_management', 'distribution', 'stock_reconciliation', 'order_fulfillment', 'returns_processing'],
+    machinery: ['forklifts', 'scanners', 'warehouse_racks', 'barcode_printers', 'weighing_scales', 'pallet_jacks'],
     inputs: ['inventory_goods', 'packaging'],
     outputs: ['resold_goods'],
     transactionTypes: {
@@ -70,8 +70,8 @@ const SECTOR_MODELS = {
   services: buildSectorModel({
     key: 'services',
     label: 'Services',
-    processes: ['service_delivery', 'client_support', 'billing'],
-    machinery: ['workstations', 'servers', 'office_equipment'],
+    processes: ['service_delivery', 'client_support', 'billing', 'client_onboarding', 'project_delivery', 'service_quality_review'],
+    machinery: ['workstations', 'servers', 'office_equipment', 'networking_gear', 'backup_power'],
     inputs: ['software_licenses', 'office_supplies'],
     outputs: ['service_hours'],
     transactionTypes: {
@@ -84,8 +84,8 @@ const SECTOR_MODELS = {
   export_import: buildSectorModel({
     key: 'export_import',
     label: 'Export/Import',
-    processes: ['customs_clearance', 'international_shipping', 'documentation'],
-    machinery: ['containers', 'tracking_devices'],
+    processes: ['customs_clearance', 'international_shipping', 'documentation', 'port_handling', 'freight_forwarding', 'insurance_processing'],
+    machinery: ['containers', 'tracking_devices', 'forklifts', 'container_handlers'],
     inputs: ['export_goods', 'packing_material'],
     outputs: ['exported_goods'],
     transactionTypes: {
@@ -98,8 +98,8 @@ const SECTOR_MODELS = {
   retail: buildSectorModel({
     key: 'retail',
     label: 'Retail',
-    processes: ['store_operations', 'inventory_replenishment', 'point_of_sale'],
-    machinery: ['pos_systems', 'refrigeration', 'lighting'],
+    processes: ['store_operations', 'inventory_replenishment', 'point_of_sale', 'merchandising', 'pricing', 'returns_management'],
+    machinery: ['pos_systems', 'refrigeration', 'lighting', 'cctv_systems', 'weighing_scales'],
     inputs: ['inventory_goods', 'packaging'],
     outputs: ['retail_sales'],
     transactionTypes: {
@@ -112,8 +112,8 @@ const SECTOR_MODELS = {
   wholesale: buildSectorModel({
     key: 'wholesale',
     label: 'Wholesale',
-    processes: ['bulk_ordering', 'warehouse_handling', 'distribution'],
-    machinery: ['pallet_jacks', 'forklifts', 'inventory_scanners'],
+    processes: ['bulk_ordering', 'warehouse_handling', 'distribution', 'bulk_packing', 'demand_planning'],
+    machinery: ['pallet_jacks', 'forklifts', 'inventory_scanners', 'dock_levelers', 'pallet_wrappers'],
     inputs: ['bulk_inventory', 'packaging'],
     outputs: ['wholesale_shipments'],
     transactionTypes: {
@@ -126,8 +126,8 @@ const SECTOR_MODELS = {
   e_commerce: buildSectorModel({
     key: 'e_commerce',
     label: 'E-Commerce',
-    processes: ['order_fulfillment', 'last_mile_delivery', 'returns_processing'],
-    machinery: ['sorting_conveyors', 'packing_machines', 'servers'],
+    processes: ['order_fulfillment', 'last_mile_delivery', 'returns_processing', 'inventory_sync', 'order_routing', 'returns_sorting'],
+    machinery: ['sorting_conveyors', 'packing_machines', 'servers', 'label_printers', 'barcode_scanners'],
     inputs: ['inventory_goods', 'packaging', 'labels'],
     outputs: ['delivered_orders'],
     transactionTypes: {
@@ -140,8 +140,8 @@ const SECTOR_MODELS = {
   consulting: buildSectorModel({
     key: 'consulting',
     label: 'Consulting',
-    processes: ['project_delivery', 'research', 'client_management'],
-    machinery: ['laptops', 'collaboration_tools'],
+    processes: ['project_delivery', 'research', 'client_management', 'proposal_development', 'workshop_delivery'],
+    machinery: ['laptops', 'collaboration_tools', 'presentation_tools'],
     inputs: ['software', 'travel'],
     outputs: ['reports', 'advisory_services'],
     transactionTypes: {
@@ -154,8 +154,8 @@ const SECTOR_MODELS = {
   logistics: buildSectorModel({
     key: 'logistics',
     label: 'Logistics',
-    processes: ['fleet_operations', 'warehouse_management', 'route_planning'],
-    machinery: ['trucks', 'forklifts', 'gps_units'],
+    processes: ['fleet_operations', 'warehouse_management', 'route_planning', 'cross_docking', 'line_haul', 'fleet_maintenance', 'last_mile_delivery'],
+    machinery: ['trucks', 'forklifts', 'gps_units', 'trailers', 'loading_docks'],
     inputs: ['fuel', 'spare_parts'],
     outputs: ['logistics_services'],
     transactionTypes: {
@@ -169,8 +169,8 @@ const SECTOR_MODELS = {
   agriculture: buildSectorModel({
     key: 'agriculture',
     label: 'Agriculture',
-    processes: ['irrigation', 'harvesting', 'storage'],
-    machinery: ['tractors', 'pumps', 'sprayers'],
+    processes: ['irrigation', 'harvesting', 'storage', 'soil_preparation', 'fertigation', 'crop_protection', 'sorting_grading'],
+    machinery: ['tractors', 'pumps', 'sprayers', 'harvesters', 'drip_irrigation', 'seed_drills'],
     inputs: ['seeds', 'fertilizer', 'pesticides'],
     outputs: ['produce', 'byproducts'],
     transactionTypes: {
@@ -183,8 +183,8 @@ const SECTOR_MODELS = {
   handicrafts: buildSectorModel({
     key: 'handicrafts',
     label: 'Handicrafts',
-    processes: ['handcrafting', 'dyeing', 'finishing'],
-    machinery: ['looms', 'hand_tools'],
+    processes: ['handcrafting', 'dyeing', 'finishing', 'polishing', 'quality_check', 'customization'],
+    machinery: ['looms', 'hand_tools', 'hand_looms', 'drying_racks'],
     inputs: ['yarn', 'dyes', 'wood'],
     outputs: ['handmade_goods'],
     transactionTypes: {
@@ -197,8 +197,8 @@ const SECTOR_MODELS = {
   food_processing: buildSectorModel({
     key: 'food_processing',
     label: 'Food Processing',
-    processes: ['processing', 'cold_storage', 'packaging'],
-    machinery: ['boilers', 'chillers', 'mixers'],
+    processes: ['processing', 'cold_storage', 'packaging', 'cleaning', 'sorting', 'blending', 'quality_testing'],
+    machinery: ['boilers', 'chillers', 'mixers', 'pasteurizers', 'packers'],
     inputs: ['raw_agri', 'packaging', 'additives'],
     outputs: ['processed_food'],
     transactionTypes: {
@@ -211,8 +211,8 @@ const SECTOR_MODELS = {
   textiles: buildSectorModel({
     key: 'textiles',
     label: 'Textiles',
-    processes: ['spinning', 'weaving', 'dyeing', 'finishing'],
-    machinery: ['looms', 'dyeing_machines', 'boilers'],
+    processes: ['spinning', 'weaving', 'dyeing', 'finishing', 'bleaching', 'printing', 'stitching'],
+    machinery: ['looms', 'dyeing_machines', 'boilers', 'steamers', 'calenders'],
     inputs: ['cotton', 'yarn', 'dyes'],
     outputs: ['fabric', 'garments'],
     transactionTypes: {
@@ -225,8 +225,8 @@ const SECTOR_MODELS = {
   electronics: buildSectorModel({
     key: 'electronics',
     label: 'Electronics',
-    processes: ['pcb_assembly', 'testing', 'packaging'],
-    machinery: ['smt_lines', 'soldering_units', 'test_rigs'],
+    processes: ['pcb_assembly', 'testing', 'packaging', 'pcb_testing', 'cleaning', 'burn_in'],
+    machinery: ['smt_lines', 'soldering_units', 'test_rigs', 'reflow_ovens', 'inspection_scanners'],
     inputs: ['components', 'solder', 'chemicals'],
     outputs: ['electronics'],
     transactionTypes: {
@@ -239,8 +239,8 @@ const SECTOR_MODELS = {
   automotive: buildSectorModel({
     key: 'automotive',
     label: 'Automotive',
-    processes: ['stamping', 'assembly', 'painting'],
-    machinery: ['presses', 'paint_booths', 'welders'],
+    processes: ['stamping', 'assembly', 'painting', 'heat_treatment', 'subassembly'],
+    machinery: ['presses', 'paint_booths', 'welders', 'paint_lines', 'robotic_welders'],
     inputs: ['metals', 'paint', 'components'],
     outputs: ['auto_parts'],
     transactionTypes: {
@@ -253,8 +253,8 @@ const SECTOR_MODELS = {
   construction: buildSectorModel({
     key: 'construction',
     label: 'Construction',
-    processes: ['site_preparation', 'construction', 'finishing'],
-    machinery: ['excavators', 'mixers', 'cranes'],
+    processes: ['site_preparation', 'construction', 'finishing', 'earthwork', 'formwork', 'curing'],
+    machinery: ['excavators', 'mixers', 'cranes', 'concrete_pumps', 'backhoes'],
     inputs: ['cement', 'steel', 'aggregates'],
     outputs: ['buildings'],
     transactionTypes: {
@@ -267,8 +267,8 @@ const SECTOR_MODELS = {
   healthcare: buildSectorModel({
     key: 'healthcare',
     label: 'Healthcare',
-    processes: ['patient_care', 'diagnostics', 'sterilization'],
-    machinery: ['medical_devices', 'sterilizers'],
+    processes: ['patient_care', 'diagnostics', 'sterilization', 'waste_segregation', 'pharmacy_operations'],
+    machinery: ['medical_devices', 'sterilizers', 'incinerators', 'autoclaves'],
     inputs: ['medical_supplies', 'chemicals'],
     outputs: ['health_services'],
     transactionTypes: {
@@ -281,8 +281,8 @@ const SECTOR_MODELS = {
   education: buildSectorModel({
     key: 'education',
     label: 'Education',
-    processes: ['teaching', 'facility_management'],
-    machinery: ['computers', 'lab_equipment'],
+    processes: ['teaching', 'facility_management', 'lab_operations', 'facility_cleaning'],
+    machinery: ['computers', 'lab_equipment', 'projectors', 'it_servers'],
     inputs: ['books', 'stationery'],
     outputs: ['education_services'],
     transactionTypes: {
@@ -295,8 +295,8 @@ const SECTOR_MODELS = {
   tourism: buildSectorModel({
     key: 'tourism',
     label: 'Tourism',
-    processes: ['hospitality', 'travel_services', 'event_management'],
-    machinery: ['kitchen_equipment', 'vehicles'],
+    processes: ['hospitality', 'travel_services', 'event_management', 'housekeeping', 'food_service', 'laundry'],
+    machinery: ['kitchen_equipment', 'vehicles', 'laundry_machines', 'water_heaters', 'kitchen_ovens'],
     inputs: ['food', 'linens', 'fuel'],
     outputs: ['tourism_services'],
     transactionTypes: {
@@ -310,8 +310,8 @@ const SECTOR_MODELS = {
   other: buildSectorModel({
     key: 'other',
     label: 'Other',
-    processes: ['operations', 'fulfillment'],
-    machinery: ['general_equipment'],
+    processes: ['operations', 'fulfillment', 'administration', 'procurement'],
+    machinery: ['general_equipment', 'office_equipment', 'utility_backup'],
     inputs: ['misc_inputs'],
     outputs: ['misc_outputs'],
     transactionTypes: {
