@@ -165,6 +165,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Sector profile analysis for registered MSMEs
 - Behavior weighting by MSME business domain
 - Orchestration planning recommendations
+- Sector model enrichment with granular transaction type context
 - Context enrichment for multi-agent coordination
 
 ### 11. Unified Process & Machinery Profiler Agent
@@ -197,11 +198,18 @@ The Orchestration Manager coordinates agents using a structured MSME context. In
 - Chemicals consumption and types
 - Air pollution and types
 - Materials consumption and types
+- Sector transaction type context with granular subtypes
 
 ### Unknown Parameter Placeholders (context.unknownParameters)
 - Discovered from transaction categories or behavior anomalies
 - Captured as placeholders to enrich later based on MSME activity
 - Marked with a `needsReview` flag when gaps are detected
+- Weighted unknown parameters passed into downstream workflows
+
+### Dynamic Parameter Extraction (context.dynamicParameters)
+- Extracts water, fuel, chemicals, waste, air, and materials signals from transaction text
+- Captures process and machinery mentions from dynamic descriptions
+- Records measurement hints (e.g., liters, kWh, kg) for later enrichment
 
 ### Government Policy Updates (context.policyUpdates)
 - Placeholder feed for regulatory updates impacting compliance

@@ -32,6 +32,8 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 **Key Responsibilities:**
 - Coordinates multi-AI agent execution based on MSME profiles and operational context
 - Tracks known parameters (resources, water, fuel, waste, chemicals, air, materials)
+- Enriches sector models with granular transaction type context
+- Extracts dynamic parameter signals from transaction messages
 - Captures unknown parameter placeholders derived from transactions and behavior signals
 - Provides government policy update placeholders to align compliance agents
 - Invokes the data privacy agent before downstream processing

@@ -1,5 +1,6 @@
 const aiAgentService = require('./aiAgentService');
 const carbonCalculationService = require('./carbonCalculationService');
+const { extractDynamicParameters } = require('./dynamicParameterExtractionService');
 const AIAgent = require('../models/AIAgent');
 const MSME = require('../models/MSME');
 const logger = require('../utils/logger');
@@ -166,12 +167,15 @@ class OrchestrationManagerService {
       normalizedTransactions
     );
 
+    const dynamicParameters = extractDynamicParameters(privacySafeTransactions);
+
     const transactionStats = this.computeTransactionStats(privacySafeTransactions);
     const dataQuality = this.assessDataQuality(transactionStats, privacySafeTransactions, orchestrationOptions.weights);
 
     baseContext.transactionStats = transactionStats;
     baseContext.dataQuality = dataQuality;
     baseContext.orchestrationOptions = orchestrationOptions;
+    baseContext.dynamicParameters = dynamicParameters;
 
     const sectorProfile = await this.executeAgent(
       sectorAgentType,
@@ -222,7 +226,8 @@ class OrchestrationManagerService {
     context.behaviorSignals = this.buildBehaviorSignals(behaviorProfiles);
     context.unknownParameters = this.buildUnknownParameterPlaceholders(
       privacySafeTransactions,
-      behaviorProfiles
+      behaviorProfiles,
+      context.dynamicParameters
     );
 
     if (dataQuality.confidence < 0.5) {
@@ -287,6 +292,9 @@ class OrchestrationManagerService {
       orchestrationOptions,
       knownParameters: context.knownParameters,
       policyUpdates: context.policyUpdates,
+      dynamicParameters: context.dynamicParameters,
+      unknownParameters: context.unknownParameters,
+      transactionTypeContext: context.transactionTypeContext,
       privacyReview
     };
 
@@ -326,6 +334,10 @@ class OrchestrationManagerService {
             optimization: parallelResults.optimization_advisor,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             processMachineryProfile,
             orchestrationOptions
@@ -351,6 +363,10 @@ class OrchestrationManagerService {
             recommendations: recommendations?.recommendations || recommendations,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             processMachineryProfile,
             orchestrationOptions
@@ -591,6 +607,9 @@ class OrchestrationManagerService {
     );
     context.sectorProfile = sectorProfile || null;
     context.processMachineryProfile = processMachineryProfile || null;
+    context.transactionTypeContext = sectorProfile?.transactionContext?.transactionTypes ||
+      sectorProfile?.sectorModel?.transactionTypes ||
+      {};
     context.transactionStats = baseContext.transactionStats || null;
     context.dataQuality = baseContext.dataQuality || null;
     context.orchestrationOptions = baseContext.orchestrationOptions || this.getOrchestrationOptions();
@@ -601,15 +620,18 @@ class OrchestrationManagerService {
       emissionFactors: processMachineryProfile?.emissionFactors || [],
       intensityProfile: processMachineryProfile?.intensityProfile || null
     };
+    context.dynamicParameters = baseContext.dynamicParameters || this.buildDynamicParametersFallback();
     context.knownParameters = this.mergeKnownParameters(
       baseContext.knownParameters,
       context.processContext,
-      overrides.knownParameters
+      overrides.knownParameters,
+      context.dynamicParameters
     );
     context.policyUpdates = baseContext.policyUpdates || this.buildPolicyUpdates(
       overrides.policyUpdates || overrides.governmentPolicyUpdates
     );
-    context.unknownParameters = baseContext.unknownParameters || this.buildUnknownParameterPlaceholders([], {});
+    context.unknownParameters = baseContext.unknownParameters ||
+      this.buildUnknownParameterPlaceholders([], {}, context.dynamicParameters);
 
     return context;
   }
@@ -687,13 +709,26 @@ class OrchestrationManagerService {
     };
   }
 
-  mergeKnownParameters(baseKnown = {}, processContext = {}, overrides = {}) {
+  mergeKnownParameters(baseKnown = {}, processContext = {}, overrides = {}, dynamicParameters = {}) {
     const base = baseKnown || {};
     const updated = overrides && typeof overrides === 'object' ? overrides : {};
+    const dynamicConsumption = dynamicParameters?.consumptionSignals || {};
+    const dynamicProcesses = dynamicParameters?.processSignals || {};
+    const dynamicMachinery = dynamicParameters?.machinerySignals || {};
     return {
       ...base,
-      processes: updated.processes || processContext.processes || base.processes || [],
-      machinery: updated.machinery || processContext.machinery || base.machinery || [],
+      processes: Array.from(new Set([
+        ...(updated.processes || []),
+        ...(processContext.processes || []),
+        ...(base.processes || []),
+        ...Object.keys(dynamicProcesses || {})
+      ])),
+      machinery: Array.from(new Set([
+        ...(updated.machinery || []),
+        ...(processContext.machinery || []),
+        ...(base.machinery || []),
+        ...Object.keys(dynamicMachinery || {})
+      ])),
       environmentalResources: {
         ...this.buildConsumptionBucket({
           ...(base.environmentalResources || {}),
@@ -703,27 +738,82 @@ class OrchestrationManagerService {
       },
       waterConsumption: this.buildConsumptionBucket({
         ...(base.waterConsumption || {}),
-        ...(updated.waterConsumption || {})
+        ...(updated.waterConsumption || {}),
+        total: Number.isFinite(updated.waterConsumption?.total)
+          ? updated.waterConsumption.total
+          : (Number.isFinite(base.waterConsumption?.total)
+            ? base.waterConsumption.total
+            : dynamicConsumption.waterConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.waterConsumption || {}).types || []),
+          ...((updated.waterConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.waterConsumption?.types || {})
+        ]))
       }, base.waterConsumption?.unit || 'kl'),
       fuelConsumption: this.buildConsumptionBucket({
         ...(base.fuelConsumption || {}),
-        ...(updated.fuelConsumption || {})
+        ...(updated.fuelConsumption || {}),
+        total: Number.isFinite(updated.fuelConsumption?.total)
+          ? updated.fuelConsumption.total
+          : (Number.isFinite(base.fuelConsumption?.total)
+            ? base.fuelConsumption.total
+            : dynamicConsumption.fuelConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.fuelConsumption || {}).types || []),
+          ...((updated.fuelConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.fuelConsumption?.types || {})
+        ]))
       }, base.fuelConsumption?.unit || 'liters'),
       wasteGeneration: this.buildWasteBucket({
         ...(base.wasteGeneration || {}),
-        ...(updated.wasteGeneration || {})
+        ...(updated.wasteGeneration || {}),
+        total: Number.isFinite(updated.wasteGeneration?.total)
+          ? updated.wasteGeneration.total
+          : (Number.isFinite(base.wasteGeneration?.total)
+            ? base.wasteGeneration.total
+            : dynamicConsumption.wasteGeneration?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.wasteGeneration || {}).types || []),
+          ...((updated.wasteGeneration || {}).types || []),
+          ...Object.keys(dynamicConsumption.wasteGeneration?.types || {})
+        ]))
       }),
       chemicalsConsumption: this.buildConsumptionBucket({
         ...(base.chemicalsConsumption || {}),
-        ...(updated.chemicalsConsumption || {})
+        ...(updated.chemicalsConsumption || {}),
+        total: Number.isFinite(updated.chemicalsConsumption?.total)
+          ? updated.chemicalsConsumption.total
+          : (Number.isFinite(base.chemicalsConsumption?.total)
+            ? base.chemicalsConsumption.total
+            : dynamicConsumption.chemicalsConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.chemicalsConsumption || {}).types || []),
+          ...((updated.chemicalsConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.chemicalsConsumption?.types || {})
+        ]))
       }, base.chemicalsConsumption?.unit || 'kg'),
       airPollution: this.buildAirPollutionBucket({
         ...(base.airPollution || {}),
-        ...(updated.airPollution || {})
+        ...(updated.airPollution || {}),
+        pollutants: Array.from(new Set([
+          ...((base.airPollution || {}).pollutants || []),
+          ...((updated.airPollution || {}).pollutants || []),
+          ...Object.keys(dynamicConsumption.airPollution?.types || {})
+        ]))
       }),
       materialsConsumption: this.buildConsumptionBucket({
         ...(base.materialsConsumption || {}),
-        ...(updated.materialsConsumption || {})
+        ...(updated.materialsConsumption || {}),
+        total: Number.isFinite(updated.materialsConsumption?.total)
+          ? updated.materialsConsumption.total
+          : (Number.isFinite(base.materialsConsumption?.total)
+            ? base.materialsConsumption.total
+            : dynamicConsumption.materialsConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.materialsConsumption || {}).types || []),
+          ...((updated.materialsConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.materialsConsumption?.types || {})
+        ]))
       }, base.materialsConsumption?.unit || 'kg'),
       metadata: {
         ...(base.metadata || {}),
@@ -733,20 +823,52 @@ class OrchestrationManagerService {
     };
   }
 
-  buildUnknownParameterPlaceholders(transactions = [], behaviorProfiles = {}) {
+  buildUnknownParameterPlaceholders(transactions = [], behaviorProfiles = {}, dynamicParameters = {}) {
     const knownCategories = new Set(
       Object.values(BEHAVIOR_DEFINITIONS).flatMap(definition => definition.categories)
     );
     const unknownCategories = new Set();
+    const unknownCategoryStats = new Map();
+    const totalAmount = transactions.reduce((sum, transaction) => sum + (Number(transaction.amount) || 0), 0);
     transactions.forEach(transaction => {
       const category = (transaction.category || '').toLowerCase();
       if (category && !knownCategories.has(category)) {
         unknownCategories.add(category);
+        const stats = unknownCategoryStats.get(category) || { count: 0, totalAmount: 0 };
+        stats.count += 1;
+        stats.totalAmount += Number(transaction.amount) || 0;
+        unknownCategoryStats.set(category, stats);
       }
     });
 
     const otherProfile = behaviorProfiles?.other || {};
     const needsReview = unknownCategories.size > 0 || (otherProfile.emissionsShare || 0) > 0.2;
+    const dynamicUnknownParameters = dynamicParameters.unknownParameters || [];
+
+    const weightedCategoryParameters = Array.from(unknownCategoryStats.entries()).map(([category, stats]) => {
+      const amountShare = totalAmount > 0 ? stats.totalAmount / totalAmount : 0;
+      const mentionRate = transactions.length > 0 ? stats.count / transactions.length : 0;
+      const weight = Math.min(1, 0.6 * mentionRate + 0.4 * amountShare);
+      return {
+        name: category,
+        count: stats.count,
+        totalAmount: stats.totalAmount,
+        amountShare,
+        weight,
+        source: 'category'
+      };
+    });
+
+    const weightedParametersMap = new Map();
+    [...dynamicUnknownParameters, ...weightedCategoryParameters].forEach(param => {
+      if (!param?.name) return;
+      const existing = weightedParametersMap.get(param.name) || { ...param };
+      existing.count = (existing.count || 0) + (param.count || 0);
+      existing.totalAmount = (existing.totalAmount || 0) + (param.totalAmount || 0);
+      existing.weight = Math.max(existing.weight || 0, param.weight || 0);
+      existing.amountShare = Math.max(existing.amountShare || 0, param.amountShare || 0);
+      weightedParametersMap.set(param.name, existing);
+    });
 
     return {
       detectedCategories: Array.from(unknownCategories),
@@ -754,15 +876,33 @@ class OrchestrationManagerService {
         otherEmissionsShare: otherProfile.emissionsShare || 0,
         otherTransactionCount: otherProfile.transactionCount || 0
       },
+      weightedParameters: Array.from(weightedParametersMap.values()).sort((a, b) => (b.weight || 0) - (a.weight || 0)),
+      dynamicUnknownParameters,
+      unknownCategoryParameters: weightedCategoryParameters,
       placeholders: {
         resourceConsumption: [],
         processInputs: [],
-        emissionTypes: []
+        emissionTypes: [],
+        measurements: dynamicParameters.measurements || []
       },
       needsReview,
       notes: needsReview
         ? 'Unknown categories detected; add parameters when available.'
         : 'No unknown categories detected.'
+    };
+  }
+
+  buildDynamicParametersFallback() {
+    return {
+      consumptionSignals: {},
+      processSignals: {},
+      machinerySignals: {},
+      measurements: [],
+      unknownParameters: [],
+      totals: {
+        totalTransactions: 0,
+        totalAmount: 0
+      }
     };
   }
 
@@ -972,6 +1112,14 @@ class OrchestrationManagerService {
       rationale.push('Data quality below target; interpret results cautiously.');
     }
 
+    const weightedUnknowns = analysisContext.unknownParameters?.weightedParameters || [];
+    const highUnknowns = weightedUnknowns.filter(param => (param.weight || 0) >= 0.35);
+    if (highUnknowns.length > 0) {
+      parallelAgents.add('anomaly_detector');
+      parallelAgents.add('compliance_monitor');
+      rationale.push('High-weight unknown parameters trigger anomaly and compliance review.');
+    }
+
     if ((knownParameters.processes || []).length > 0 || (knownParameters.machinery || []).length > 0) {
       parallelAgents.add('optimization_advisor');
       rationale.push('Process and machinery signals add optimization review.');
@@ -1036,6 +1184,9 @@ class OrchestrationManagerService {
             carbonData: analysisContext.carbonData,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             dataQuality: analysisContext.dataQuality,
             orchestrationOptions,
@@ -1055,7 +1206,10 @@ class OrchestrationManagerService {
               context: analysisContext.context,
               processMachineryProfile: analysisContext.processMachineryProfile,
               transactionStats: analysisContext.transactionStats,
-              dataQuality: analysisContext.dataQuality
+              dataQuality: analysisContext.dataQuality,
+              unknownParameters: analysisContext.unknownParameters,
+              dynamicParameters: analysisContext.dynamicParameters,
+              transactionTypeContext: analysisContext.transactionTypeContext
             },
             coordinationContext,
             orchestrationOptions
@@ -1072,6 +1226,9 @@ class OrchestrationManagerService {
             regulations: analysisContext.context.regulatoryContext,
             policyUpdates: analysisContext.policyUpdates,
             knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
             coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,
@@ -1088,6 +1245,9 @@ class OrchestrationManagerService {
             carbonData: analysisContext.carbonData,
             processes: analysisContext.context.processContext,
             knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
             coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,

@@ -1,0 +1,334 @@
+const BASE_TRANSACTION_TYPES = {
+  purchase: ['raw_materials', 'components', 'packaging'],
+  sale: ['product_sales', 'service_billing'],
+  expense: ['labor', 'rent', 'admin', 'marketing'],
+  utility: ['electricity', 'water', 'fuel', 'gas'],
+  maintenance: ['machinery_service', 'spares', 'lubricants'],
+  compliance: ['waste_handling', 'pollution_control', 'safety'],
+  transport: ['inbound_transport', 'outbound_transport', 'storage']
+};
+
+const mergeTransactionTypes = (base, extra = {}) => {
+  const merged = {};
+  const keys = new Set([...Object.keys(base || {}), ...Object.keys(extra || {})]);
+  keys.forEach(key => {
+    const baseList = base?.[key] || [];
+    const extraList = extra?.[key] || [];
+    merged[key] = Array.from(new Set([...baseList, ...extraList]));
+  });
+  return merged;
+};
+
+const buildSectorModel = ({
+  key,
+  label,
+  processes = [],
+  machinery = [],
+  inputs = [],
+  outputs = [],
+  transactionTypes = {}
+}) => ({
+  key,
+  label,
+  processes,
+  machinery,
+  inputs,
+  outputs,
+  transactionTypes: mergeTransactionTypes(BASE_TRANSACTION_TYPES, transactionTypes)
+});
+
+const SECTOR_MODELS = {
+  manufacturing: buildSectorModel({
+    key: 'manufacturing',
+    label: 'Manufacturing',
+    processes: ['assembly', 'fabrication', 'finishing', 'quality_control'],
+    machinery: ['cnc_machines', 'boilers', 'compressors', 'generators'],
+    inputs: ['metals', 'plastics', 'chemicals', 'packaging'],
+    outputs: ['finished_goods', 'byproducts'],
+    transactionTypes: {
+      purchase: ['raw_metals', 'chemicals', 'packaging', 'spare_parts'],
+      utility: ['steam', 'industrial_water', 'diesel'],
+      maintenance: ['machinery_repair', 'calibration'],
+      compliance: ['waste_treatment', 'emission_control', 'safety_audits'],
+      transport: ['inbound_freight', 'outbound_freight']
+    }
+  }),
+  trading: buildSectorModel({
+    key: 'trading',
+    label: 'Trading',
+    processes: ['procurement', 'inventory_management', 'distribution'],
+    machinery: ['forklifts', 'scanners', 'warehouse_racks'],
+    inputs: ['inventory_goods', 'packaging'],
+    outputs: ['resold_goods'],
+    transactionTypes: {
+      purchase: ['inventory_stock', 'bulk_goods', 'packaging'],
+      sale: ['resale', 'bulk_orders'],
+      transport: ['inbound_logistics', 'outbound_logistics'],
+      expense: ['warehouse_rent', 'brokerage', 'insurance']
+    }
+  }),
+  services: buildSectorModel({
+    key: 'services',
+    label: 'Services',
+    processes: ['service_delivery', 'client_support', 'billing'],
+    machinery: ['workstations', 'servers', 'office_equipment'],
+    inputs: ['software_licenses', 'office_supplies'],
+    outputs: ['service_hours'],
+    transactionTypes: {
+      purchase: ['software', 'subscriptions', 'office_supplies'],
+      sale: ['service_fees', 'retainers'],
+      expense: ['payroll', 'rent', 'travel'],
+      utility: ['internet', 'electricity']
+    }
+  }),
+  export_import: buildSectorModel({
+    key: 'export_import',
+    label: 'Export/Import',
+    processes: ['customs_clearance', 'international_shipping', 'documentation'],
+    machinery: ['containers', 'tracking_devices'],
+    inputs: ['export_goods', 'packing_material'],
+    outputs: ['exported_goods'],
+    transactionTypes: {
+      purchase: ['export_goods', 'packing_material'],
+      sale: ['export_orders', 'import_distribution'],
+      transport: ['ocean_freight', 'air_freight', 'customs_transport'],
+      compliance: ['customs_duty', 'export_license']
+    }
+  }),
+  retail: buildSectorModel({
+    key: 'retail',
+    label: 'Retail',
+    processes: ['store_operations', 'inventory_replenishment', 'point_of_sale'],
+    machinery: ['pos_systems', 'refrigeration', 'lighting'],
+    inputs: ['inventory_goods', 'packaging'],
+    outputs: ['retail_sales'],
+    transactionTypes: {
+      purchase: ['store_inventory', 'packaging', 'display_materials'],
+      sale: ['pos_sales', 'online_orders'],
+      expense: ['store_rent', 'staffing', 'marketing'],
+      utility: ['electricity', 'water']
+    }
+  }),
+  wholesale: buildSectorModel({
+    key: 'wholesale',
+    label: 'Wholesale',
+    processes: ['bulk_ordering', 'warehouse_handling', 'distribution'],
+    machinery: ['pallet_jacks', 'forklifts', 'inventory_scanners'],
+    inputs: ['bulk_inventory', 'packaging'],
+    outputs: ['wholesale_shipments'],
+    transactionTypes: {
+      purchase: ['bulk_inventory', 'packaging'],
+      sale: ['bulk_orders', 'channel_sales'],
+      transport: ['bulk_freight', 'warehouse_transfer'],
+      expense: ['storage_rent', 'brokerage']
+    }
+  }),
+  e_commerce: buildSectorModel({
+    key: 'e_commerce',
+    label: 'E-Commerce',
+    processes: ['order_fulfillment', 'last_mile_delivery', 'returns_processing'],
+    machinery: ['sorting_conveyors', 'packing_machines', 'servers'],
+    inputs: ['inventory_goods', 'packaging', 'labels'],
+    outputs: ['delivered_orders'],
+    transactionTypes: {
+      purchase: ['inventory', 'packaging', 'shipping_labels'],
+      sale: ['online_orders', 'marketplace_payouts'],
+      transport: ['last_mile', 'reverse_logistics'],
+      utility: ['electricity', 'cloud_services']
+    }
+  }),
+  consulting: buildSectorModel({
+    key: 'consulting',
+    label: 'Consulting',
+    processes: ['project_delivery', 'research', 'client_management'],
+    machinery: ['laptops', 'collaboration_tools'],
+    inputs: ['software', 'travel'],
+    outputs: ['reports', 'advisory_services'],
+    transactionTypes: {
+      purchase: ['software_licenses', 'research_tools'],
+      sale: ['consulting_fees', 'project_billing'],
+      expense: ['travel', 'training', 'subscriptions'],
+      utility: ['internet', 'electricity']
+    }
+  }),
+  logistics: buildSectorModel({
+    key: 'logistics',
+    label: 'Logistics',
+    processes: ['fleet_operations', 'warehouse_management', 'route_planning'],
+    machinery: ['trucks', 'forklifts', 'gps_units'],
+    inputs: ['fuel', 'spare_parts'],
+    outputs: ['logistics_services'],
+    transactionTypes: {
+      purchase: ['diesel', 'spare_parts', 'tires'],
+      sale: ['transport_services', 'warehousing_fees'],
+      maintenance: ['fleet_maintenance', 'vehicle_repair'],
+      compliance: ['emissions_testing', 'safety_inspection'],
+      transport: ['toll_charges', 'route_fees']
+    }
+  }),
+  agriculture: buildSectorModel({
+    key: 'agriculture',
+    label: 'Agriculture',
+    processes: ['irrigation', 'harvesting', 'storage'],
+    machinery: ['tractors', 'pumps', 'sprayers'],
+    inputs: ['seeds', 'fertilizer', 'pesticides'],
+    outputs: ['produce', 'byproducts'],
+    transactionTypes: {
+      purchase: ['seeds', 'fertilizer', 'pesticides', 'feed'],
+      sale: ['crop_sales', 'produce_sales'],
+      utility: ['water', 'electricity', 'diesel'],
+      maintenance: ['equipment_service', 'spare_parts']
+    }
+  }),
+  handicrafts: buildSectorModel({
+    key: 'handicrafts',
+    label: 'Handicrafts',
+    processes: ['handcrafting', 'dyeing', 'finishing'],
+    machinery: ['looms', 'hand_tools'],
+    inputs: ['yarn', 'dyes', 'wood'],
+    outputs: ['handmade_goods'],
+    transactionTypes: {
+      purchase: ['raw_materials', 'dyes', 'packaging'],
+      sale: ['artisan_goods', 'custom_orders'],
+      utility: ['electricity', 'water'],
+      expense: ['workshop_rent', 'labor']
+    }
+  }),
+  food_processing: buildSectorModel({
+    key: 'food_processing',
+    label: 'Food Processing',
+    processes: ['processing', 'cold_storage', 'packaging'],
+    machinery: ['boilers', 'chillers', 'mixers'],
+    inputs: ['raw_agri', 'packaging', 'additives'],
+    outputs: ['processed_food'],
+    transactionTypes: {
+      purchase: ['raw_agri', 'packaging', 'additives'],
+      utility: ['water', 'electricity', 'steam'],
+      compliance: ['food_safety_tests', 'waste_management'],
+      transport: ['cold_chain_logistics']
+    }
+  }),
+  textiles: buildSectorModel({
+    key: 'textiles',
+    label: 'Textiles',
+    processes: ['spinning', 'weaving', 'dyeing', 'finishing'],
+    machinery: ['looms', 'dyeing_machines', 'boilers'],
+    inputs: ['cotton', 'yarn', 'dyes'],
+    outputs: ['fabric', 'garments'],
+    transactionTypes: {
+      purchase: ['cotton', 'yarn', 'dyes', 'chemicals'],
+      utility: ['water', 'steam', 'electricity'],
+      compliance: ['effluent_treatment', 'waste_handling'],
+      maintenance: ['loom_service', 'spare_parts']
+    }
+  }),
+  electronics: buildSectorModel({
+    key: 'electronics',
+    label: 'Electronics',
+    processes: ['pcb_assembly', 'testing', 'packaging'],
+    machinery: ['smt_lines', 'soldering_units', 'test_rigs'],
+    inputs: ['components', 'solder', 'chemicals'],
+    outputs: ['electronics'],
+    transactionTypes: {
+      purchase: ['components', 'solder', 'chemicals'],
+      utility: ['electricity', 'cleanroom'],
+      compliance: ['e_waste_disposal'],
+      maintenance: ['equipment_calibration']
+    }
+  }),
+  automotive: buildSectorModel({
+    key: 'automotive',
+    label: 'Automotive',
+    processes: ['stamping', 'assembly', 'painting'],
+    machinery: ['presses', 'paint_booths', 'welders'],
+    inputs: ['metals', 'paint', 'components'],
+    outputs: ['auto_parts'],
+    transactionTypes: {
+      purchase: ['steel', 'components', 'paint', 'chemicals'],
+      utility: ['electricity', 'gas'],
+      compliance: ['emissions_control', 'waste_handling'],
+      maintenance: ['equipment_service']
+    }
+  }),
+  construction: buildSectorModel({
+    key: 'construction',
+    label: 'Construction',
+    processes: ['site_preparation', 'construction', 'finishing'],
+    machinery: ['excavators', 'mixers', 'cranes'],
+    inputs: ['cement', 'steel', 'aggregates'],
+    outputs: ['buildings'],
+    transactionTypes: {
+      purchase: ['cement', 'steel', 'aggregates', 'tools'],
+      transport: ['site_logistics', 'material_haul'],
+      utility: ['diesel', 'water'],
+      compliance: ['waste_disposal', 'permits']
+    }
+  }),
+  healthcare: buildSectorModel({
+    key: 'healthcare',
+    label: 'Healthcare',
+    processes: ['patient_care', 'diagnostics', 'sterilization'],
+    machinery: ['medical_devices', 'sterilizers'],
+    inputs: ['medical_supplies', 'chemicals'],
+    outputs: ['health_services'],
+    transactionTypes: {
+      purchase: ['medical_supplies', 'pharma', 'chemicals'],
+      utility: ['electricity', 'water'],
+      compliance: ['bio_waste_disposal', 'licensing'],
+      expense: ['staffing', 'facility_rent']
+    }
+  }),
+  education: buildSectorModel({
+    key: 'education',
+    label: 'Education',
+    processes: ['teaching', 'facility_management'],
+    machinery: ['computers', 'lab_equipment'],
+    inputs: ['books', 'stationery'],
+    outputs: ['education_services'],
+    transactionTypes: {
+      purchase: ['books', 'lab_supplies', 'software'],
+      sale: ['tuition', 'training_fees'],
+      utility: ['electricity', 'internet'],
+      expense: ['staffing', 'facility_maintenance']
+    }
+  }),
+  tourism: buildSectorModel({
+    key: 'tourism',
+    label: 'Tourism',
+    processes: ['hospitality', 'travel_services', 'event_management'],
+    machinery: ['kitchen_equipment', 'vehicles'],
+    inputs: ['food', 'linens', 'fuel'],
+    outputs: ['tourism_services'],
+    transactionTypes: {
+      purchase: ['food_supplies', 'linens', 'fuel'],
+      sale: ['booking_revenue', 'package_fees'],
+      utility: ['electricity', 'water'],
+      transport: ['guest_transport', 'tour_services'],
+      compliance: ['waste_management']
+    }
+  }),
+  other: buildSectorModel({
+    key: 'other',
+    label: 'Other',
+    processes: ['operations', 'fulfillment'],
+    machinery: ['general_equipment'],
+    inputs: ['misc_inputs'],
+    outputs: ['misc_outputs'],
+    transactionTypes: {
+      purchase: ['general_inputs', 'supplies'],
+      sale: ['general_sales'],
+      expense: ['overheads', 'services']
+    }
+  })
+};
+
+const getSectorModel = (sectorKey) => {
+  if (!sectorKey) return SECTOR_MODELS.other;
+  return SECTOR_MODELS[sectorKey] || SECTOR_MODELS.other;
+};
+
+module.exports = {
+  BASE_TRANSACTION_TYPES,
+  SECTOR_MODELS,
+  getSectorModel
+};
