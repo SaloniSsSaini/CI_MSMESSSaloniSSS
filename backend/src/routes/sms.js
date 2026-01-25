@@ -9,6 +9,7 @@ const duplicateDetectionService = require('../services/duplicateDetectionService
 const Transaction = require('../models/Transaction');
 const logger = require('../utils/logger');
 const { MSMENotificationService } = require('../services/msmeNotificationService');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 
 const notificationService = new MSMENotificationService();
 
@@ -114,6 +115,21 @@ router.post('/process', [
       amount: result.transaction.amount,
       co2Emissions: carbonData.co2Emissions
     });
+
+    try {
+      orchestrationManagerEventService.emitEvent('transactions.sms_processed', {
+        msmeId,
+        transaction: transaction.toObject(),
+        source: 'sms',
+        messageId
+      }, 'sms');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for SMS transaction', {
+        error: eventError.message,
+        msmeId,
+        messageId
+      });
+    }
 
     res.json({
       success: true,

@@ -7,7 +7,19 @@ const AIWorkflow = require('../models/AIWorkflow');
 const AIExecution = require('../models/AIExecution');
 const aiAgentService = require('../services/aiAgentService');
 const msmeEmissionsOrchestrationService = require('../services/msmeEmissionsOrchestrationService');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 const logger = require('../utils/logger');
+
+const emitOrchestrationEvent = (eventType, payload = {}, source = 'ai-agents') => {
+  try {
+    orchestrationManagerEventService.emitEvent(eventType, payload, source);
+  } catch (error) {
+    logger.warn('Failed to emit orchestration manager event', {
+      eventType,
+      error: error.message
+    });
+  }
+};
 
 // @route   GET /api/ai-agents
 // @desc    Get all AI agents
@@ -463,6 +475,7 @@ router.post('/orchestrate-msme-emissions', auth, async (req, res) => {
       msmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides
     } = req.body;
@@ -487,8 +500,15 @@ router.post('/orchestrate-msme-emissions', auth, async (req, res) => {
       msmeId: resolvedMsmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides
+    });
+
+    emitOrchestrationEvent('orchestration.msme_emissions.completed', {
+      msmeId: resolvedMsmeId,
+      orchestrationId: result.orchestrationId,
+      outputs: result.orchestrationPlan?.outputs || {}
     });
 
     res.json({
@@ -525,6 +545,13 @@ router.post('/multi-agent-workflow', auth, async (req, res) => {
       msmeId || req.user.msmeId, 
       triggerData || {}
     );
+
+    emitOrchestrationEvent('workflow.multi_agent.triggered', {
+      msmeId: msmeId || req.user.msmeId,
+      workflowId,
+      executionId: execution.executionId,
+      steps: execution.steps.length
+    });
 
     res.json({
       success: true,
@@ -631,6 +658,19 @@ router.post('/coordinate-agents', auth, async (req, res) => {
       throw new Error(`Unknown coordination mode: ${coordinationMode}`);
     }
 
+    emitOrchestrationEvent('agents.coordination.completed', {
+      msmeId: req.user.msmeId,
+      coordinationId,
+      coordinationMode,
+      taskType,
+      tasks: tasks.map(task => ({
+        taskId: task.taskId,
+        agentId: task.agentId,
+        status: task.status
+      })),
+      results
+    });
+
     res.json({
       success: true,
       message: 'Agent coordination completed',
@@ -662,6 +702,10 @@ router.post('/coordinate-agents', auth, async (req, res) => {
 router.post('/balance-load', auth, async (req, res) => {
   try {
     await aiAgentService.balanceAgentLoad();
+
+    emitOrchestrationEvent('agents.load_balanced', {
+      msmeId: req.user.msmeId
+    });
 
     res.json({
       success: true,

@@ -1,4 +1,5 @@
 const carbonCalculationService = require('../carbonCalculationService');
+const { getSectorModel } = require('../sectorModelRegistry');
 const logger = require('../../utils/logger');
 
 const SECTOR_PROFILES = {
@@ -238,14 +239,38 @@ const SECTOR_PROFILES = {
 
 const CATEGORY_TO_BEHAVIOR = {
   energy: 'energy',
+  electricity: 'energy',
+  fuel: 'energy',
+  diesel: 'energy',
+  petrol: 'energy',
+  gas: 'energy',
+  lpg: 'energy',
+  natural_gas: 'energy',
+  coal: 'energy',
+  biomass: 'energy',
   water: 'water',
+  water_supply: 'water',
+  water_treatment: 'water',
+  wastewater: 'water',
   waste_management: 'waste',
+  waste: 'waste',
+  hazardous_waste: 'waste',
+  recycling: 'waste',
+  scrap: 'waste',
   transportation: 'transportation',
   raw_materials: 'materials',
+  materials: 'materials',
+  chemicals: 'materials',
+  packaging: 'materials',
+  consumables: 'materials',
   equipment: 'manufacturing',
+  machinery: 'manufacturing',
+  process: 'manufacturing',
   maintenance: 'manufacturing',
   utilities: 'other',
   services: 'other',
+  air_pollution: 'other',
+  air_emissions: 'other',
   other: 'other'
 };
 
@@ -258,7 +283,9 @@ class SectorProfilerAgent {
 
       const sectorKey = this.normalizeSector(msmeData.businessDomain);
       const sectorProfile = SECTOR_PROFILES[sectorKey] || SECTOR_PROFILES.other;
+      const sectorModel = getSectorModel(sectorKey);
       const summary = this.summarizeTransactions(transactions);
+      const transactionTypeSummary = this.summarizeTransactionTypes(transactions);
       const sectorClassification = this.runSectorClassifier(sectorKey, sectorProfile, msmeData);
       const behaviorWeighting = this.runBehaviorWeighting(sectorProfile, summary, context);
       const orchestrationPlanning = this.runOrchestrationPlanner(sectorProfile, summary, msmeData);
@@ -269,6 +296,11 @@ class SectorProfilerAgent {
         sector: sectorKey,
         label: sectorProfile.label,
         focusAreas: sectorProfile.focusAreas,
+        sectorModel,
+        transactionContext: {
+          transactionTypes: sectorModel.transactionTypes,
+          transactionTypeSummary
+        },
         behaviorWeights,
         orchestrationPlan,
         subAgents: {
@@ -280,6 +312,7 @@ class SectorProfilerAgent {
           company: this.buildCompanySnapshot(msmeData),
           operations: this.buildOperationsSnapshot(msmeData),
           transactionSummary: summary,
+          transactionTypeSummary,
           activitySignals: this.buildActivitySignals(summary)
         },
         confidence: this.calculateConfidence(summary, msmeData)
@@ -319,6 +352,30 @@ class SectorProfilerAgent {
       const amount = summary.categoryTotals[category];
       const emissions = summary.emissionTotals[category] || 0;
       summary.emissionIntensity[category] = amount > 0 ? emissions / amount : 0;
+    });
+
+    return summary;
+  }
+
+  summarizeTransactionTypes(transactions) {
+    const summary = {
+      transactionTypeCounts: {},
+      subcategoryCounts: {},
+      categoryByTransactionType: {}
+    };
+
+    transactions.forEach(transaction => {
+      const transactionType = (transaction.transactionType || 'other').toLowerCase();
+      const category = (transaction.category || 'other').toLowerCase();
+      const subcategory = (transaction.subcategory || 'general').toLowerCase();
+
+      summary.transactionTypeCounts[transactionType] = (summary.transactionTypeCounts[transactionType] || 0) + 1;
+      summary.subcategoryCounts[subcategory] = (summary.subcategoryCounts[subcategory] || 0) + 1;
+      if (!summary.categoryByTransactionType[transactionType]) {
+        summary.categoryByTransactionType[transactionType] = {};
+      }
+      summary.categoryByTransactionType[transactionType][category] =
+        (summary.categoryByTransactionType[transactionType][category] || 0) + 1;
     });
 
     return summary;

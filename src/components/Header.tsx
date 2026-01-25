@@ -28,6 +28,9 @@ import {
     Folder as DocumentsIcon,
     Security as PrivacyIcon,
     MailOutline as MailAgentIcon,
+    Group as AgentsIcon,
+    Timeline as OrchestrationIcon,
+    AutoAwesome as OptimizedIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useRegistration } from '../context/RegistrationContext';
@@ -86,6 +89,9 @@ const Header: React.FC = () => {
     const navigationItems = [
       { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       { path: '/carbon-footprint', label: 'Carbon Assessment', icon: <AssessmentIcon /> },
+      { path: '/multi-agent-management', label: 'Agent Orchestration', icon: <AgentsIcon /> },
+      { path: '/multi-agent-dashboard', label: 'Agent Dashboard', icon: <OrchestrationIcon /> },
+      { path: '/optimized-multi-agent-dashboard', label: 'Optimized Agents', icon: <OptimizedIcon /> },
     //   { path: '/ai-email-agent', label: 'AI Email Agent', icon: <MailAgentIcon /> },
     //   { path: '/carbon-savings', label: 'Carbon Savings', icon: <EcoSavingsIcon /> },
     // { path: '/recommendations', label: 'Recommendations', icon: <RecommendationsIcon /> },

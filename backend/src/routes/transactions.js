@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
 const carbonCalculationService = require('../services/carbonCalculationService');
 const logger = require('../utils/logger');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 
 // @route   GET /api/transactions
 // @desc    Get all transactions for MSME
@@ -266,6 +267,20 @@ router.put('/:id', auth, async (req, res) => {
       updates: { category, subcategory, tags, sustainability }
     });
 
+    try {
+      orchestrationManagerEventService.emitEvent('transactions.updated', {
+        msmeId: req.user.msmeId,
+        transaction: transaction.toObject(),
+        updates: { category, subcategory, tags, sustainability }
+      }, 'transactions');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for transaction update', {
+        error: eventError.message,
+        msmeId: req.user.msmeId,
+        transactionId: req.params.id
+      });
+    }
+
     res.json({
       success: true,
       message: 'Transaction updated successfully',
@@ -302,6 +317,19 @@ router.delete('/:id', auth, async (req, res) => {
     logger.info(`Transaction deleted: ${req.params.id}`, {
       msmeId: req.user.msmeId
     });
+
+    try {
+      orchestrationManagerEventService.emitEvent('transactions.deleted', {
+        msmeId: req.user.msmeId,
+        transaction: transaction.toObject()
+      }, 'transactions');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for transaction delete', {
+        error: eventError.message,
+        msmeId: req.user.msmeId,
+        transactionId: req.params.id
+      });
+    }
 
     res.json({
       success: true,

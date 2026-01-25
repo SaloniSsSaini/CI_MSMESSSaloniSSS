@@ -1,5 +1,7 @@
 const aiAgentService = require('./aiAgentService');
 const carbonCalculationService = require('./carbonCalculationService');
+const Document = require('../models/Document');
+const { extractDynamicParameters } = require('./dynamicParameterExtractionService');
 const AIAgent = require('../models/AIAgent');
 const MSME = require('../models/MSME');
 const logger = require('../utils/logger');
@@ -7,15 +9,15 @@ const logger = require('../utils/logger');
 const BEHAVIOR_DEFINITIONS = {
   energy: {
     label: 'Energy Use',
-    categories: ['energy']
+    categories: ['energy', 'electricity', 'fuel', 'diesel', 'petrol', 'gas', 'lpg', 'natural_gas', 'coal', 'biomass']
   },
   water: {
     label: 'Water Use',
-    categories: ['water']
+    categories: ['water', 'water_supply', 'water_treatment', 'wastewater']
   },
   waste: {
     label: 'Waste Generation',
-    categories: ['waste_management']
+    categories: ['waste_management', 'waste', 'hazardous_waste', 'recycling', 'scrap']
   },
   transportation: {
     label: 'Transportation',
@@ -23,15 +25,15 @@ const BEHAVIOR_DEFINITIONS = {
   },
   materials: {
     label: 'Material Inputs',
-    categories: ['raw_materials']
+    categories: ['raw_materials', 'materials', 'chemicals', 'packaging', 'consumables']
   },
   manufacturing: {
     label: 'Operations and Equipment',
-    categories: ['equipment', 'maintenance']
+    categories: ['equipment', 'maintenance', 'machinery', 'process']
   },
   other: {
     label: 'Other Activities',
-    categories: ['utilities', 'services', 'other', 'misc']
+    categories: ['utilities', 'services', 'other', 'misc', 'air_pollution', 'air_emissions']
   }
 };
 
@@ -104,11 +106,12 @@ const ORCHESTRATION_DEFAULTS = {
   }
 };
 
-class MSMEEmissionsOrchestrationService {
+class OrchestrationManagerService {
   async orchestrateEmissions({
     msmeId,
     msmeData,
     transactions = [],
+    documents = [],
     behaviorOverrides = {},
     contextOverrides = {}
   }) {
@@ -126,9 +129,7 @@ class MSMEEmissionsOrchestrationService {
       this.normalizeTransaction(transaction, msmeProfile)
     );
     const orchestrationOptions = this.getOrchestrationOptions(contextOverrides?.orchestrationOptions);
-    const transactionStats = this.computeTransactionStats(normalizedTransactions);
-    const dataQuality = this.assessDataQuality(transactionStats, normalizedTransactions, orchestrationOptions.weights);
-
+    const baseContext = this.buildBaseContext(msmeProfile, contextOverrides);
     const coordinationContext = {
       orchestrationId,
       startedAt: new Date(),
@@ -141,21 +142,78 @@ class MSMEEmissionsOrchestrationService {
     const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
     const processMachineryAgentType = this.getProcessMachineryAgentType(msmeProfile.businessDomain);
     const agentAvailability = await this.resolveAgentAvailability([
+      'document_analyzer',
       sectorAgentType,
       processMachineryAgentType
     ]);
 
-    const baseContext = this.buildBaseContext(msmeProfile, contextOverrides);
+    const resolvedDocuments = await this.resolveDocuments(
+      msmeProfile._id || msmeId,
+      documents
+    );
+
+    const documentAnalysis = await this.executeAgent(
+      'document_analyzer',
+      () => aiAgentService.documentAnalyzerAgent({
+        input: {
+          documents: resolvedDocuments,
+          msmeData: msmeProfile,
+          context: baseContext
+        }
+      }),
+      coordinationContext,
+      {
+        stage: 'document_analysis',
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, 'document_analyzer')
+      }
+    );
+
+    const mergedTransactions = this.mergeDocumentTransactions(
+      normalizedTransactions,
+      this.selectDocumentTransactions(documentAnalysis)
+    );
+
+    const privacyReview = await this.executeAgent(
+      'data_privacy',
+      () => aiAgentService.dataPrivacyAgent({
+        input: {
+          transactions: mergedTransactions,
+          msmeData: msmeProfile,
+          context: baseContext,
+          policyUpdates: baseContext.policyUpdates
+        }
+      }),
+      coordinationContext,
+      {
+        stage: 'data_privacy',
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, 'data_privacy')
+      }
+    );
+
+    const privacySafeTransactions = this.selectPrivacySafeTransactions(
+      privacyReview,
+      mergedTransactions
+    );
+
+    const dynamicParameters = extractDynamicParameters(privacySafeTransactions);
+
+    const transactionStats = this.computeTransactionStats(privacySafeTransactions);
+    const dataQuality = this.assessDataQuality(transactionStats, privacySafeTransactions, orchestrationOptions.weights);
+
     baseContext.transactionStats = transactionStats;
     baseContext.dataQuality = dataQuality;
     baseContext.orchestrationOptions = orchestrationOptions;
+    baseContext.dynamicParameters = dynamicParameters;
+    baseContext.documentSummary = documentAnalysis?.summary || null;
 
     const sectorProfile = await this.executeAgent(
       sectorAgentType,
       () => aiAgentService.sectorProfilerAgent({
         input: {
           msmeData: msmeProfile,
-          transactions: normalizedTransactions,
+          transactions: privacySafeTransactions,
           context: baseContext
         }
       }),
@@ -172,7 +230,7 @@ class MSMEEmissionsOrchestrationService {
       () => aiAgentService.processMachineryProfilerAgent({
         input: {
           msmeData: msmeProfile,
-          transactions: normalizedTransactions,
+          transactions: privacySafeTransactions,
           context: baseContext,
           sectorProfile
         }
@@ -192,11 +250,16 @@ class MSMEEmissionsOrchestrationService {
       contextOverrides
     );
     const behaviorProfiles = this.buildBehaviorProfiles(
-      normalizedTransactions,
+      privacySafeTransactions,
       context,
       behaviorOverrides
     );
     context.behaviorSignals = this.buildBehaviorSignals(behaviorProfiles);
+    context.unknownParameters = this.buildUnknownParameterPlaceholders(
+      privacySafeTransactions,
+      behaviorProfiles,
+      context.dynamicParameters
+    );
 
     if (dataQuality.confidence < 0.5) {
       coordinationContext.warnings.push({
@@ -209,7 +272,9 @@ class MSMEEmissionsOrchestrationService {
       'data_processor',
       () => aiAgentService.dataProcessorAgent({
         input: {
-          transactions: normalizedTransactions,
+          transactions: privacySafeTransactions,
+          documents: resolvedDocuments,
+          documentSummary: documentAnalysis?.summary,
           context,
           behaviorProfiles,
           coordinationContext,
@@ -225,7 +290,7 @@ class MSMEEmissionsOrchestrationService {
 
     const processedTransactions = this.selectProcessedTransactions(
       dataProcessing,
-      normalizedTransactions
+      privacySafeTransactions
     );
 
     const carbonAnalysis = await this.executeAgent(
@@ -257,7 +322,15 @@ class MSMEEmissionsOrchestrationService {
       processMachineryProfile,
       transactionStats,
       dataQuality,
-      orchestrationOptions
+      orchestrationOptions,
+      knownParameters: context.knownParameters,
+      policyUpdates: context.policyUpdates,
+      dynamicParameters: context.dynamicParameters,
+      unknownParameters: context.unknownParameters,
+      transactionTypeContext: context.transactionTypeContext,
+      documentSummary: context.documentSummary,
+      documentAnalysis,
+      privacyReview
     };
 
     const orchestrationPlan = this.buildOrchestrationPlan({
@@ -296,6 +369,10 @@ class MSMEEmissionsOrchestrationService {
             optimization: parallelResults.optimization_advisor,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             processMachineryProfile,
             orchestrationOptions
@@ -321,6 +398,10 @@ class MSMEEmissionsOrchestrationService {
             recommendations: recommendations?.recommendations || recommendations,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             processMachineryProfile,
             orchestrationOptions
@@ -352,6 +433,8 @@ class MSMEEmissionsOrchestrationService {
       emissionsSummary,
       agentAvailability,
       agentOutputs: {
+        dataPrivacy: privacyReview,
+        documentAnalysis,
         sectorProfile,
         processMachineryProfile,
         dataProcessing,
@@ -368,7 +451,74 @@ class MSMEEmissionsOrchestrationService {
     };
   }
 
+  async resolveDocuments(msmeId, providedDocuments = []) {
+    if (Array.isArray(providedDocuments) && providedDocuments.length > 0) {
+      return providedDocuments;
+    }
+    if (!msmeId) {
+      return [];
+    }
+    try {
+      return await Document.find({
+        msmeId,
+        status: 'processed',
+        'duplicateDetection.isDuplicate': { $ne: true }
+      })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .select('documentType status extractedData processingResults fileName originalName createdAt updatedAt')
+        .lean();
+    } catch (error) {
+      logger.warn('Failed to fetch documents for orchestration', { error: error.message, msmeId });
+      return [];
+    }
+  }
+
+  selectDocumentTransactions(documentAnalysis) {
+    if (!documentAnalysis || !Array.isArray(documentAnalysis.derivedTransactions)) {
+      return [];
+    }
+    return documentAnalysis.derivedTransactions;
+  }
+
+  mergeDocumentTransactions(transactions, documentTransactions) {
+    const merged = Array.isArray(transactions) ? [...transactions] : [];
+    const docTransactions = Array.isArray(documentTransactions) ? documentTransactions : [];
+
+    const existingSourceIds = new Set(
+      merged.map(txn => txn.sourceId).filter(Boolean)
+    );
+    const existingSignatures = new Set(
+      merged.map(txn => this.buildTransactionSignature(txn))
+    );
+
+    docTransactions.forEach(docTxn => {
+      const sourceId = docTxn.sourceId;
+      const signature = this.buildTransactionSignature(docTxn);
+      if ((sourceId && existingSourceIds.has(sourceId)) || existingSignatures.has(signature)) {
+        return;
+      }
+      merged.push(docTxn);
+      if (sourceId) {
+        existingSourceIds.add(sourceId);
+      }
+      existingSignatures.add(signature);
+    });
+
+    return merged;
+  }
+
+  buildTransactionSignature(transaction) {
+    const date = transaction?.date ? new Date(transaction.date) : null;
+    const dateKey = date ? date.toISOString().slice(0, 10) : 'unknown';
+    const amount = Number(transaction?.amount) || 0;
+    const description = (transaction?.description || '').toLowerCase().slice(0, 60);
+    return `${dateKey}|${amount}|${description}`;
+  }
+
   normalizeTransaction(transaction, msmeProfile) {
+    const locationState = transaction?.location?.state || msmeProfile?.contact?.address?.state;
+    const region = this.resolveRegion(locationState);
     const normalized = {
       ...transaction,
       category: (transaction.category || 'other').toLowerCase(),
@@ -377,6 +527,12 @@ class MSMEEmissionsOrchestrationService {
       amount: Number(transaction.amount) || 0,
       industry: transaction.industry || msmeProfile.industry,
       businessDomain: transaction.businessDomain || msmeProfile.businessDomain,
+      region: transaction.region || region,
+      location: {
+        ...(transaction.location || {}),
+        state: transaction?.location?.state || msmeProfile?.contact?.address?.state || 'unknown',
+        country: transaction?.location?.country || msmeProfile?.contact?.address?.country || 'India'
+      },
       sustainability: transaction.sustainability || {
         isGreen: false,
         greenScore: 0
@@ -519,6 +675,11 @@ class MSMEEmissionsOrchestrationService {
     const businessDomain = overrides.businessDomain || msmeProfile.businessDomain;
     const industry = overrides.industry || msmeProfile.industry;
     const companyType = overrides.companyType || msmeProfile.companyType;
+    const policyUpdates = this.buildPolicyUpdates(
+      overrides.policyUpdates || overrides.governmentPolicyUpdates
+    );
+    const knownParameters = this.buildKnownParameters(msmeProfile, overrides);
+    const unknownParameters = overrides.unknownParameters || this.buildUnknownParameterPlaceholders([], {});
 
     return {
       businessDomain,
@@ -538,7 +699,10 @@ class MSMEEmissionsOrchestrationService {
       processContext: overrides.processContext || {
         primaryProducts: msmeProfile?.business?.primaryProducts,
         manufacturingUnits: msmeProfile?.business?.manufacturingUnits
-      }
+      },
+      knownParameters,
+      unknownParameters,
+      policyUpdates
     };
   }
 
@@ -552,6 +716,10 @@ class MSMEEmissionsOrchestrationService {
     );
     context.sectorProfile = sectorProfile || null;
     context.processMachineryProfile = processMachineryProfile || null;
+    context.transactionTypeContext = sectorProfile?.transactionContext?.transactionTypes ||
+      sectorProfile?.sectorModel?.transactionTypes ||
+      {};
+    context.documentSummary = baseContext.documentSummary || null;
     context.transactionStats = baseContext.transactionStats || null;
     context.dataQuality = baseContext.dataQuality || null;
     context.orchestrationOptions = baseContext.orchestrationOptions || this.getOrchestrationOptions();
@@ -562,8 +730,290 @@ class MSMEEmissionsOrchestrationService {
       emissionFactors: processMachineryProfile?.emissionFactors || [],
       intensityProfile: processMachineryProfile?.intensityProfile || null
     };
+    context.dynamicParameters = baseContext.dynamicParameters || this.buildDynamicParametersFallback();
+    context.knownParameters = this.mergeKnownParameters(
+      baseContext.knownParameters,
+      context.processContext,
+      overrides.knownParameters,
+      context.dynamicParameters
+    );
+    context.policyUpdates = baseContext.policyUpdates || this.buildPolicyUpdates(
+      overrides.policyUpdates || overrides.governmentPolicyUpdates
+    );
+    context.unknownParameters = baseContext.unknownParameters ||
+      this.buildUnknownParameterPlaceholders([], {}, context.dynamicParameters);
 
     return context;
+  }
+
+  buildPolicyUpdates(overrides = {}) {
+    const normalized = overrides && typeof overrides === 'object' ? overrides : {};
+    return {
+      status: normalized.status || 'placeholder',
+      lastChecked: normalized.lastChecked || null,
+      sources: Array.isArray(normalized.sources) ? normalized.sources : [],
+      impactAreas: Array.isArray(normalized.impactAreas) ? normalized.impactAreas : [],
+      notes: normalized.notes || 'Government policy updates pending ingestion.',
+      region: normalized.region || null
+    };
+  }
+
+  buildKnownParameters(msmeProfile, overrides = {}) {
+    const knownOverrides = overrides.knownParameters || {};
+    return {
+      msmeProfile: {
+        businessDomain: overrides.businessDomain || msmeProfile.businessDomain,
+        industry: overrides.industry || msmeProfile.industry,
+        companyType: overrides.companyType || msmeProfile.companyType
+      },
+      businessDomain: overrides.businessDomain || msmeProfile.businessDomain,
+      processes: knownOverrides.processes || overrides.processes || [],
+      machinery: knownOverrides.machinery || overrides.machinery || [],
+      environmentalResources: this.buildConsumptionBucket(
+        knownOverrides.environmentalResources || overrides.environmentalResourcesConsumption,
+        'mixed'
+      ),
+      waterConsumption: this.buildConsumptionBucket(knownOverrides.waterConsumption, 'kl'),
+      fuelConsumption: this.buildConsumptionBucket(knownOverrides.fuelConsumption, 'liters'),
+      wasteGeneration: this.buildWasteBucket(knownOverrides.wasteGeneration),
+      chemicalsConsumption: this.buildConsumptionBucket(knownOverrides.chemicalsConsumption, 'kg'),
+      airPollution: this.buildAirPollutionBucket(knownOverrides.airPollution),
+      materialsConsumption: this.buildConsumptionBucket(knownOverrides.materialsConsumption, 'kg'),
+      metadata: {
+        lastUpdated: knownOverrides.lastUpdated || null,
+        source: knownOverrides.source || 'msme_profile'
+      }
+    };
+  }
+
+  buildConsumptionBucket(overrides = {}, defaultUnit = 'unknown') {
+    const normalized = overrides && typeof overrides === 'object' ? overrides : {};
+    return {
+      total: Number.isFinite(normalized.total) ? normalized.total : null,
+      unit: normalized.unit || defaultUnit,
+      types: Array.isArray(normalized.types) ? normalized.types : [],
+      intensity: normalized.intensity || null,
+      notes: normalized.notes || null,
+      source: normalized.source || 'placeholder'
+    };
+  }
+
+  buildWasteBucket(overrides = {}) {
+    const normalized = overrides && typeof overrides === 'object' ? overrides : {};
+    return {
+      ...this.buildConsumptionBucket(normalized, normalized.unit || 'kg'),
+      hazardousTypes: Array.isArray(normalized.hazardousTypes) ? normalized.hazardousTypes : [],
+      treatmentMethods: Array.isArray(normalized.treatmentMethods) ? normalized.treatmentMethods : []
+    };
+  }
+
+  buildAirPollutionBucket(overrides = {}) {
+    const normalized = overrides && typeof overrides === 'object' ? overrides : {};
+    return {
+      pollutants: Array.isArray(normalized.pollutants) ? normalized.pollutants : [],
+      monitoringFrequency: normalized.monitoringFrequency || 'unknown',
+      total: Number.isFinite(normalized.total) ? normalized.total : null,
+      unit: normalized.unit || 'unknown',
+      notes: normalized.notes || null,
+      source: normalized.source || 'placeholder'
+    };
+  }
+
+  mergeKnownParameters(baseKnown = {}, processContext = {}, overrides = {}, dynamicParameters = {}) {
+    const base = baseKnown || {};
+    const updated = overrides && typeof overrides === 'object' ? overrides : {};
+    const dynamicConsumption = dynamicParameters?.consumptionSignals || {};
+    const dynamicProcesses = dynamicParameters?.processSignals || {};
+    const dynamicMachinery = dynamicParameters?.machinerySignals || {};
+    return {
+      ...base,
+      processes: Array.from(new Set([
+        ...(updated.processes || []),
+        ...(processContext.processes || []),
+        ...(base.processes || []),
+        ...Object.keys(dynamicProcesses || {})
+      ])),
+      machinery: Array.from(new Set([
+        ...(updated.machinery || []),
+        ...(processContext.machinery || []),
+        ...(base.machinery || []),
+        ...Object.keys(dynamicMachinery || {})
+      ])),
+      environmentalResources: {
+        ...this.buildConsumptionBucket({
+          ...(base.environmentalResources || {}),
+          ...(updated.environmentalResources || updated.environmentalResourcesConsumption || {})
+        }, base.environmentalResources?.unit || 'mixed'),
+        emissionFactors: processContext.emissionFactors || base.environmentalResources?.emissionFactors || []
+      },
+      waterConsumption: this.buildConsumptionBucket({
+        ...(base.waterConsumption || {}),
+        ...(updated.waterConsumption || {}),
+        total: Number.isFinite(updated.waterConsumption?.total)
+          ? updated.waterConsumption.total
+          : (Number.isFinite(base.waterConsumption?.total)
+            ? base.waterConsumption.total
+            : dynamicConsumption.waterConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.waterConsumption || {}).types || []),
+          ...((updated.waterConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.waterConsumption?.types || {})
+        ]))
+      }, base.waterConsumption?.unit || 'kl'),
+      fuelConsumption: this.buildConsumptionBucket({
+        ...(base.fuelConsumption || {}),
+        ...(updated.fuelConsumption || {}),
+        total: Number.isFinite(updated.fuelConsumption?.total)
+          ? updated.fuelConsumption.total
+          : (Number.isFinite(base.fuelConsumption?.total)
+            ? base.fuelConsumption.total
+            : dynamicConsumption.fuelConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.fuelConsumption || {}).types || []),
+          ...((updated.fuelConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.fuelConsumption?.types || {})
+        ]))
+      }, base.fuelConsumption?.unit || 'liters'),
+      wasteGeneration: this.buildWasteBucket({
+        ...(base.wasteGeneration || {}),
+        ...(updated.wasteGeneration || {}),
+        total: Number.isFinite(updated.wasteGeneration?.total)
+          ? updated.wasteGeneration.total
+          : (Number.isFinite(base.wasteGeneration?.total)
+            ? base.wasteGeneration.total
+            : dynamicConsumption.wasteGeneration?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.wasteGeneration || {}).types || []),
+          ...((updated.wasteGeneration || {}).types || []),
+          ...Object.keys(dynamicConsumption.wasteGeneration?.types || {})
+        ]))
+      }),
+      chemicalsConsumption: this.buildConsumptionBucket({
+        ...(base.chemicalsConsumption || {}),
+        ...(updated.chemicalsConsumption || {}),
+        total: Number.isFinite(updated.chemicalsConsumption?.total)
+          ? updated.chemicalsConsumption.total
+          : (Number.isFinite(base.chemicalsConsumption?.total)
+            ? base.chemicalsConsumption.total
+            : dynamicConsumption.chemicalsConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.chemicalsConsumption || {}).types || []),
+          ...((updated.chemicalsConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.chemicalsConsumption?.types || {})
+        ]))
+      }, base.chemicalsConsumption?.unit || 'kg'),
+      airPollution: this.buildAirPollutionBucket({
+        ...(base.airPollution || {}),
+        ...(updated.airPollution || {}),
+        pollutants: Array.from(new Set([
+          ...((base.airPollution || {}).pollutants || []),
+          ...((updated.airPollution || {}).pollutants || []),
+          ...Object.keys(dynamicConsumption.airPollution?.types || {})
+        ]))
+      }),
+      materialsConsumption: this.buildConsumptionBucket({
+        ...(base.materialsConsumption || {}),
+        ...(updated.materialsConsumption || {}),
+        total: Number.isFinite(updated.materialsConsumption?.total)
+          ? updated.materialsConsumption.total
+          : (Number.isFinite(base.materialsConsumption?.total)
+            ? base.materialsConsumption.total
+            : dynamicConsumption.materialsConsumption?.totalAmount),
+        types: Array.from(new Set([
+          ...((base.materialsConsumption || {}).types || []),
+          ...((updated.materialsConsumption || {}).types || []),
+          ...Object.keys(dynamicConsumption.materialsConsumption?.types || {})
+        ]))
+      }, base.materialsConsumption?.unit || 'kg'),
+      metadata: {
+        ...(base.metadata || {}),
+        ...(updated.metadata || {}),
+        lastUpdated: updated.lastUpdated || base.metadata?.lastUpdated || null
+      }
+    };
+  }
+
+  buildUnknownParameterPlaceholders(transactions = [], behaviorProfiles = {}, dynamicParameters = {}) {
+    const knownCategories = new Set(
+      Object.values(BEHAVIOR_DEFINITIONS).flatMap(definition => definition.categories)
+    );
+    const unknownCategories = new Set();
+    const unknownCategoryStats = new Map();
+    const totalAmount = transactions.reduce((sum, transaction) => sum + (Number(transaction.amount) || 0), 0);
+    transactions.forEach(transaction => {
+      const category = (transaction.category || '').toLowerCase();
+      if (category && !knownCategories.has(category)) {
+        unknownCategories.add(category);
+        const stats = unknownCategoryStats.get(category) || { count: 0, totalAmount: 0 };
+        stats.count += 1;
+        stats.totalAmount += Number(transaction.amount) || 0;
+        unknownCategoryStats.set(category, stats);
+      }
+    });
+
+    const otherProfile = behaviorProfiles?.other || {};
+    const needsReview = unknownCategories.size > 0 || (otherProfile.emissionsShare || 0) > 0.2;
+    const dynamicUnknownParameters = dynamicParameters.unknownParameters || [];
+
+    const weightedCategoryParameters = Array.from(unknownCategoryStats.entries()).map(([category, stats]) => {
+      const amountShare = totalAmount > 0 ? stats.totalAmount / totalAmount : 0;
+      const mentionRate = transactions.length > 0 ? stats.count / transactions.length : 0;
+      const weight = Math.min(1, 0.6 * mentionRate + 0.4 * amountShare);
+      return {
+        name: category,
+        count: stats.count,
+        totalAmount: stats.totalAmount,
+        amountShare,
+        weight,
+        source: 'category'
+      };
+    });
+
+    const weightedParametersMap = new Map();
+    [...dynamicUnknownParameters, ...weightedCategoryParameters].forEach(param => {
+      if (!param?.name) return;
+      const existing = weightedParametersMap.get(param.name) || { ...param };
+      existing.count = (existing.count || 0) + (param.count || 0);
+      existing.totalAmount = (existing.totalAmount || 0) + (param.totalAmount || 0);
+      existing.weight = Math.max(existing.weight || 0, param.weight || 0);
+      existing.amountShare = Math.max(existing.amountShare || 0, param.amountShare || 0);
+      weightedParametersMap.set(param.name, existing);
+    });
+
+    return {
+      detectedCategories: Array.from(unknownCategories),
+      behaviorSignals: {
+        otherEmissionsShare: otherProfile.emissionsShare || 0,
+        otherTransactionCount: otherProfile.transactionCount || 0
+      },
+      weightedParameters: Array.from(weightedParametersMap.values()).sort((a, b) => (b.weight || 0) - (a.weight || 0)),
+      dynamicUnknownParameters,
+      unknownCategoryParameters: weightedCategoryParameters,
+      placeholders: {
+        resourceConsumption: [],
+        processInputs: [],
+        emissionTypes: [],
+        measurements: dynamicParameters.measurements || []
+      },
+      needsReview,
+      notes: needsReview
+        ? 'Unknown categories detected; add parameters when available.'
+        : 'No unknown categories detected.'
+    };
+  }
+
+  buildDynamicParametersFallback() {
+    return {
+      consumptionSignals: {},
+      processSignals: {},
+      machinerySignals: {},
+      measurements: [],
+      unknownParameters: [],
+      totals: {
+        totalTransactions: 0,
+        totalAmount: 0
+      }
+    };
   }
 
   mergeBehaviorWeights(baseWeights, sectorWeights, overrideWeights) {
@@ -719,6 +1169,7 @@ class MSMEEmissionsOrchestrationService {
 
     const transactionCount = analysisContext.transactions?.length || 0;
     const behaviorProfiles = analysisContext.behaviorProfiles || {};
+    const knownParameters = analysisContext.knownParameters || {};
     const highSeverity = Object.values(behaviorProfiles).filter(profile => profile.severity === 'high');
     if (highSeverity.length > 0) {
       parallelAgents.add('anomaly_detector');
@@ -771,6 +1222,34 @@ class MSMEEmissionsOrchestrationService {
       rationale.push('Data quality below target; interpret results cautiously.');
     }
 
+    const weightedUnknowns = analysisContext.unknownParameters?.weightedParameters || [];
+    const highUnknowns = weightedUnknowns.filter(param => (param.weight || 0) >= 0.35);
+    if (highUnknowns.length > 0) {
+      parallelAgents.add('anomaly_detector');
+      parallelAgents.add('compliance_monitor');
+      rationale.push('High-weight unknown parameters trigger anomaly and compliance review.');
+    }
+
+    if ((knownParameters.processes || []).length > 0 || (knownParameters.machinery || []).length > 0) {
+      parallelAgents.add('optimization_advisor');
+      rationale.push('Process and machinery signals add optimization review.');
+    }
+
+    if (knownParameters.wasteGeneration?.total || (knownParameters.wasteGeneration?.types || []).length > 0) {
+      parallelAgents.add('compliance_monitor');
+      rationale.push('Known waste generation triggers compliance review.');
+    }
+
+    if (knownParameters.fuelConsumption?.total || (knownParameters.fuelConsumption?.types || []).length > 0) {
+      parallelAgents.add('optimization_advisor');
+      rationale.push('Fuel consumption signals optimization opportunities.');
+    }
+
+    if ((knownParameters.airPollution?.pollutants || []).length > 0) {
+      parallelAgents.add('compliance_monitor');
+      rationale.push('Air pollution signals require compliance monitoring.');
+    }
+
     if (sectorProfile?.label) {
       rationale.push(`Sector orchestration aligned to ${sectorProfile.label}.`);
     }
@@ -779,10 +1258,18 @@ class MSMEEmissionsOrchestrationService {
       ? 'parallel'
       : 'sequential';
 
+    const scope = {
+      preProcessingAgents: ['document_analyzer', 'data_privacy', 'sector_profiler', 'process_machinery_profiler'],
+      coreAgents: ['data_processor', 'carbon_analyzer'],
+      parallelAgents: Array.from(parallelAgents),
+      postProcessingAgents: ['recommendation_engine', 'report_generator']
+    };
+
     return {
       sector: sectorProfile?.sector || msmeProfile?.businessDomain || 'other',
       parallelAgents: Array.from(parallelAgents),
       coordinationMode,
+      scope,
       outputs: {
         recommendations: orchestrationOptions.orchestration.emitRecommendations,
         report: orchestrationOptions.orchestration.emitReport,
@@ -807,6 +1294,9 @@ class MSMEEmissionsOrchestrationService {
             carbonData: analysisContext.carbonData,
             behaviorProfiles: analysisContext.behaviorProfiles,
             context: analysisContext.context,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             coordinationContext,
             dataQuality: analysisContext.dataQuality,
             orchestrationOptions,
@@ -826,7 +1316,10 @@ class MSMEEmissionsOrchestrationService {
               context: analysisContext.context,
               processMachineryProfile: analysisContext.processMachineryProfile,
               transactionStats: analysisContext.transactionStats,
-              dataQuality: analysisContext.dataQuality
+              dataQuality: analysisContext.dataQuality,
+              unknownParameters: analysisContext.unknownParameters,
+              dynamicParameters: analysisContext.dynamicParameters,
+              transactionTypeContext: analysisContext.transactionTypeContext
             },
             coordinationContext,
             orchestrationOptions
@@ -841,6 +1334,11 @@ class MSMEEmissionsOrchestrationService {
           input: {
             carbonData: analysisContext.carbonData,
             regulations: analysisContext.context.regulatoryContext,
+            policyUpdates: analysisContext.policyUpdates,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
             coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,
@@ -856,6 +1354,10 @@ class MSMEEmissionsOrchestrationService {
           input: {
             carbonData: analysisContext.carbonData,
             processes: analysisContext.context.processContext,
+            knownParameters: analysisContext.knownParameters,
+            unknownParameters: analysisContext.unknownParameters,
+            dynamicParameters: analysisContext.dynamicParameters,
+            transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
             coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,
@@ -893,6 +1395,15 @@ class MSMEEmissionsOrchestrationService {
     }
     if (Array.isArray(processedResult.cleaned) && processedResult.cleaned.length > 0) {
       return processedResult.cleaned;
+    }
+    return fallbackTransactions;
+  }
+
+  selectPrivacySafeTransactions(privacyReview, fallbackTransactions) {
+    if (privacyReview &&
+        Array.isArray(privacyReview.redactedTransactions) &&
+        privacyReview.redactedTransactions.length > 0) {
+      return privacyReview.redactedTransactions;
     }
     return fallbackTransactions;
   }
@@ -963,6 +1474,8 @@ class MSMEEmissionsOrchestrationService {
   async resolveAgentAvailability(additionalTypes = []) {
     try {
       const agentTypes = [
+        'document_analyzer',
+        'data_privacy',
         'data_processor',
         'carbon_analyzer',
         'anomaly_detector',
@@ -1040,4 +1553,4 @@ class MSMEEmissionsOrchestrationService {
   }
 }
 
-module.exports = new MSMEEmissionsOrchestrationService();
+module.exports = new OrchestrationManagerService();

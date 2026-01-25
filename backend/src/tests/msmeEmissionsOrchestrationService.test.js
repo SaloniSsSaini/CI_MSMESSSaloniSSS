@@ -1,6 +1,8 @@
 jest.mock('../services/aiAgentService', () => ({
   sectorProfilerAgent: jest.fn(),
   processMachineryProfilerAgent: jest.fn(),
+  dataPrivacyAgent: jest.fn(),
+  documentAnalyzerAgent: jest.fn(),
   dataProcessorAgent: jest.fn(),
   carbonAnalyzerAgent: jest.fn(),
   anomalyDetectorAgent: jest.fn(),
@@ -19,6 +21,10 @@ jest.mock('../models/AIAgent', () => ({
   find: jest.fn()
 }));
 
+jest.mock('../models/Document', () => ({
+  find: jest.fn()
+}));
+
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
   warn: jest.fn(),
@@ -28,11 +34,13 @@ jest.mock('../utils/logger', () => ({
 const aiAgentService = require('../services/aiAgentService');
 const MSME = require('../models/MSME');
 const AIAgent = require('../models/AIAgent');
+const Document = require('../models/Document');
 const orchestrationService = require('../services/msmeEmissionsOrchestrationService');
 
 describe('MSME Emissions Orchestration Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Document.find.mockResolvedValue([]);
   });
 
   test('should merge orchestration options with defaults', () => {
@@ -196,6 +204,14 @@ describe('MSME Emissions Orchestration Service', () => {
         parallelAgents: ['trend_analyzer'],
         outputs: { recommendations: false, report: false }
       }
+    });
+    aiAgentService.dataPrivacyAgent.mockResolvedValue({
+      redactedTransactions: transactions,
+      redactionSummary: { totalTransactions: transactions.length }
+    });
+    aiAgentService.documentAnalyzerAgent.mockResolvedValue({
+      derivedTransactions: [],
+      summary: { totalDocuments: 0 }
     });
     aiAgentService.processMachineryProfilerAgent.mockResolvedValue({
       processes: ['assembly'],

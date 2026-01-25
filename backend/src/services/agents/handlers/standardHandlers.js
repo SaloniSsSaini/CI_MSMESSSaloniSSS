@@ -49,6 +49,157 @@ const generateTrendsSection = () => ({});
 const generateTrendCharts = () => [];
 const generateRecommendationsSection = () => ({});
 
+const SENSITIVE_PATTERNS = [
+  { label: 'email', regex: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, replacement: '[redacted-email]' },
+  { label: 'phone', regex: /(\+?\d[\d\s-]{7,}\d)/g, replacement: '[redacted-phone]' },
+  { label: 'pan', regex: /\b[A-Z]{5}[0-9]{4}[A-Z]\b/g, replacement: '[redacted-pan]' },
+  { label: 'gst', regex: /\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b/g, replacement: '[redacted-gst]' },
+  { label: 'udyam', regex: /\bUDYAM-[A-Z]{2}-\d{2}-\d{7}\b/g, replacement: '[redacted-udyam]' }
+];
+
+const redactSensitiveText = (value) => {
+  if (value === null || value === undefined) return value;
+  let text = String(value);
+  SENSITIVE_PATTERNS.forEach(pattern => {
+    text = text.replace(pattern.regex, pattern.replacement);
+  });
+  return text;
+};
+
+const redactTransaction = (transaction) => {
+  if (!transaction || typeof transaction !== 'object') return transaction;
+  const redacted = { ...transaction };
+  const fieldsToRedact = ['description', 'vendor', 'counterparty', 'reference', 'referenceId', 'notes'];
+  fieldsToRedact.forEach(field => {
+    if (typeof redacted[field] === 'string') {
+      redacted[field] = redactSensitiveText(redacted[field]);
+    }
+  });
+  return redacted;
+};
+
+const dataPrivacyAgent = async (task) => {
+  const { input } = task || {};
+  const transactions = Array.isArray(input?.transactions) ? input.transactions : [];
+  const msmeData = input?.msmeData || {};
+  const policyUpdates = input?.policyUpdates || input?.context?.policyUpdates;
+
+  const redactedTransactions = transactions.map(redactTransaction);
+
+  return {
+    redactedTransactions,
+    redactionSummary: {
+      totalTransactions: transactions.length,
+      redactedFields: ['description', 'vendor', 'counterparty', 'reference', 'referenceId', 'notes'],
+      appliedRules: SENSITIVE_PATTERNS.map(pattern => pattern.label),
+      policyStatus: policyUpdates?.status || 'placeholder'
+    },
+    policyContext: policyUpdates || {
+      status: 'placeholder',
+      notes: 'Government policy updates pending ingestion.'
+    },
+    msmeSnapshot: {
+      companyName: msmeData.companyName,
+      businessDomain: msmeData.businessDomain
+    }
+  };
+};
+
+const mapDocumentToTransactionType = (documentType) => {
+  switch (documentType) {
+    case 'invoice':
+    case 'bill':
+      return 'expense';
+    case 'receipt':
+      return 'purchase';
+    case 'statement':
+      return 'other';
+    default:
+      return 'other';
+  }
+};
+
+const buildDocumentTransaction = (document) => {
+  const extracted = document?.extractedData || {};
+  if (!extracted.amount || !extracted.date) {
+    return null;
+  }
+  return {
+    source: 'document',
+    sourceId: document._id?.toString() || document.fileName || `doc_${Date.now()}`,
+    transactionType: mapDocumentToTransactionType(document.documentType),
+    amount: extracted.amount,
+    currency: extracted.currency || 'INR',
+    description: extracted.description || document.originalName || 'Document transaction',
+    vendor: extracted.vendor || { name: extracted.vendor?.name || null },
+    category: extracted.category || 'other',
+    subcategory: extracted.subcategory || 'general',
+    date: extracted.date,
+    metadata: {
+      documentId: document._id?.toString(),
+      documentType: document.documentType,
+      documentName: document.originalName,
+      extractedData: extracted
+    }
+  };
+};
+
+const documentAnalyzerAgent = async (task) => {
+  const { input } = task || {};
+  const documents = Array.isArray(input?.documents) ? input.documents : [];
+
+  const summary = {
+    totalDocuments: documents.length,
+    processedDocuments: documents.filter(doc => doc?.status === 'processed').length,
+    documentTypes: {},
+    categoryBreakdown: {},
+    vendorBreakdown: {},
+    totalAmount: 0,
+    averageAmount: 0,
+    dateRange: { start: null, end: null }
+  };
+
+  const derivedTransactions = [];
+
+  documents.forEach(document => {
+    const documentType = document?.documentType || 'other';
+    summary.documentTypes[documentType] = (summary.documentTypes[documentType] || 0) + 1;
+
+    const extracted = document?.extractedData || {};
+    if (extracted.category) {
+      summary.categoryBreakdown[extracted.category] = (summary.categoryBreakdown[extracted.category] || 0) + 1;
+    }
+    if (extracted.vendor?.name) {
+      summary.vendorBreakdown[extracted.vendor.name] = (summary.vendorBreakdown[extracted.vendor.name] || 0) + 1;
+    }
+    if (Number.isFinite(extracted.amount)) {
+      summary.totalAmount += extracted.amount;
+    }
+    if (extracted.date) {
+      const docDate = new Date(extracted.date);
+      if (!summary.dateRange.start || docDate < new Date(summary.dateRange.start)) {
+        summary.dateRange.start = docDate.toISOString();
+      }
+      if (!summary.dateRange.end || docDate > new Date(summary.dateRange.end)) {
+        summary.dateRange.end = docDate.toISOString();
+      }
+    }
+
+    const transaction = buildDocumentTransaction(document);
+    if (transaction) {
+      derivedTransactions.push(transaction);
+    }
+  });
+
+  summary.averageAmount = documents.length > 0 ? summary.totalAmount / documents.length : 0;
+
+  return {
+    summary,
+    derivedTransactions,
+    documentIds: documents.map(document => document?._id?.toString()).filter(Boolean)
+  };
+};
+
 const carbonAnalyzerAgent = async (task) => {
   const { input } = task;
 
@@ -242,6 +393,8 @@ const reportGeneratorAgent = async (task) => {
 
 const handlers = {
   carbon_analyzer: carbonAnalyzerAgent,
+  data_privacy: dataPrivacyAgent,
+  document_analyzer: documentAnalyzerAgent,
   recommendation_engine: recommendationEngineAgent,
   data_processor: dataProcessorAgent,
   anomaly_detector: anomalyDetectorAgent,

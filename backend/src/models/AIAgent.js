@@ -10,6 +10,8 @@ const aiAgentSchema = new mongoose.Schema({
     type: String,
     enum: [
       'carbon_analyzer',
+      'data_privacy',
+      'document_analyzer',
       'recommendation_engine', 
       'data_processor',
       'anomaly_detector',
