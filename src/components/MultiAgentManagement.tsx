@@ -651,6 +651,7 @@ const MultiAgentManagement: React.FC = () => {
                 <MenuItem value="carbon_analysis">Carbon Analysis</MenuItem>
                 <MenuItem value="recommendation_generation">Recommendation Generation</MenuItem>
                 <MenuItem value="data_processing">Data Processing</MenuItem>
+                <MenuItem value="data_privacy">Data Privacy</MenuItem>
                 <MenuItem value="anomaly_detection">Anomaly Detection</MenuItem>
                 <MenuItem value="trend_analysis">Trend Analysis</MenuItem>
                 <MenuItem value="compliance_check">Compliance Check</MenuItem>

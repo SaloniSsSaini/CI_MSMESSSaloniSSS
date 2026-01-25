@@ -5,7 +5,19 @@ const aiAgentService = require('../services/aiAgentService');
 const agentOptimizationService = require('../services/agentOptimizationService');
 const advancedCoordinationService = require('../services/advancedCoordinationService');
 const intelligentWorkflowService = require('../services/intelligentWorkflowService');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 const logger = require('../utils/logger');
+
+const emitOrchestrationEvent = (eventType, payload = {}, source = 'optimized-ai-agents') => {
+  try {
+    orchestrationManagerEventService.emitEvent(eventType, payload, source);
+  } catch (error) {
+    logger.warn('Failed to emit orchestration manager event', {
+      eventType,
+      error: error.message
+    });
+  }
+};
 
 // @route   POST /api/optimized-ai-agents/execute-optimized-workflow
 // @desc    Execute workflow with full optimization
@@ -26,6 +38,13 @@ router.post('/execute-optimized-workflow', auth, async (req, res) => {
     
     // Execute with optimization
     const result = await intelligentWorkflowService.executeWorkflow(workflow, input, options);
+
+    emitOrchestrationEvent('optimized.workflow.executed', {
+      workflowId: workflow.id,
+      workflowType,
+      executionId: result.executionId,
+      steps: result.steps?.length || 0
+    });
 
     res.json({
       success: true,
@@ -92,6 +111,13 @@ router.post('/advanced-coordination', auth, async (req, res) => {
       input,
       strategy
     );
+
+    emitOrchestrationEvent('optimized.coordination.completed', {
+      agentIds,
+      taskType,
+      strategy,
+      results: result
+    });
 
     res.json({
       success: true,
@@ -213,6 +239,12 @@ router.post('/load-balance', auth, async (req, res) => {
 
     const balancedTasks = await loadBalancingStrategy.balance(agentLoads, []);
 
+    emitOrchestrationEvent('optimized.load_balancing.completed', {
+      strategy,
+      balancedTasks: balancedTasks.length,
+      agentLoads
+    });
+
     res.json({
       success: true,
       message: 'Load balancing completed successfully',
@@ -283,6 +315,12 @@ router.post('/consensus-analysis', auth, async (req, res) => {
       ...parameters
     });
 
+    emitOrchestrationEvent('optimized.consensus.completed', {
+      algorithm,
+      inputResults: results.length,
+      consensus
+    });
+
     res.json({
       success: true,
       message: 'Consensus analysis completed successfully',
@@ -319,6 +357,12 @@ router.post('/predictive-scaling', auth, async (req, res) => {
     
     // Perform predictive analysis
     const predictions = await this.performPredictiveAnalysis(systemState, performanceMetrics, timeWindow, predictionHorizon);
+
+    emitOrchestrationEvent('optimized.predictive_scaling.completed', {
+      timeWindow,
+      predictionHorizon,
+      predictions
+    });
 
     res.json({
       success: true,
@@ -414,6 +458,11 @@ router.post('/auto-optimize', auth, async (req, res) => {
         });
       }
     }
+
+    emitOrchestrationEvent('optimized.auto_optimization.completed', {
+      optimizationTypes,
+      results: optimizationResults
+    });
 
     res.json({
       success: true,

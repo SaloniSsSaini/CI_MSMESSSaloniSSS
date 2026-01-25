@@ -5,6 +5,7 @@ const AdvancedCarbonCalculationService = require('../services/advancedCarbonCalc
 const IntelligentPatternRecognitionService = require('../services/intelligentPatternRecognitionService');
 const AICarbonScoringService = require('../services/aiCarbonScoringService');
 const realTimeMonitoring = require('../services/realTimeMonitoringInstance');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 const MSME = require('../models/MSME');
 const CarbonAssessment = require('../models/CarbonAssessment');
 const logger = require('../utils/logger');
@@ -14,6 +15,17 @@ const aiDataExtraction = new AIDataExtractionService();
 const advancedCarbonCalculation = new AdvancedCarbonCalculationService();
 const patternRecognition = new IntelligentPatternRecognitionService();
 const carbonScoring = new AICarbonScoringService();
+
+const emitOrchestrationEvent = (eventType, payload = {}, source = 'ai-carbon-analysis') => {
+  try {
+    orchestrationManagerEventService.emitEvent(eventType, payload, source);
+  } catch (error) {
+    logger.warn('Failed to emit orchestration manager event', {
+      eventType,
+      error: error.message
+    });
+  }
+};
 
 // Middleware for authentication (if needed)
 const authenticateToken = (req, res, next) => {
@@ -134,6 +146,12 @@ router.post('/calculate/advanced', authenticateToken, async (req, res) => {
 
     await carbonAssessment.save();
 
+    emitOrchestrationEvent('carbon.advanced_calculation.completed', {
+      msmeId,
+      carbonAssessmentId: carbonAssessment._id?.toString(),
+      carbonData: calculation
+    });
+
     res.json({
       success: true,
       data: calculation,
@@ -165,6 +183,12 @@ router.post('/predict/emissions', authenticateToken, async (req, res) => {
       historicalData, 
       timeHorizon
     );
+
+    emitOrchestrationEvent('carbon.emissions.predicted', {
+      msmeId,
+      timeHorizon,
+      predictions
+    });
 
     res.json({
       success: true,
@@ -242,6 +266,12 @@ router.post('/detect/anomalies', authenticateToken, async (req, res) => {
       .select('totalCO2Emissions breakdown period.endDate');
 
     const anomalies = await patternRecognition.detectAnomalies(historicalData, currentData);
+
+    emitOrchestrationEvent('carbon.anomalies.detected', {
+      msmeId,
+      anomalies,
+      currentData
+    });
     
     res.json({
       success: true,
@@ -284,6 +314,11 @@ router.post('/score/calculate', authenticateToken, async (req, res) => {
       historicalData
     );
 
+    emitOrchestrationEvent('carbon.score.calculated', {
+      msmeId,
+      score
+    });
+
     res.json({
       success: true,
       data: score,
@@ -315,6 +350,11 @@ router.post('/report/sustainability', authenticateToken, async (req, res) => {
       carbonData, 
       msmeProfile
     );
+
+    emitOrchestrationEvent('carbon.sustainability_report.generated', {
+      msmeId,
+      report
+    });
 
     res.json({
       success: true,
@@ -611,6 +651,13 @@ router.post('/analyze/complete', authenticateToken, async (req, res) => {
     });
 
     await carbonAssessment.save();
+
+    emitOrchestrationEvent('carbon.analysis.completed', {
+      msmeId,
+      carbonAssessmentId: carbonAssessment._id?.toString(),
+      carbonData: results.carbonCalculation,
+      carbonScore: results.carbonScoring?.overall
+    });
 
     res.json({
       success: true,
