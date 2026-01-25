@@ -288,6 +288,13 @@ class OrchestrationManagerService {
       }
     );
 
+    if (dataProcessing?.documentRequests?.length) {
+      coordinationContext.warnings.push({
+        message: 'Additional documents required to classify some transactions.',
+        documentRequests: dataProcessing.documentRequests
+      });
+    }
+
     const processedTransactions = this.selectProcessedTransactions(
       dataProcessing,
       privacySafeTransactions
