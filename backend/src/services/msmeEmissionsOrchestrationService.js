@@ -1,5 +1,6 @@
 const aiAgentService = require('./aiAgentService');
 const carbonCalculationService = require('./carbonCalculationService');
+const Document = require('../models/Document');
 const { extractDynamicParameters } = require('./dynamicParameterExtractionService');
 const AIAgent = require('../models/AIAgent');
 const MSME = require('../models/MSME');
@@ -110,6 +111,7 @@ class OrchestrationManagerService {
     msmeId,
     msmeData,
     transactions = [],
+    documents = [],
     behaviorOverrides = {},
     contextOverrides = {}
   }) {
@@ -140,15 +142,43 @@ class OrchestrationManagerService {
     const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
     const processMachineryAgentType = this.getProcessMachineryAgentType(msmeProfile.businessDomain);
     const agentAvailability = await this.resolveAgentAvailability([
+      'document_analyzer',
       sectorAgentType,
       processMachineryAgentType
     ]);
+
+    const resolvedDocuments = await this.resolveDocuments(
+      msmeProfile._id || msmeId,
+      documents
+    );
+
+    const documentAnalysis = await this.executeAgent(
+      'document_analyzer',
+      () => aiAgentService.documentAnalyzerAgent({
+        input: {
+          documents: resolvedDocuments,
+          msmeData: msmeProfile,
+          context: baseContext
+        }
+      }),
+      coordinationContext,
+      {
+        stage: 'document_analysis',
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, 'document_analyzer')
+      }
+    );
+
+    const mergedTransactions = this.mergeDocumentTransactions(
+      normalizedTransactions,
+      this.selectDocumentTransactions(documentAnalysis)
+    );
 
     const privacyReview = await this.executeAgent(
       'data_privacy',
       () => aiAgentService.dataPrivacyAgent({
         input: {
-          transactions: normalizedTransactions,
+          transactions: mergedTransactions,
           msmeData: msmeProfile,
           context: baseContext,
           policyUpdates: baseContext.policyUpdates
@@ -164,7 +194,7 @@ class OrchestrationManagerService {
 
     const privacySafeTransactions = this.selectPrivacySafeTransactions(
       privacyReview,
-      normalizedTransactions
+      mergedTransactions
     );
 
     const dynamicParameters = extractDynamicParameters(privacySafeTransactions);
@@ -176,6 +206,7 @@ class OrchestrationManagerService {
     baseContext.dataQuality = dataQuality;
     baseContext.orchestrationOptions = orchestrationOptions;
     baseContext.dynamicParameters = dynamicParameters;
+    baseContext.documentSummary = documentAnalysis?.summary || null;
 
     const sectorProfile = await this.executeAgent(
       sectorAgentType,
@@ -242,6 +273,8 @@ class OrchestrationManagerService {
       () => aiAgentService.dataProcessorAgent({
         input: {
           transactions: privacySafeTransactions,
+          documents: resolvedDocuments,
+          documentSummary: documentAnalysis?.summary,
           context,
           behaviorProfiles,
           coordinationContext,
@@ -295,6 +328,8 @@ class OrchestrationManagerService {
       dynamicParameters: context.dynamicParameters,
       unknownParameters: context.unknownParameters,
       transactionTypeContext: context.transactionTypeContext,
+      documentSummary: context.documentSummary,
+      documentAnalysis,
       privacyReview
     };
 
@@ -399,6 +434,7 @@ class OrchestrationManagerService {
       agentAvailability,
       agentOutputs: {
         dataPrivacy: privacyReview,
+        documentAnalysis,
         sectorProfile,
         processMachineryProfile,
         dataProcessing,
@@ -413,6 +449,71 @@ class OrchestrationManagerService {
       interactions: coordinationContext.interactions,
       warnings: coordinationContext.warnings
     };
+  }
+
+  async resolveDocuments(msmeId, providedDocuments = []) {
+    if (Array.isArray(providedDocuments) && providedDocuments.length > 0) {
+      return providedDocuments;
+    }
+    if (!msmeId) {
+      return [];
+    }
+    try {
+      return await Document.find({
+        msmeId,
+        status: 'processed',
+        'duplicateDetection.isDuplicate': { $ne: true }
+      })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .select('documentType status extractedData processingResults fileName originalName createdAt updatedAt')
+        .lean();
+    } catch (error) {
+      logger.warn('Failed to fetch documents for orchestration', { error: error.message, msmeId });
+      return [];
+    }
+  }
+
+  selectDocumentTransactions(documentAnalysis) {
+    if (!documentAnalysis || !Array.isArray(documentAnalysis.derivedTransactions)) {
+      return [];
+    }
+    return documentAnalysis.derivedTransactions;
+  }
+
+  mergeDocumentTransactions(transactions, documentTransactions) {
+    const merged = Array.isArray(transactions) ? [...transactions] : [];
+    const docTransactions = Array.isArray(documentTransactions) ? documentTransactions : [];
+
+    const existingSourceIds = new Set(
+      merged.map(txn => txn.sourceId).filter(Boolean)
+    );
+    const existingSignatures = new Set(
+      merged.map(txn => this.buildTransactionSignature(txn))
+    );
+
+    docTransactions.forEach(docTxn => {
+      const sourceId = docTxn.sourceId;
+      const signature = this.buildTransactionSignature(docTxn);
+      if ((sourceId && existingSourceIds.has(sourceId)) || existingSignatures.has(signature)) {
+        return;
+      }
+      merged.push(docTxn);
+      if (sourceId) {
+        existingSourceIds.add(sourceId);
+      }
+      existingSignatures.add(signature);
+    });
+
+    return merged;
+  }
+
+  buildTransactionSignature(transaction) {
+    const date = transaction?.date ? new Date(transaction.date) : null;
+    const dateKey = date ? date.toISOString().slice(0, 10) : 'unknown';
+    const amount = Number(transaction?.amount) || 0;
+    const description = (transaction?.description || '').toLowerCase().slice(0, 60);
+    return `${dateKey}|${amount}|${description}`;
   }
 
   normalizeTransaction(transaction, msmeProfile) {
@@ -618,6 +719,7 @@ class OrchestrationManagerService {
     context.transactionTypeContext = sectorProfile?.transactionContext?.transactionTypes ||
       sectorProfile?.sectorModel?.transactionTypes ||
       {};
+    context.documentSummary = baseContext.documentSummary || null;
     context.transactionStats = baseContext.transactionStats || null;
     context.dataQuality = baseContext.dataQuality || null;
     context.orchestrationOptions = baseContext.orchestrationOptions || this.getOrchestrationOptions();
@@ -1157,7 +1259,7 @@ class OrchestrationManagerService {
       : 'sequential';
 
     const scope = {
-      preProcessingAgents: ['data_privacy', 'sector_profiler', 'process_machinery_profiler'],
+      preProcessingAgents: ['document_analyzer', 'data_privacy', 'sector_profiler', 'process_machinery_profiler'],
       coreAgents: ['data_processor', 'carbon_analyzer'],
       parallelAgents: Array.from(parallelAgents),
       postProcessingAgents: ['recommendation_engine', 'report_generator']
@@ -1372,6 +1474,7 @@ class OrchestrationManagerService {
   async resolveAgentAvailability(additionalTypes = []) {
     try {
       const agentTypes = [
+        'document_analyzer',
         'data_privacy',
         'data_processor',
         'carbon_analyzer',

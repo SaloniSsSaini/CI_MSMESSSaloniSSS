@@ -36,6 +36,7 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - Extracts dynamic parameter signals from transaction messages
 - Applies sector/location carbon weightages in emission calculations
 - Captures unknown parameter placeholders derived from transactions and behavior signals
+- Analyzes uploaded documents to enrich orchestration context
 - Provides government policy update placeholders to align compliance agents
 - Invokes the data privacy agent before downstream processing
 

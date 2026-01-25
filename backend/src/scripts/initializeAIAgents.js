@@ -107,6 +107,28 @@ const defaultAgents = [
     }
   },
   {
+    name: 'Document Analyzer Agent',
+    type: 'document_analyzer',
+    description: 'Analyzes uploaded documents and derives transaction context',
+    capabilities: [
+      'document_summary',
+      'transaction_derivation',
+      'category_enrichment',
+      'vendor_insights',
+      'metadata_validation'
+    ],
+    configuration: {
+      model: 'document_analysis_v1',
+      parameters: {
+        includeDerivedTransactions: true,
+        includeVendorBreakdown: true
+      },
+      thresholds: {
+        minimumConfidence: 0.6
+      }
+    }
+  },
+  {
     name: 'Anomaly Detector Agent',
     type: 'anomaly_detector',
     description: 'Detects unusual patterns and anomalies in transaction and emission data',

@@ -72,6 +72,7 @@ class OrchestrationManagerEventService extends EventEmitter {
     msmeId,
     msmeData,
     transactions,
+    documents,
     behaviorOverrides,
     contextOverrides,
     triggerSource = 'manual'
@@ -89,6 +90,7 @@ class OrchestrationManagerEventService extends EventEmitter {
         msmeId,
         msmeData,
         transactions,
+        documents,
         behaviorOverrides,
         contextOverrides
       });

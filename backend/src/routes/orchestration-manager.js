@@ -62,6 +62,7 @@ router.post('/trigger', auth, async (req, res) => {
       msmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides,
       triggerSource
@@ -86,6 +87,7 @@ router.post('/trigger', auth, async (req, res) => {
       msmeId: resolvedMsmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides,
       triggerSource: triggerSource || 'api'

@@ -32,6 +32,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
    - Recommendation Engine Agent
    - Data Processor Agent
 - Data Privacy Agent
+- Document Analyzer Agent
    - Anomaly Detector Agent
    - Trend Analyzer Agent
    - Compliance Monitor Agent
@@ -97,7 +98,17 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Retention guidance for sensitive fields
 - Privacy risk flagging for unknown parameters
 
-### 5. Anomaly Detector Agent
+### 5. Document Analyzer Agent
+**Type:** `document_analyzer`
+**Purpose:** Analyze uploaded documents and derive transaction context
+
+**Capabilities:**
+- Document summary by type, vendor, and category
+- Transaction derivation from extracted document data
+- Amount aggregation and date range coverage
+- Document metadata enrichment for orchestration
+
+### 6. Anomaly Detector Agent
 **Type:** `anomaly_detector`
 **Purpose:** Detect unusual patterns and anomalies in data
 
@@ -108,7 +119,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Risk assessment
 - Alert generation
 
-### 6. Trend Analyzer Agent
+### 7. Trend Analyzer Agent
 **Type:** `trend_analyzer`
 **Purpose:** Analyze trends and patterns in sustainability data
 
@@ -119,7 +130,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Predictive forecasting
 - Performance benchmarking
 
-### 7. Compliance Monitor Agent
+### 8. Compliance Monitor Agent
 **Type:** `compliance_monitor`
 **Purpose:** Monitor environmental compliance and regulatory requirements
 
@@ -130,7 +141,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Regulatory change monitoring
 - Compliance scoring
 
-### 8. Optimization Advisor Agent
+### 9. Optimization Advisor Agent
 **Type:** `optimization_advisor`
 **Purpose:** Provide optimization suggestions for processes and resources
 
@@ -141,7 +152,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Energy optimization suggestions
 - Waste reduction plans
 
-### 9. Report Generator Agent
+### 10. Report Generator Agent
 **Type:** `report_generator`
 **Purpose:** Generate comprehensive reports and visualizations
 
@@ -152,7 +163,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
 
-### 10. Unified Sector Profiler Agent
+### 11. Unified Sector Profiler Agent
 **Type:** `sector_profiler`
 **Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
 
@@ -169,7 +180,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Sector model location-based carbon weightages
 - Context enrichment for multi-agent coordination
 
-### 11. Unified Process & Machinery Profiler Agent
+### 12. Unified Process & Machinery Profiler Agent
 **Type:** `process_machinery_profiler`
 **Purpose:** Identify sector processes, machinery, and emissions generation factors
 
@@ -200,6 +211,7 @@ The Orchestration Manager coordinates agents using a structured MSME context. In
 - Air pollution and types
 - Materials consumption and types
 - Sector transaction type context with granular subtypes
+- Document-derived transaction context (summary + derived transactions)
 
 ### Unknown Parameter Placeholders (context.unknownParameters)
 - Discovered from transaction categories or behavior anomalies
@@ -217,7 +229,7 @@ The Orchestration Manager coordinates agents using a structured MSME context. In
 - Stored with status, sources, and last-check metadata
 
 ### Multi-AI Agent Scope
-- **Pre-processing:** Data Privacy, Sector Profiler, Process/Machinery Profiler
+- **Pre-processing:** Document Analyzer, Data Privacy, Sector Profiler, Process/Machinery Profiler
 - **Core analysis:** Data Processor, Carbon Analyzer
 - **Parallel agents:** Anomaly Detector, Trend Analyzer, Compliance Monitor, Optimization Advisor
 - **Post-processing:** Recommendation Engine, Report Generator

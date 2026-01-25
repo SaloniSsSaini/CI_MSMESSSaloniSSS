@@ -105,6 +105,101 @@ const dataPrivacyAgent = async (task) => {
   };
 };
 
+const mapDocumentToTransactionType = (documentType) => {
+  switch (documentType) {
+    case 'invoice':
+    case 'bill':
+      return 'expense';
+    case 'receipt':
+      return 'purchase';
+    case 'statement':
+      return 'other';
+    default:
+      return 'other';
+  }
+};
+
+const buildDocumentTransaction = (document) => {
+  const extracted = document?.extractedData || {};
+  if (!extracted.amount || !extracted.date) {
+    return null;
+  }
+  return {
+    source: 'document',
+    sourceId: document._id?.toString() || document.fileName || `doc_${Date.now()}`,
+    transactionType: mapDocumentToTransactionType(document.documentType),
+    amount: extracted.amount,
+    currency: extracted.currency || 'INR',
+    description: extracted.description || document.originalName || 'Document transaction',
+    vendor: extracted.vendor || { name: extracted.vendor?.name || null },
+    category: extracted.category || 'other',
+    subcategory: extracted.subcategory || 'general',
+    date: extracted.date,
+    metadata: {
+      documentId: document._id?.toString(),
+      documentType: document.documentType,
+      documentName: document.originalName,
+      extractedData: extracted
+    }
+  };
+};
+
+const documentAnalyzerAgent = async (task) => {
+  const { input } = task || {};
+  const documents = Array.isArray(input?.documents) ? input.documents : [];
+
+  const summary = {
+    totalDocuments: documents.length,
+    processedDocuments: documents.filter(doc => doc?.status === 'processed').length,
+    documentTypes: {},
+    categoryBreakdown: {},
+    vendorBreakdown: {},
+    totalAmount: 0,
+    averageAmount: 0,
+    dateRange: { start: null, end: null }
+  };
+
+  const derivedTransactions = [];
+
+  documents.forEach(document => {
+    const documentType = document?.documentType || 'other';
+    summary.documentTypes[documentType] = (summary.documentTypes[documentType] || 0) + 1;
+
+    const extracted = document?.extractedData || {};
+    if (extracted.category) {
+      summary.categoryBreakdown[extracted.category] = (summary.categoryBreakdown[extracted.category] || 0) + 1;
+    }
+    if (extracted.vendor?.name) {
+      summary.vendorBreakdown[extracted.vendor.name] = (summary.vendorBreakdown[extracted.vendor.name] || 0) + 1;
+    }
+    if (Number.isFinite(extracted.amount)) {
+      summary.totalAmount += extracted.amount;
+    }
+    if (extracted.date) {
+      const docDate = new Date(extracted.date);
+      if (!summary.dateRange.start || docDate < new Date(summary.dateRange.start)) {
+        summary.dateRange.start = docDate.toISOString();
+      }
+      if (!summary.dateRange.end || docDate > new Date(summary.dateRange.end)) {
+        summary.dateRange.end = docDate.toISOString();
+      }
+    }
+
+    const transaction = buildDocumentTransaction(document);
+    if (transaction) {
+      derivedTransactions.push(transaction);
+    }
+  });
+
+  summary.averageAmount = documents.length > 0 ? summary.totalAmount / documents.length : 0;
+
+  return {
+    summary,
+    derivedTransactions,
+    documentIds: documents.map(document => document?._id?.toString()).filter(Boolean)
+  };
+};
+
 const carbonAnalyzerAgent = async (task) => {
   const { input } = task;
 
@@ -299,6 +394,7 @@ const reportGeneratorAgent = async (task) => {
 const handlers = {
   carbon_analyzer: carbonAnalyzerAgent,
   data_privacy: dataPrivacyAgent,
+  document_analyzer: documentAnalyzerAgent,
   recommendation_engine: recommendationEngineAgent,
   data_processor: dataProcessorAgent,
   anomaly_detector: anomalyDetectorAgent,

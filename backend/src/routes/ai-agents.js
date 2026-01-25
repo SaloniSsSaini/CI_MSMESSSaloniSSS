@@ -475,6 +475,7 @@ router.post('/orchestrate-msme-emissions', auth, async (req, res) => {
       msmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides
     } = req.body;
@@ -499,6 +500,7 @@ router.post('/orchestrate-msme-emissions', auth, async (req, res) => {
       msmeId: resolvedMsmeId,
       msmeData,
       transactions,
+      documents,
       behaviorOverrides,
       contextOverrides
     });
