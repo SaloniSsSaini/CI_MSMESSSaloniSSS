@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const MSME = require('../models/MSME');
 const carbonCreditsService = require('../services/carbonCreditsService');
 const logger = require('../utils/logger');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 
 // @route   GET /api/msme/profile
 // @desc    Get MSME profile
@@ -91,6 +92,20 @@ router.put('/profile', [
       updatedFields: Object.keys(req.body)
     });
 
+    try {
+      orchestrationManagerEventService.emitEvent('msme.profile_updated', {
+        msmeId: msme._id?.toString(),
+        updates: req.body,
+        businessDomain: msme.businessDomain,
+        industry: msme.industry
+      }, 'msme_profile');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for MSME profile update', {
+        error: eventError.message,
+        msmeId: msme._id?.toString()
+      });
+    }
+
     res.json({
       success: true,
       message: 'Profile updated successfully',
@@ -165,6 +180,19 @@ router.post('/register', [
       companyName: msme.companyName,
       companyType: msme.companyType
     });
+
+    try {
+      orchestrationManagerEventService.emitEvent('msme.registered', {
+        msmeId: msme._id?.toString(),
+        businessDomain: msme.businessDomain,
+        industry: msme.industry
+      }, 'msme_register');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for MSME registration', {
+        error: eventError.message,
+        msmeId: msme._id?.toString()
+      });
+    }
 
     res.status(201).json({
       success: true,

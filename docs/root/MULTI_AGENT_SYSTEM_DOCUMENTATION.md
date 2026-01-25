@@ -36,7 +36,15 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - Provides government policy update placeholders to align compliance agents
 - Invokes the data privacy agent before downstream processing
 
-#### 3. Multi-Agent API Endpoints (`backend/src/routes/ai-agents.js`)
+#### 3. Orchestration Manager Event Bus (`backend/src/services/orchestrationManagerEventService.js`)
+
+**Key Responsibilities:**
+- Receives event signals from transactions, monitoring, and optimization services
+- Triggers event-based workflows using AIWorkflow event triggers
+- Logs orchestration manager events for frontend visibility
+- Exposes orchestration trigger and event emission endpoints
+
+#### 4. Multi-Agent API Endpoints (`backend/src/routes/ai-agents.js`)
 
 **New Endpoints:**
 - `POST /api/ai-agents/multi-agent-workflow` - Execute multi-agent workflows
@@ -46,7 +54,14 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - `GET /api/ai-agents/coordination/:coordinationId` - Get coordination results
 - `GET /api/ai-agents/dashboard-metrics` - Get dashboard metrics
 
-#### 4. Multi-Agent Workflow Management (`backend/src/routes/multi-agent-workflows.js`)
+#### Orchestration Manager Endpoints (`backend/src/routes/orchestration-manager.js`)
+- `POST /api/orchestration-manager/trigger` - Trigger orchestration manager run
+- `POST /api/orchestration-manager/workflow/trigger` - Trigger workflow execution
+- `POST /api/orchestration-manager/emit-event` - Emit event into orchestration bus
+- `GET /api/orchestration-manager/events` - Fetch recent event log
+- `GET /api/orchestration-manager/status` - Status and multi-agent summary
+
+#### 5. Multi-Agent Workflow Management (`backend/src/routes/multi-agent-workflows.js`)
 
 **Endpoints:**
 - `POST /api/multi-agent-workflows` - Create workflows
@@ -66,6 +81,7 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - Load balancing controls
 - Performance metrics display
 - Task execution monitoring
+- Orchestration manager triggers and event emission
 
 **Key Capabilities:**
 - Select multiple agents for coordination
@@ -73,6 +89,7 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - Monitor real-time performance
 - View coordination results
 - Balance system load
+- Trigger orchestration runs and workflow events
 
 #### 2. Multi-Agent Dashboard (`src/components/MultiAgentDashboard.tsx`)
 

@@ -8,6 +8,10 @@ require('dotenv').config();
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const aiAgentService = require('./services/aiAgentService');
+const orchestrationManagerEventService = require('./services/orchestrationManagerEventService');
+const realTimeMonitoring = require('./services/realTimeMonitoringInstance');
+const enhancedMonitoringService = require('./services/enhancedMonitoringService');
+const dataFlowOptimizationService = require('./services/dataFlowOptimizationService');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -25,6 +29,7 @@ const aiAgentRoutes = require('./routes/ai-agents');
 const aiWorkflowRoutes = require('./routes/ai-workflows');
 const multiAgentWorkflowRoutes = require('./routes/multi-agent-workflows');
 const optimizedAiAgentRoutes = require('./routes/optimized-ai-agents');
+const orchestrationManagerRoutes = require('./routes/orchestration-manager');
 const bankRoutes = require('./routes/banks');
 const greenLoanRoutes = require('./routes/greenLoans');
 const carbonForecastingRoutes = require('./routes/carbonForecasting');
@@ -43,6 +48,13 @@ connectDB();
 // Initialize AI Agent Service
 aiAgentService.initialize().catch(error => {
   logger.error('Failed to initialize AI Agent Service:', error);
+});
+
+// Register orchestration manager listeners
+orchestrationManagerEventService.registerExternalListeners({
+  realTimeMonitoring,
+  enhancedMonitoringService,
+  dataFlowOptimizationService
 });
 
 // Security middleware
@@ -98,6 +110,7 @@ app.use('/api/ai-agents', aiAgentRoutes);
 app.use('/api/ai-workflows', aiWorkflowRoutes);
 app.use('/api/multi-agent-workflows', multiAgentWorkflowRoutes);
 app.use('/api/optimized-ai-agents', optimizedAiAgentRoutes);
+app.use('/api/orchestration-manager', orchestrationManagerRoutes);
 app.use('/api/banks', bankRoutes);
 app.use('/api/green-loans', greenLoanRoutes);
 app.use('/api/carbon-forecasting', carbonForecastingRoutes);

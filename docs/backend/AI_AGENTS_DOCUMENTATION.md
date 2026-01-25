@@ -407,6 +407,37 @@ Content-Type: application/json
 }
 ```
 
+#### Orchestration Manager Event Triggers
+```http
+POST /api/orchestration-manager/trigger
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "msmeId": "64ff1d2a01a3b1a0e1234567",
+  "transactions": [...],
+  "contextOverrides": {
+    "policyUpdates": {
+      "status": "placeholder"
+    }
+  }
+}
+```
+
+```http
+POST /api/orchestration-manager/emit-event
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "eventType": "transactions.sms_processed",
+  "payload": {
+    "msmeId": "64ff1d2a01a3b1a0e1234567",
+    "transaction": { "category": "energy", "amount": 1000 }
+  }
+}
+```
+
 ### Orchestration Manager Overview
 ![MSME orchestration overview](images/orchestration-overview.svg)
 

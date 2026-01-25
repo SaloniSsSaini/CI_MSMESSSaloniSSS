@@ -461,6 +461,20 @@ class DocumentProcessingService {
       });
 
       await transaction.save();
+
+      try {
+        const orchestrationManagerEventService = require('./orchestrationManagerEventService');
+        orchestrationManagerEventService.emitEvent('transactions.document_processed', {
+          msmeId: document.msmeId,
+          transaction: transaction.toObject(),
+          source: 'document'
+        }, 'document_processing');
+      } catch (eventError) {
+        console.warn('Failed to emit orchestration event for document transaction', {
+          error: eventError.message,
+          msmeId: document.msmeId
+        });
+      }
       return transaction;
     } catch (error) {
       console.error('Error creating transaction from document:', error);

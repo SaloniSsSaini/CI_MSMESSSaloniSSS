@@ -11,6 +11,7 @@ const Transaction = require('../models/Transaction');
 const MSME = require('../models/MSME');
 const Bank = require('../models/Bank');
 const logger = require('../utils/logger');
+const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
 
 // @route   POST /api/email/process
 // @desc    Process email and extract transaction data
@@ -118,6 +119,21 @@ router.post('/process', [
       amount: result.transaction.amount,
       co2Emissions: carbonData.co2Emissions
     });
+
+    try {
+      orchestrationManagerEventService.emitEvent('transactions.email_processed', {
+        msmeId,
+        transaction: transaction.toObject(),
+        source: 'email',
+        messageId
+      }, 'email');
+    } catch (eventError) {
+      logger.warn('Failed to emit orchestration event for email transaction', {
+        error: eventError.message,
+        msmeId,
+        messageId
+      });
+    }
 
     res.json({
       success: true,
@@ -396,6 +412,21 @@ router.post('/bulk-process', [
           });
 
           await transaction.save();
+
+          try {
+            orchestrationManagerEventService.emitEvent('transactions.email_processed', {
+              msmeId,
+              transaction: transaction.toObject(),
+              source: 'email',
+              messageId: email.messageId
+            }, 'email');
+          } catch (eventError) {
+            logger.warn('Failed to emit orchestration event for batch email transaction', {
+              error: eventError.message,
+              msmeId,
+              messageId: email.messageId
+            });
+          }
           
           results.push({
             messageId: email.messageId,
@@ -664,6 +695,21 @@ router.post('/ingest-assess', [
         });
 
         await transactionDocument.save();
+
+        try {
+          orchestrationManagerEventService.emitEvent('transactions.email_ingested', {
+            msmeId: msme._id?.toString(),
+            transaction: transactionDocument.toObject(),
+            source: 'ai_email_agent',
+            messageId: email.id
+          }, 'email_ingestion');
+        } catch (eventError) {
+          logger.warn('Failed to emit orchestration event for ingested email transaction', {
+            error: eventError.message,
+            msmeId: msme._id?.toString(),
+            messageId: email.id
+          });
+        }
 
         processedTransactions.push({
           messageId: email.id,

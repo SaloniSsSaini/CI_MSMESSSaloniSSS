@@ -4,7 +4,7 @@ const AIDataExtractionService = require('../services/aiDataExtractionService');
 const AdvancedCarbonCalculationService = require('../services/advancedCarbonCalculationService');
 const IntelligentPatternRecognitionService = require('../services/intelligentPatternRecognitionService');
 const AICarbonScoringService = require('../services/aiCarbonScoringService');
-const RealTimeCarbonMonitoringService = require('../services/realTimeCarbonMonitoringService');
+const realTimeMonitoring = require('../services/realTimeMonitoringInstance');
 const MSME = require('../models/MSME');
 const CarbonAssessment = require('../models/CarbonAssessment');
 const logger = require('../utils/logger');
@@ -14,7 +14,6 @@ const aiDataExtraction = new AIDataExtractionService();
 const advancedCarbonCalculation = new AdvancedCarbonCalculationService();
 const patternRecognition = new IntelligentPatternRecognitionService();
 const carbonScoring = new AICarbonScoringService();
-const realTimeMonitoring = new RealTimeCarbonMonitoringService();
 
 // Middleware for authentication (if needed)
 const authenticateToken = (req, res, next) => {
