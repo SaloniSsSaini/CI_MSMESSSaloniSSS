@@ -27,7 +27,16 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - `getMultiAgentStatus()` - Get real-time system status
 - `balanceAgentLoad()` - Redistribute tasks for optimal performance
 
-#### 2. Multi-Agent API Endpoints (`backend/src/routes/ai-agents.js`)
+#### 2. Orchestration Manager (`backend/src/services/msmeEmissionsOrchestrationService.js`)
+
+**Key Responsibilities:**
+- Coordinates multi-AI agent execution based on MSME profiles and operational context
+- Tracks known parameters (resources, water, fuel, waste, chemicals, air, materials)
+- Captures unknown parameter placeholders derived from transactions and behavior signals
+- Provides government policy update placeholders to align compliance agents
+- Invokes the data privacy agent before downstream processing
+
+#### 3. Multi-Agent API Endpoints (`backend/src/routes/ai-agents.js`)
 
 **New Endpoints:**
 - `POST /api/ai-agents/multi-agent-workflow` - Execute multi-agent workflows
@@ -37,7 +46,7 @@ The Carbon Intelligence platform now includes a comprehensive multi-agent system
 - `GET /api/ai-agents/coordination/:coordinationId` - Get coordination results
 - `GET /api/ai-agents/dashboard-metrics` - Get dashboard metrics
 
-#### 3. Multi-Agent Workflow Management (`backend/src/routes/multi-agent-workflows.js`)
+#### 4. Multi-Agent Workflow Management (`backend/src/routes/multi-agent-workflows.js`)
 
 **Endpoints:**
 - `POST /api/multi-agent-workflows` - Create workflows
@@ -244,6 +253,7 @@ const status = await axios.get('/api/ai-agents/multi-agent-status');
 - Encrypted inter-agent communication
 - Secure data passing
 - Privacy-preserving coordination
+- Data privacy agent for redaction and policy context
 - Compliance with data regulations
 
 ## Scalability

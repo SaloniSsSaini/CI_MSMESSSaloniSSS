@@ -2,28 +2,36 @@
 
 ## Overview
 
-The Carbon Intelligence backend now includes a comprehensive multi-AI agent system designed to enhance carbon footprint analysis, provide intelligent recommendations, and automate various sustainability-related tasks. The system consists of specialized AI agents that work together to provide advanced carbon intelligence capabilities.
+The Carbon Intelligence backend now includes a comprehensive multi-AI agent system with an **Orchestration Manager** architecture that coordinates agent execution based on MSME profiles, operational context, and sustainability signals. The system consists of specialized AI agents that collaborate to deliver advanced carbon intelligence capabilities, privacy-safe processing, and regulatory awareness.
 
 ## Architecture
 
 ### Core Components
 
-1. **AI Agent Service** (`src/services/aiAgentService.js`)
-   - Central orchestration service for all AI agents
+1. **Orchestration Manager** (`src/services/msmeEmissionsOrchestrationService.js`)
+   - Coordinates multi-agent execution based on MSME profile, processes, business domain, and machinery
+   - Aggregates known environmental parameters (resources, water, fuel, waste, chemicals, air, materials)
+   - Tracks unknown parameter placeholders derived from transactions and behavior signals
+   - Maintains government policy update placeholders for compliance-aware orchestration
+   - Invokes the data privacy agent as a preprocessing guardrail
+
+2. **AI Agent Service** (`src/services/aiAgentService.js`)
+   - Execution engine for all AI agents
    - Task queue management and distribution
    - Agent communication and coordination
    - Performance monitoring and optimization
 
-2. **AI Agent Models**
+3. **AI Agent Models**
    - `AIAgent` - Agent configuration and metadata
    - `AITask` - Individual task management
    - `AIWorkflow` - Multi-step workflow definitions
    - `AIExecution` - Workflow execution tracking
 
-3. **Specialized Agents**
+4. **Specialized Agents**
    - Carbon Analyzer Agent
    - Recommendation Engine Agent
    - Data Processor Agent
+- Data Privacy Agent
    - Anomaly Detector Agent
    - Trend Analyzer Agent
    - Compliance Monitor Agent
@@ -78,7 +86,18 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - `POST /api/ai-agents/process-data` - Process transaction data
 - `GET /api/ai-agents/:id/tasks` - Get processing tasks
 
-### 4. Anomaly Detector Agent
+### 4. Data Privacy Agent
+**Type:** `data_privacy`
+**Purpose:** Apply privacy safeguards and policy-aware redaction before downstream analysis
+
+**Capabilities:**
+- PII redaction for transaction descriptors and counterparties
+- Policy-aligned data minimization
+- Privacy audit trail metadata
+- Retention guidance for sensitive fields
+- Privacy risk flagging for unknown parameters
+
+### 5. Anomaly Detector Agent
 **Type:** `anomaly_detector`
 **Purpose:** Detect unusual patterns and anomalies in data
 
@@ -89,7 +108,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Risk assessment
 - Alert generation
 
-### 5. Trend Analyzer Agent
+### 6. Trend Analyzer Agent
 **Type:** `trend_analyzer`
 **Purpose:** Analyze trends and patterns in sustainability data
 
@@ -100,7 +119,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Predictive forecasting
 - Performance benchmarking
 
-### 6. Compliance Monitor Agent
+### 7. Compliance Monitor Agent
 **Type:** `compliance_monitor`
 **Purpose:** Monitor environmental compliance and regulatory requirements
 
@@ -111,7 +130,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Regulatory change monitoring
 - Compliance scoring
 
-### 7. Optimization Advisor Agent
+### 8. Optimization Advisor Agent
 **Type:** `optimization_advisor`
 **Purpose:** Provide optimization suggestions for processes and resources
 
@@ -122,7 +141,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Energy optimization suggestions
 - Waste reduction plans
 
-### 8. Report Generator Agent
+### 9. Report Generator Agent
 **Type:** `report_generator`
 **Purpose:** Generate comprehensive reports and visualizations
 
@@ -133,7 +152,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
 
-### 9. Unified Sector Profiler Agent
+### 10. Unified Sector Profiler Agent
 **Type:** `sector_profiler`
 **Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
 
@@ -148,7 +167,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Orchestration planning recommendations
 - Context enrichment for multi-agent coordination
 
-### 10. Unified Process & Machinery Profiler Agent
+### 11. Unified Process & Machinery Profiler Agent
 **Type:** `process_machinery_profiler`
 **Purpose:** Identify sector processes, machinery, and emissions generation factors
 
@@ -162,6 +181,37 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Machinery inventory and operational signals
 - Emission factor hints for energy, transport, and materials
 - Context enrichment for optimization and compliance agents
+
+## Orchestration Manager Inputs
+
+The Orchestration Manager coordinates agents using a structured MSME context. Inputs are grouped into **known parameters**, **unknown parameter placeholders**, and **policy placeholders** to support progressive enrichment.
+
+### Known Parameters (context.knownParameters)
+- MSME profile signals (business domain, industry, company type)
+- Processes and operational workflows
+- Machinery inventory and utilization signals
+- Environmental resources consumption and types
+- Water consumption and types
+- Fuel consumption and types
+- Waste generation and types
+- Chemicals consumption and types
+- Air pollution and types
+- Materials consumption and types
+
+### Unknown Parameter Placeholders (context.unknownParameters)
+- Discovered from transaction categories or behavior anomalies
+- Captured as placeholders to enrich later based on MSME activity
+- Marked with a `needsReview` flag when gaps are detected
+
+### Government Policy Updates (context.policyUpdates)
+- Placeholder feed for regulatory updates impacting compliance
+- Stored with status, sources, and last-check metadata
+
+### Multi-AI Agent Scope
+- **Pre-processing:** Data Privacy, Sector Profiler, Process/Machinery Profiler
+- **Core analysis:** Data Processor, Carbon Analyzer
+- **Parallel agents:** Anomaly Detector, Trend Analyzer, Compliance Monitor, Optimization Advisor
+- **Post-processing:** Recommendation Engine, Report Generator
 
 ## API Endpoints
 
@@ -336,15 +386,31 @@ Content-Type: application/json
     }
   },
   "contextOverrides": {
-    "season": "monsoon"
+    "season": "monsoon",
+    "knownParameters": {
+      "waterConsumption": {
+        "total": 320,
+        "unit": "kl",
+        "types": ["groundwater", "municipal"]
+      },
+      "fuelConsumption": {
+        "total": 540,
+        "unit": "liters",
+        "types": ["diesel"]
+      }
+    },
+    "policyUpdates": {
+      "status": "placeholder",
+      "notes": "Government policy updates pending ingestion."
+    }
   }
 }
 ```
 
-### Orchestration Overview
+### Orchestration Manager Overview
 ![MSME orchestration overview](images/orchestration-overview.svg)
 
-### Orchestration Parameters
+### Orchestration Manager Parameters
 ![MSME orchestration parameters](images/orchestration-parameters.svg)
 
 ### AI-Enhanced Carbon Analysis

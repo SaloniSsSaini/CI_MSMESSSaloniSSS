@@ -49,6 +49,62 @@ const generateTrendsSection = () => ({});
 const generateTrendCharts = () => [];
 const generateRecommendationsSection = () => ({});
 
+const SENSITIVE_PATTERNS = [
+  { label: 'email', regex: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, replacement: '[redacted-email]' },
+  { label: 'phone', regex: /(\+?\d[\d\s-]{7,}\d)/g, replacement: '[redacted-phone]' },
+  { label: 'pan', regex: /\b[A-Z]{5}[0-9]{4}[A-Z]\b/g, replacement: '[redacted-pan]' },
+  { label: 'gst', regex: /\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b/g, replacement: '[redacted-gst]' },
+  { label: 'udyam', regex: /\bUDYAM-[A-Z]{2}-\d{2}-\d{7}\b/g, replacement: '[redacted-udyam]' }
+];
+
+const redactSensitiveText = (value) => {
+  if (value === null || value === undefined) return value;
+  let text = String(value);
+  SENSITIVE_PATTERNS.forEach(pattern => {
+    text = text.replace(pattern.regex, pattern.replacement);
+  });
+  return text;
+};
+
+const redactTransaction = (transaction) => {
+  if (!transaction || typeof transaction !== 'object') return transaction;
+  const redacted = { ...transaction };
+  const fieldsToRedact = ['description', 'vendor', 'counterparty', 'reference', 'referenceId', 'notes'];
+  fieldsToRedact.forEach(field => {
+    if (typeof redacted[field] === 'string') {
+      redacted[field] = redactSensitiveText(redacted[field]);
+    }
+  });
+  return redacted;
+};
+
+const dataPrivacyAgent = async (task) => {
+  const { input } = task || {};
+  const transactions = Array.isArray(input?.transactions) ? input.transactions : [];
+  const msmeData = input?.msmeData || {};
+  const policyUpdates = input?.policyUpdates || input?.context?.policyUpdates;
+
+  const redactedTransactions = transactions.map(redactTransaction);
+
+  return {
+    redactedTransactions,
+    redactionSummary: {
+      totalTransactions: transactions.length,
+      redactedFields: ['description', 'vendor', 'counterparty', 'reference', 'referenceId', 'notes'],
+      appliedRules: SENSITIVE_PATTERNS.map(pattern => pattern.label),
+      policyStatus: policyUpdates?.status || 'placeholder'
+    },
+    policyContext: policyUpdates || {
+      status: 'placeholder',
+      notes: 'Government policy updates pending ingestion.'
+    },
+    msmeSnapshot: {
+      companyName: msmeData.companyName,
+      businessDomain: msmeData.businessDomain
+    }
+  };
+};
+
 const carbonAnalyzerAgent = async (task) => {
   const { input } = task;
 
@@ -242,6 +298,7 @@ const reportGeneratorAgent = async (task) => {
 
 const handlers = {
   carbon_analyzer: carbonAnalyzerAgent,
+  data_privacy: dataPrivacyAgent,
   recommendation_engine: recommendationEngineAgent,
   data_processor: dataProcessorAgent,
   anomaly_detector: anomalyDetectorAgent,

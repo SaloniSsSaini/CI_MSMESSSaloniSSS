@@ -551,6 +551,11 @@ class AIAgentService {
     return handler ? handler(task) : { error: 'Data processor handler not available' };
   }
 
+  async dataPrivacyAgent(task) {
+    const handler = agentRegistry.getHandler('data_privacy');
+    return handler ? handler(task) : { error: 'Data privacy handler not available' };
+  }
+
   async anomalyDetectorAgent(task) {
     const handler = agentRegistry.getHandler('anomaly_detector');
     return handler ? handler(task) : { error: 'Anomaly detector handler not available' };

@@ -1,6 +1,7 @@
 jest.mock('../services/aiAgentService', () => ({
   sectorProfilerAgent: jest.fn(),
   processMachineryProfilerAgent: jest.fn(),
+  dataPrivacyAgent: jest.fn(),
   dataProcessorAgent: jest.fn(),
   carbonAnalyzerAgent: jest.fn(),
   anomalyDetectorAgent: jest.fn(),
@@ -196,6 +197,10 @@ describe('MSME Emissions Orchestration Service', () => {
         parallelAgents: ['trend_analyzer'],
         outputs: { recommendations: false, report: false }
       }
+    });
+    aiAgentService.dataPrivacyAgent.mockResolvedValue({
+      redactedTransactions: transactions,
+      redactionSummary: { totalTransactions: transactions.length }
     });
     aiAgentService.processMachineryProfilerAgent.mockResolvedValue({
       processes: ['assembly'],
