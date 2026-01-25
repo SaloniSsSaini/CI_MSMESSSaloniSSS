@@ -85,7 +85,8 @@ const ORCHESTRATION_DEFAULTS = {
     wasteShareHigh: 0.1,
     transportShareHigh: 0.15,
     materialsShareHigh: 0.15,
-    manufacturingShareHigh: 0.12
+    manufacturingShareHigh: 0.12,
+    highValueAmount: 250000
   },
   weights: {
     completeness: 0.4,
@@ -287,6 +288,13 @@ class OrchestrationManagerService {
         executionMode: this.getExecutionMode(agentAvailability, 'data_processor')
       }
     );
+
+    if (dataProcessing?.documentRequests?.length) {
+      coordinationContext.warnings.push({
+        message: 'Additional documents required to classify some transactions.',
+        documentRequests: dataProcessing.documentRequests
+      });
+    }
 
     const processedTransactions = this.selectProcessedTransactions(
       dataProcessing,

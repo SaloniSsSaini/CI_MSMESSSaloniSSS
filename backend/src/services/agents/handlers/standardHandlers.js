@@ -1,4 +1,5 @@
 const getCarbonCalculationService = () => require('../../carbonCalculationService');
+const dataProcessorService = require('../dataProcessorAgent');
 
 const generateCarbonInsights = (analysis) => ([
   {
@@ -256,31 +257,36 @@ const recommendationEngineAgent = async (task) => {
 };
 
 const dataProcessorAgent = async (task) => {
-  const { input } = task;
-  const processedData = {
-    cleaned: [],
-    classified: [],
-    enriched: [],
-    validated: []
-  };
+  const { input } = task || {};
+  const transactions = Array.isArray(input?.transactions) ? input.transactions : [];
 
-  if (input.transactions) {
-    for (const transaction of input.transactions) {
-      const cleaned = cleanTransactionData(transaction);
-      processedData.cleaned.push(cleaned);
-
-      const classified = classifyTransaction(cleaned);
-      processedData.classified.push(classified);
-
-      const enriched = enrichTransactionData(classified);
-      processedData.enriched.push(enriched);
-
-      const validated = validateForCarbonCalculation(enriched);
-      processedData.validated.push(validated);
-    }
+  if (transactions.length === 0) {
+    return {
+      cleaned: [],
+      classified: [],
+      enriched: [],
+      validated: [],
+      documentRequests: [],
+      statistics: {
+        totalProcessed: 0,
+        successfullyClassified: 0,
+        validationErrors: 0,
+        enrichmentApplied: 0,
+        uncertainTransactions: 0,
+        documentRequests: 0,
+        autoLearnedCategories: 0,
+        autoLearnedTransactionTypes: 0
+      }
+    };
   }
 
-  return processedData;
+  return dataProcessorService.processTransactions(transactions, {
+    context: input?.context,
+    documents: input?.documents,
+    documentSummary: input?.documentSummary,
+    transactionTypeContext: input?.transactionTypeContext,
+    thresholds: input?.thresholds || input?.orchestrationOptions?.thresholds || input?.context?.orchestrationOptions?.thresholds
+  });
 };
 
 const anomalyDetectorAgent = async (task) => {

@@ -17,23 +17,59 @@ class DataProcessorAgent {
     this.tokenizer = new natural.WordTokenizer();
     this.stemmer = natural.PorterStemmer;
     this.classifier = new natural.BayesClassifier();
-    
+    this.transactionTypeClassifier = new natural.BayesClassifier();
+
+    this.learningConfig = {
+      minCategoryConfidence: 0.55,
+      minTransactionTypeConfidence: 0.55,
+      learningConfidence: 0.75,
+      documentRequestThreshold: 0.4,
+      highValueAmountThreshold: 250000,
+      maxLearnedKeywordsPerCategory: 40,
+      maxLearnedKeywordsPerType: 30
+    };
+
+    this.stopWords = new Set([
+      'the', 'and', 'for', 'with', 'from', 'that', 'this', 'your', 'you', 'are',
+      'was', 'were', 'has', 'have', 'had', 'been', 'being', 'into', 'onto', 'over',
+      'under', 'paid', 'payment', 'received', 'invoice', 'bill', 'charges',
+      'rs', 'inr', 'amount', 'transfer', 'txn', 'transaction', 'ref'
+    ]);
+
     // Initialize category keywords
     this.categoryKeywords = this.initializeCategoryKeywords();
+    this.transactionTypeKeywords = this.initializeTransactionTypeKeywords();
+    this.learnedCategoryKeywords = new Map();
+    this.learnedTransactionTypeKeywords = new Map();
+    this.validTransactionTypes = new Set([
+      'purchase', 'sale', 'expense', 'investment', 'utility', 'transport', 'other'
+    ]);
+
+    this.initializeClassifiers();
   }
 
-  async processTransactions(transactions) {
+  async processTransactions(transactions, options = {}) {
     try {
+      if (!Array.isArray(transactions)) {
+        throw new Error('Transactions input must be an array');
+      }
+
+      const learningStats = this.learnFromTransactions(transactions, options);
       const processedData = {
         cleaned: [],
         classified: [],
         enriched: [],
         validated: [],
+        documentRequests: [],
         statistics: {
           totalProcessed: 0,
           successfullyClassified: 0,
           validationErrors: 0,
-          enrichmentApplied: 0
+          enrichmentApplied: 0,
+          uncertainTransactions: 0,
+          documentRequests: 0,
+          autoLearnedCategories: learningStats.categoriesLearned,
+          autoLearnedTransactionTypes: learningStats.transactionTypesLearned
         }
       };
 
@@ -47,8 +83,11 @@ class DataProcessorAgent {
           // Step 2: Classify transaction
           const classified = await this.classifyTransaction(cleaned);
           processedData.classified.push(classified);
-          if (classified.category !== 'unknown') {
+          if (classified.category && classified.category !== 'unknown') {
             processedData.statistics.successfullyClassified++;
+          }
+          if (classified.processingMetadata?.needsReview) {
+            processedData.statistics.uncertainTransactions++;
           }
 
           // Step 3: Enrich with additional data
@@ -63,6 +102,13 @@ class DataProcessorAgent {
           processedData.validated.push(validated);
           if (validated.validationErrors.length > 0) {
             processedData.statistics.validationErrors += validated.validationErrors.length;
+          }
+
+          const documentRequest = this.buildDocumentRequest(validated, options);
+          if (documentRequest) {
+            validated.documentRequest = documentRequest;
+            processedData.documentRequests.push(documentRequest);
+            processedData.statistics.documentRequests++;
           }
 
         } catch (error) {
@@ -85,6 +131,9 @@ class DataProcessorAgent {
   }
 
   async cleanTransactionData(transaction) {
+    if (!transaction || typeof transaction !== 'object') {
+      throw new Error('Transaction must be an object');
+    }
     const cleaned = { ...transaction };
 
     // Clean description
@@ -121,17 +170,29 @@ class DataProcessorAgent {
     const classified = { ...transaction };
 
     // If category is already set and valid, keep it
-    if (classified.category && this.isValidCategory(classified.category)) {
-      return classified;
-    }
+    const text = this.buildTransactionText(classified);
+    const transactionTypeResult = this.resolveTransactionType(classified, text);
+    const categoryResult = this.resolveCategory(classified, text, transactionTypeResult.value);
 
-    // Classify based on description and vendor
-    const text = `${classified.description || ''} ${classified.vendor || ''}`.toLowerCase();
-    const category = this.classifyByKeywords(text);
-    
-    classified.category = category;
-    classified.subcategory = this.classifySubcategory(text, category);
-    classified.confidence = this.calculateClassificationConfidence(text, category);
+    classified.transactionType = transactionTypeResult.value;
+    classified.category = categoryResult.value;
+    classified.subcategory = this.classifySubcategory(text, categoryResult.value);
+    classified.confidence = Math.max(transactionTypeResult.confidence, categoryResult.confidence);
+
+    const reviewReasons = [
+      ...transactionTypeResult.reasons,
+      ...categoryResult.reasons
+    ].filter(Boolean);
+
+    classified.processingMetadata = {
+      ...(classified.processingMetadata || {}),
+      classification: {
+        transactionType: transactionTypeResult,
+        category: categoryResult
+      },
+      needsReview: reviewReasons.length > 0,
+      reviewReasons
+    };
 
     return classified;
   }
@@ -232,7 +293,19 @@ class DataProcessorAgent {
 
   cleanVendorName(vendor) {
     if (!vendor) return '';
-    
+
+    if (typeof vendor === 'object') {
+      const cleanedVendor = { ...vendor };
+      if (cleanedVendor.name) {
+        cleanedVendor.name = this.cleanVendorName(cleanedVendor.name);
+      }
+      return cleanedVendor;
+    }
+
+    if (typeof vendor !== 'string') {
+      return vendor;
+    }
+
     return vendor
       .replace(/[^\w\s]/g, '') // Remove special characters
       .replace(/\s+/g, ' ') // Replace multiple spaces with single space
@@ -263,8 +336,47 @@ class DataProcessorAgent {
       raw_materials: ['material', 'steel', 'aluminum', 'plastic', 'wood', 'concrete', 'fabric', 'chemical'],
       equipment: ['equipment', 'machine', 'tool', 'device', 'apparatus', 'instrument'],
       maintenance: ['maintenance', 'repair', 'service', 'overhaul', 'upgrade', 'fix'],
+      utilities: ['utility', 'internet', 'phone', 'telecom', 'broadband', 'subscription'],
       other: ['miscellaneous', 'other', 'general', 'admin', 'office', 'supplies']
     };
+  }
+
+  initializeTransactionTypeKeywords() {
+    return {
+      purchase: ['purchased', 'bought', 'order', 'invoice', 'paid to', 'purchase order', 'procurement'],
+      sale: ['sold', 'sale', 'received payment', 'credit', 'invoice generated', 'order received', 'customer payment'],
+      expense: ['expense', 'cost', 'spent', 'bill', 'charges', 'fees', 'maintenance', 'repair', 'service charge'],
+      utility: ['electricity', 'water', 'gas', 'internet', 'phone', 'utility', 'power bill'],
+      transport: ['fuel', 'diesel', 'petrol', 'transport', 'shipping', 'logistics', 'delivery', 'freight'],
+      investment: ['investment', 'deposit', 'capital', 'equity', 'loan disbursed', 'funding'],
+      other: ['adjustment', 'miscellaneous', 'other', 'general']
+    };
+  }
+
+  initializeClassifiers() {
+    try {
+      this.classifier = new natural.BayesClassifier();
+      Object.entries(this.categoryKeywords).forEach(([category, keywords]) => {
+        keywords.forEach(keyword => this.classifier.addDocument(keyword, category));
+      });
+      this.classifier.train();
+
+      this.transactionTypeClassifier = new natural.BayesClassifier();
+      Object.entries(this.transactionTypeKeywords).forEach(([type, keywords]) => {
+        keywords.forEach(keyword => this.transactionTypeClassifier.addDocument(keyword, type));
+      });
+      this.transactionTypeClassifier.train();
+    } catch (error) {
+      logger.error('Failed to initialize classifiers:', error);
+    }
+  }
+
+  resetLearning() {
+    this.categoryKeywords = this.initializeCategoryKeywords();
+    this.transactionTypeKeywords = this.initializeTransactionTypeKeywords();
+    this.learnedCategoryKeywords = new Map();
+    this.learnedTransactionTypeKeywords = new Map();
+    this.initializeClassifiers();
   }
 
   classifyByKeywords(text) {
@@ -286,6 +398,304 @@ class DataProcessorAgent {
     }
 
     return maxScore > 0 ? bestMatch : 'unknown';
+  }
+
+  resolveTransactionType(transaction, text) {
+    const existingType = this.normalizeTransactionType(transaction.transactionType);
+    if (existingType) {
+      const confidence = this.calculateKeywordConfidence(text, this.transactionTypeKeywords[existingType]);
+      const needsReview = confidence < this.learningConfig.minTransactionTypeConfidence;
+      const suggestion = needsReview ? this.inferTransactionType(text).value : null;
+      return {
+        value: existingType,
+        confidence,
+        source: 'provided',
+        needsReview,
+        reasons: needsReview ? ['Low transaction type confidence'] : [],
+        suggestion
+      };
+    }
+    return this.inferTransactionType(text);
+  }
+
+  resolveCategory(transaction, text, fallbackTransactionType) {
+    const existingCategory = this.normalizeCategory(transaction.category);
+    if (existingCategory) {
+      const confidence = this.calculateKeywordConfidence(text, this.categoryKeywords[existingCategory]);
+      const needsReview = confidence < this.learningConfig.minCategoryConfidence;
+      const suggestion = needsReview ? this.inferCategory(text).value : null;
+      return {
+        value: existingCategory,
+        confidence,
+        source: 'provided',
+        needsReview,
+        reasons: needsReview ? ['Low category confidence'] : [],
+        suggestion
+      };
+    }
+
+    const inferred = this.inferCategory(text);
+    if (inferred.value !== 'unknown' && inferred.confidence >= this.learningConfig.minCategoryConfidence) {
+      return inferred;
+    }
+
+    const fallbackCategory = this.fallbackCategoryFromType(fallbackTransactionType);
+    return {
+      value: fallbackCategory || 'other',
+      confidence: Math.max(inferred.confidence, this.learningConfig.documentRequestThreshold),
+      source: fallbackCategory ? 'fallback' : 'unknown',
+      needsReview: true,
+      reasons: ['Unclear category from description'],
+      suggestion: inferred.value !== 'unknown' ? inferred.value : null
+    };
+  }
+
+  inferTransactionType(text) {
+    if (!text) {
+      return {
+        value: 'other',
+        confidence: 0,
+        source: 'fallback',
+        needsReview: true,
+        reasons: ['Missing transaction description']
+      };
+    }
+
+    const candidates = this.getClassifierCandidates(this.transactionTypeClassifier, text);
+    const top = candidates[0];
+    const runnerUp = candidates[1];
+    const confidence = this.calculateCandidateConfidence(top, runnerUp);
+    const label = top?.label || 'other';
+
+    if (!this.isValidTransactionType(label) || confidence < this.learningConfig.minTransactionTypeConfidence) {
+      return {
+        value: 'other',
+        confidence,
+        source: 'classifier',
+        needsReview: true,
+        reasons: ['Unclear transaction type'],
+        suggestion: label
+      };
+    }
+
+    return {
+      value: label,
+      confidence,
+      source: 'classifier',
+      needsReview: false,
+      reasons: []
+    };
+  }
+
+  inferCategory(text) {
+    if (!text) {
+      return {
+        value: 'unknown',
+        confidence: 0,
+        source: 'fallback',
+        needsReview: true,
+        reasons: ['Missing transaction description']
+      };
+    }
+
+    const keywordCategory = this.classifyByKeywords(text);
+    const keywordConfidence = this.calculateClassificationConfidence(text, keywordCategory);
+    const candidates = this.getClassifierCandidates(this.classifier, text);
+    const top = candidates[0];
+    const runnerUp = candidates[1];
+    const classifierConfidence = this.calculateCandidateConfidence(top, runnerUp);
+
+    let chosenCategory = keywordCategory;
+    let confidence = keywordConfidence;
+    let source = 'keywords';
+
+    if (classifierConfidence > keywordConfidence && top?.label) {
+      chosenCategory = top.label;
+      confidence = classifierConfidence;
+      source = 'classifier';
+    }
+
+    return {
+      value: chosenCategory,
+      confidence,
+      source,
+      needsReview: chosenCategory === 'unknown' || confidence < this.learningConfig.minCategoryConfidence,
+      reasons: chosenCategory === 'unknown' || confidence < this.learningConfig.minCategoryConfidence
+        ? ['Low classification confidence']
+        : []
+    };
+  }
+
+  buildDocumentRequest(transaction, options = {}) {
+    const hasDocuments = Array.isArray(options.documents) && options.documents.length > 0;
+    const hasDocumentSummary = Boolean(options.documentSummary);
+    if (hasDocuments || hasDocumentSummary) {
+      return null;
+    }
+
+    const reasons = [];
+    const classification = transaction.processingMetadata?.classification;
+    if (classification?.transactionType?.needsReview) {
+      reasons.push('Transaction type could not be determined confidently');
+    }
+    if (classification?.category?.needsReview) {
+      reasons.push('Transaction category could not be determined confidently');
+    }
+    if (transaction.validationErrors?.length) {
+      reasons.push('Transaction data is incomplete or invalid');
+    }
+
+    const amount = Number(transaction.amount) || 0;
+    const threshold = options?.thresholds?.highValueAmount
+      ?? options?.highValueAmountThreshold
+      ?? options?.context?.orchestrationOptions?.thresholds?.highValueAmount
+      ?? this.learningConfig.highValueAmountThreshold;
+    if (amount >= threshold && threshold > 0) {
+      reasons.push(`High-value transaction (${amount}) requires supporting documents`);
+    }
+
+    if (reasons.length === 0) {
+      return null;
+    }
+
+    return {
+      transactionId: transaction._id || transaction.sourceId || null,
+      message: 'Please upload invoices, bills, or receipts to verify this transaction.',
+      requestedDocuments: ['invoice', 'bill', 'receipt', 'bank_statement'],
+      reasons
+    };
+  }
+
+  learnFromTransactions(transactions = [], options = {}) {
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return { categoriesLearned: 0, transactionTypesLearned: 0 };
+    }
+    if (options.learningEnabled === false) {
+      return { categoriesLearned: 0, transactionTypesLearned: 0 };
+    }
+
+    let categoriesLearned = 0;
+    let transactionTypesLearned = 0;
+    let categoryDirty = false;
+    let typeDirty = false;
+
+    transactions.forEach(transaction => {
+      const text = this.buildTransactionText(transaction);
+      if (!text) {
+        return;
+      }
+
+      const isManual = transaction.source === 'manual';
+      const confidence = transaction.metadata?.confidence || 1;
+      const shouldLearn = isManual || confidence >= this.learningConfig.learningConfidence;
+      if (!shouldLearn) {
+        return;
+      }
+
+      const category = this.normalizeCategory(transaction.category);
+      if (category) {
+        const added = this.addLearnedKeywords(
+          category,
+          text,
+          this.categoryKeywords,
+          this.learnedCategoryKeywords,
+          this.learningConfig.maxLearnedKeywordsPerCategory
+        );
+        if (added > 0) {
+          categoriesLearned += added;
+          categoryDirty = true;
+        }
+      }
+
+      const transactionType = this.normalizeTransactionType(transaction.transactionType);
+      if (transactionType) {
+        const added = this.addLearnedKeywords(
+          transactionType,
+          text,
+          this.transactionTypeKeywords,
+          this.learnedTransactionTypeKeywords,
+          this.learningConfig.maxLearnedKeywordsPerType
+        );
+        if (added > 0) {
+          transactionTypesLearned += added;
+          typeDirty = true;
+        }
+      }
+    });
+
+    try {
+      if (categoryDirty) {
+        this.classifier = new natural.BayesClassifier();
+        Object.entries(this.categoryKeywords).forEach(([category, keywords]) => {
+          keywords.forEach(keyword => this.classifier.addDocument(keyword, category));
+        });
+        this.classifier.train();
+      }
+      if (typeDirty) {
+        this.transactionTypeClassifier = new natural.BayesClassifier();
+        Object.entries(this.transactionTypeKeywords).forEach(([type, keywords]) => {
+          keywords.forEach(keyword => this.transactionTypeClassifier.addDocument(keyword, type));
+        });
+        this.transactionTypeClassifier.train();
+      }
+    } catch (error) {
+      logger.error('Failed to update classifier learning:', error);
+    }
+
+    return { categoriesLearned, transactionTypesLearned };
+  }
+
+  addLearnedKeywords(key, text, targetMap, learnedMap, maxSize) {
+    const tokens = this.extractKeywords(text);
+    if (tokens.length === 0) {
+      return 0;
+    }
+
+    const normalizedKey = key.toLowerCase();
+    if (!targetMap[normalizedKey]) {
+      targetMap[normalizedKey] = [];
+    }
+    if (!learnedMap.has(normalizedKey)) {
+      learnedMap.set(normalizedKey, new Set());
+    }
+
+    const learnedSet = learnedMap.get(normalizedKey);
+    let added = 0;
+
+    tokens.forEach(token => {
+      if (learnedSet.has(token) || targetMap[normalizedKey].includes(token)) {
+        return;
+      }
+      if (learnedSet.size >= maxSize) {
+        return;
+      }
+      learnedSet.add(token);
+      targetMap[normalizedKey].push(token);
+      added += 1;
+    });
+
+    return added;
+  }
+
+  extractKeywords(text) {
+    if (!text) return [];
+    const tokens = this.tokenizer.tokenize(text.toLowerCase());
+    return tokens
+      .map(token => token.replace(/[^\w]/g, ''))
+      .filter(token => token.length >= 3 && !this.stopWords.has(token))
+      .filter(token => !/^\d+$/.test(token))
+      .map(token => this.stemmer.stem(token));
+  }
+
+  buildTransactionText(transaction) {
+    const vendorName = typeof transaction.vendor === 'string'
+      ? transaction.vendor
+      : transaction.vendor?.name;
+    return [
+      transaction.description,
+      vendorName,
+      transaction.metadata?.originalText
+    ].filter(Boolean).join(' ').toLowerCase();
   }
 
   classifySubcategory(text, category) {
@@ -322,12 +732,71 @@ class DataProcessorAgent {
 
   calculateClassificationConfidence(text, category) {
     const keywords = this.categoryKeywords[category] || [];
+    if (keywords.length === 0) return 0;
     const matches = keywords.filter(keyword => text.includes(keyword)).length;
     return Math.min(matches / keywords.length, 1);
   }
 
   isValidCategory(category) {
-    return Object.keys(this.categoryKeywords).includes(category);
+    return Object.keys(this.categoryKeywords).includes(String(category || '').toLowerCase());
+  }
+
+  isValidTransactionType(transactionType) {
+    return this.validTransactionTypes.has(String(transactionType || '').toLowerCase());
+  }
+
+  normalizeCategory(category) {
+    const normalized = String(category || '').toLowerCase();
+    return this.isValidCategory(normalized) ? normalized : null;
+  }
+
+  normalizeTransactionType(transactionType) {
+    const normalized = String(transactionType || '').toLowerCase();
+    return this.isValidTransactionType(normalized) ? normalized : null;
+  }
+
+  calculateKeywordConfidence(text, keywords = []) {
+    if (!text || keywords.length === 0) {
+      return 0;
+    }
+    const matches = keywords.filter(keyword => text.includes(keyword)).length;
+    return Math.min(matches / keywords.length, 1);
+  }
+
+  fallbackCategoryFromType(transactionType) {
+    const normalized = this.normalizeTransactionType(transactionType);
+    const map = {
+      purchase: 'raw_materials',
+      sale: 'other',
+      expense: 'other',
+      utility: 'energy',
+      transport: 'transportation',
+      investment: 'other',
+      other: 'other'
+    };
+    return normalized ? map[normalized] : null;
+  }
+
+  getClassifierCandidates(classifier, text) {
+    try {
+      if (!classifier) return [];
+      const candidates = classifier.getClassifications(text || '');
+      return candidates.sort((a, b) => b.value - a.value);
+    } catch (error) {
+      logger.error('Failed to get classifier candidates:', error);
+      return [];
+    }
+  }
+
+  calculateCandidateConfidence(top, runnerUp) {
+    if (!top || typeof top.value !== 'number') {
+      return 0;
+    }
+    if (!runnerUp || typeof runnerUp.value !== 'number') {
+      return Math.min(1, top.value);
+    }
+    const total = top.value + runnerUp.value;
+    return total > 0 ? Math.min(1, top.value / total) : 0;
   }
 
   async getVendorSustainabilityData(vendor) {

@@ -221,7 +221,9 @@ router.post('/test', upload.single('file'), async (req, res) => {
                     ? `${((result.statistics.enrichmentApplied / totalProcessed) * 100).toFixed(1)}%`
                     : '0%',
                 validTransactions: result.validated.filter(t => t.isValid).length,
-                invalidTransactions: result.validated.filter(t => !t.isValid).length
+                invalidTransactions: result.validated.filter(t => !t.isValid).length,
+                uncertainTransactions: result.statistics.uncertainTransactions || 0,
+                documentRequests: result.documentRequests?.length || 0
             },
             categoryBreakdown: {},
             results: {
@@ -229,7 +231,8 @@ router.post('/test', upload.single('file'), async (req, res) => {
                 classified: result.classified.slice(0, 50),
                 enriched: result.enriched.filter(t => t.enrichmentApplied).slice(0, 20),
                 validationErrors: result.validated.filter(t => !t.isValid),
-                filtered: (result.filtered || []).slice(0, 20) // Show sample of filtered
+                filtered: (result.filtered || []).slice(0, 20), // Show sample of filtered
+                documentRequests: (result.documentRequests || []).slice(0, 20)
             }
         };
 
