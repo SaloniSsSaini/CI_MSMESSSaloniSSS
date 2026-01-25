@@ -8,6 +8,52 @@ const BASE_TRANSACTION_TYPES = {
   transport: ['inbound_transport', 'outbound_transport', 'storage']
 };
 
+const BASE_LOCATION_WEIGHTAGES = {
+  'north-india': { energy: 1.05, transport: 1.1, materials: 1.02, waste: 1.03, water: 1.02 },
+  'south-india': { energy: 0.98, transport: 1.0, materials: 1.0, waste: 1.0, water: 1.01 },
+  'east-india': { energy: 1.08, transport: 1.15, materials: 1.03, waste: 1.05, water: 1.03 },
+  'west-india': { energy: 1.02, transport: 1.05, materials: 1.01, waste: 1.02, water: 1.01 },
+  'northeast-india': { energy: 0.95, transport: 1.2, materials: 1.04, waste: 1.06, water: 1.03 },
+  default: { energy: 1, transport: 1, materials: 1, waste: 1, water: 1 }
+};
+
+const SECTOR_LOCATION_SENSITIVITY = {
+  manufacturing: { energy: 1.1, transport: 1.05, materials: 1.12, waste: 1.08, water: 1.05 },
+  trading: { energy: 0.95, transport: 1.1, materials: 1.05, waste: 0.95, water: 0.95 },
+  services: { energy: 0.9, transport: 0.95, materials: 0.85, waste: 0.9, water: 0.9 },
+  export_import: { energy: 1.0, transport: 1.2, materials: 1.05, waste: 1.0, water: 1.0 },
+  retail: { energy: 0.95, transport: 1.05, materials: 1.05, waste: 1.0, water: 0.95 },
+  wholesale: { energy: 0.95, transport: 1.1, materials: 1.0, waste: 0.95, water: 0.95 },
+  e_commerce: { energy: 1.0, transport: 1.15, materials: 1.08, waste: 1.05, water: 1.0 },
+  consulting: { energy: 0.85, transport: 0.9, materials: 0.8, waste: 0.85, water: 0.85 },
+  logistics: { energy: 1.05, transport: 1.25, materials: 1.0, waste: 1.0, water: 0.95 },
+  agriculture: { energy: 0.95, transport: 1.0, materials: 1.0, waste: 0.95, water: 1.1 },
+  handicrafts: { energy: 0.9, transport: 0.95, materials: 1.1, waste: 0.95, water: 0.95 },
+  food_processing: { energy: 1.1, transport: 1.0, materials: 1.0, waste: 1.05, water: 1.1 },
+  textiles: { energy: 1.1, transport: 1.0, materials: 1.1, waste: 1.05, water: 1.15 },
+  electronics: { energy: 1.05, transport: 1.0, materials: 1.05, waste: 1.0, water: 0.95 },
+  automotive: { energy: 1.1, transport: 1.05, materials: 1.15, waste: 1.05, water: 1.0 },
+  construction: { energy: 1.05, transport: 1.1, materials: 1.2, waste: 1.1, water: 1.0 },
+  healthcare: { energy: 1.0, transport: 1.0, materials: 1.05, waste: 1.1, water: 1.0 },
+  education: { energy: 0.95, transport: 0.95, materials: 0.9, waste: 0.9, water: 0.95 },
+  tourism: { energy: 1.0, transport: 1.1, materials: 0.95, waste: 1.0, water: 1.0 },
+  other: { energy: 1, transport: 1, materials: 1, waste: 1, water: 1 }
+};
+
+const applyLocationSensitivity = (baseWeights, sensitivity) => {
+  const adjusted = {};
+  Object.entries(baseWeights).forEach(([region, weights]) => {
+    adjusted[region] = {
+      energy: weights.energy * (sensitivity.energy || 1),
+      transport: weights.transport * (sensitivity.transport || 1),
+      materials: weights.materials * (sensitivity.materials || 1),
+      waste: weights.waste * (sensitivity.waste || 1),
+      water: weights.water * (sensitivity.water || 1)
+    };
+  });
+  return adjusted;
+};
+
 const mergeTransactionTypes = (base, extra = {}) => {
   const merged = {};
   const keys = new Set([...Object.keys(base || {}), ...Object.keys(extra || {})]);
@@ -26,7 +72,8 @@ const buildSectorModel = ({
   machinery = [],
   inputs = [],
   outputs = [],
-  transactionTypes = {}
+  transactionTypes = {},
+  locationSensitivity = {}
 }) => ({
   key,
   label,
@@ -34,7 +81,11 @@ const buildSectorModel = ({
   machinery,
   inputs,
   outputs,
-  transactionTypes: mergeTransactionTypes(BASE_TRANSACTION_TYPES, transactionTypes)
+  transactionTypes: mergeTransactionTypes(BASE_TRANSACTION_TYPES, transactionTypes),
+  locationWeightages: applyLocationSensitivity(
+    BASE_LOCATION_WEIGHTAGES,
+    locationSensitivity
+  )
 });
 
 const SECTOR_MODELS = {
@@ -51,7 +102,8 @@ const SECTOR_MODELS = {
       maintenance: ['machinery_repair', 'calibration'],
       compliance: ['waste_treatment', 'emission_control', 'safety_audits'],
       transport: ['inbound_freight', 'outbound_freight']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.manufacturing
   }),
   trading: buildSectorModel({
     key: 'trading',
@@ -65,7 +117,8 @@ const SECTOR_MODELS = {
       sale: ['resale', 'bulk_orders'],
       transport: ['inbound_logistics', 'outbound_logistics'],
       expense: ['warehouse_rent', 'brokerage', 'insurance']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.trading
   }),
   services: buildSectorModel({
     key: 'services',
@@ -79,7 +132,8 @@ const SECTOR_MODELS = {
       sale: ['service_fees', 'retainers'],
       expense: ['payroll', 'rent', 'travel'],
       utility: ['internet', 'electricity']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.services
   }),
   export_import: buildSectorModel({
     key: 'export_import',
@@ -93,7 +147,8 @@ const SECTOR_MODELS = {
       sale: ['export_orders', 'import_distribution'],
       transport: ['ocean_freight', 'air_freight', 'customs_transport'],
       compliance: ['customs_duty', 'export_license']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.export_import
   }),
   retail: buildSectorModel({
     key: 'retail',
@@ -107,7 +162,8 @@ const SECTOR_MODELS = {
       sale: ['pos_sales', 'online_orders'],
       expense: ['store_rent', 'staffing', 'marketing'],
       utility: ['electricity', 'water']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.retail
   }),
   wholesale: buildSectorModel({
     key: 'wholesale',
@@ -121,7 +177,8 @@ const SECTOR_MODELS = {
       sale: ['bulk_orders', 'channel_sales'],
       transport: ['bulk_freight', 'warehouse_transfer'],
       expense: ['storage_rent', 'brokerage']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.wholesale
   }),
   e_commerce: buildSectorModel({
     key: 'e_commerce',
@@ -135,7 +192,8 @@ const SECTOR_MODELS = {
       sale: ['online_orders', 'marketplace_payouts'],
       transport: ['last_mile', 'reverse_logistics'],
       utility: ['electricity', 'cloud_services']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.e_commerce
   }),
   consulting: buildSectorModel({
     key: 'consulting',
@@ -149,7 +207,8 @@ const SECTOR_MODELS = {
       sale: ['consulting_fees', 'project_billing'],
       expense: ['travel', 'training', 'subscriptions'],
       utility: ['internet', 'electricity']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.consulting
   }),
   logistics: buildSectorModel({
     key: 'logistics',
@@ -164,7 +223,8 @@ const SECTOR_MODELS = {
       maintenance: ['fleet_maintenance', 'vehicle_repair'],
       compliance: ['emissions_testing', 'safety_inspection'],
       transport: ['toll_charges', 'route_fees']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.logistics
   }),
   agriculture: buildSectorModel({
     key: 'agriculture',
@@ -178,7 +238,8 @@ const SECTOR_MODELS = {
       sale: ['crop_sales', 'produce_sales'],
       utility: ['water', 'electricity', 'diesel'],
       maintenance: ['equipment_service', 'spare_parts']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.agriculture
   }),
   handicrafts: buildSectorModel({
     key: 'handicrafts',
@@ -192,7 +253,8 @@ const SECTOR_MODELS = {
       sale: ['artisan_goods', 'custom_orders'],
       utility: ['electricity', 'water'],
       expense: ['workshop_rent', 'labor']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.handicrafts
   }),
   food_processing: buildSectorModel({
     key: 'food_processing',
@@ -206,7 +268,8 @@ const SECTOR_MODELS = {
       utility: ['water', 'electricity', 'steam'],
       compliance: ['food_safety_tests', 'waste_management'],
       transport: ['cold_chain_logistics']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.food_processing
   }),
   textiles: buildSectorModel({
     key: 'textiles',
@@ -220,7 +283,8 @@ const SECTOR_MODELS = {
       utility: ['water', 'steam', 'electricity'],
       compliance: ['effluent_treatment', 'waste_handling'],
       maintenance: ['loom_service', 'spare_parts']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.textiles
   }),
   electronics: buildSectorModel({
     key: 'electronics',
@@ -234,7 +298,8 @@ const SECTOR_MODELS = {
       utility: ['electricity', 'cleanroom'],
       compliance: ['e_waste_disposal'],
       maintenance: ['equipment_calibration']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.electronics
   }),
   automotive: buildSectorModel({
     key: 'automotive',
@@ -248,7 +313,8 @@ const SECTOR_MODELS = {
       utility: ['electricity', 'gas'],
       compliance: ['emissions_control', 'waste_handling'],
       maintenance: ['equipment_service']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.automotive
   }),
   construction: buildSectorModel({
     key: 'construction',
@@ -262,7 +328,8 @@ const SECTOR_MODELS = {
       transport: ['site_logistics', 'material_haul'],
       utility: ['diesel', 'water'],
       compliance: ['waste_disposal', 'permits']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.construction
   }),
   healthcare: buildSectorModel({
     key: 'healthcare',
@@ -276,7 +343,8 @@ const SECTOR_MODELS = {
       utility: ['electricity', 'water'],
       compliance: ['bio_waste_disposal', 'licensing'],
       expense: ['staffing', 'facility_rent']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.healthcare
   }),
   education: buildSectorModel({
     key: 'education',
@@ -290,7 +358,8 @@ const SECTOR_MODELS = {
       sale: ['tuition', 'training_fees'],
       utility: ['electricity', 'internet'],
       expense: ['staffing', 'facility_maintenance']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.education
   }),
   tourism: buildSectorModel({
     key: 'tourism',
@@ -305,7 +374,8 @@ const SECTOR_MODELS = {
       utility: ['electricity', 'water'],
       transport: ['guest_transport', 'tour_services'],
       compliance: ['waste_management']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.tourism
   }),
   other: buildSectorModel({
     key: 'other',
@@ -318,7 +388,8 @@ const SECTOR_MODELS = {
       purchase: ['general_inputs', 'supplies'],
       sale: ['general_sales'],
       expense: ['overheads', 'services']
-    }
+    },
+    locationSensitivity: SECTOR_LOCATION_SENSITIVITY.other
   })
 };
 
@@ -329,6 +400,8 @@ const getSectorModel = (sectorKey) => {
 
 module.exports = {
   BASE_TRANSACTION_TYPES,
+  BASE_LOCATION_WEIGHTAGES,
+  SECTOR_LOCATION_SENSITIVITY,
   SECTOR_MODELS,
   getSectorModel
 };

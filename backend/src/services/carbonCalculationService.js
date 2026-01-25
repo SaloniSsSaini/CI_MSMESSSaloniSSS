@@ -1,3 +1,45 @@
+const { getSectorModel } = require('./sectorModelRegistry');
+
+const STATE_REGION_MAP = {
+  'andhra pradesh': 'south-india',
+  'arunachal pradesh': 'northeast-india',
+  'assam': 'northeast-india',
+  'bihar': 'east-india',
+  'chhattisgarh': 'east-india',
+  'goa': 'west-india',
+  'gujarat': 'west-india',
+  'haryana': 'north-india',
+  'himachal pradesh': 'north-india',
+  'jharkhand': 'east-india',
+  'karnataka': 'south-india',
+  'kerala': 'south-india',
+  'madhya pradesh': 'west-india',
+  'maharashtra': 'west-india',
+  'manipur': 'northeast-india',
+  'meghalaya': 'northeast-india',
+  'mizoram': 'northeast-india',
+  'nagaland': 'northeast-india',
+  'odisha': 'east-india',
+  'punjab': 'north-india',
+  'rajasthan': 'north-india',
+  'sikkim': 'northeast-india',
+  'tamil nadu': 'south-india',
+  'telangana': 'south-india',
+  'tripura': 'northeast-india',
+  'uttar pradesh': 'north-india',
+  'uttarakhand': 'north-india',
+  'west bengal': 'east-india',
+  'delhi': 'north-india',
+  'jammu and kashmir': 'north-india',
+  'ladakh': 'north-india',
+  'puducherry': 'south-india',
+  'chandigarh': 'north-india',
+  'andaman and nicobar': 'south-india',
+  'lakshadweep': 'south-india',
+  'dadra and nagar haveli': 'west-india',
+  'daman and diu': 'west-india'
+};
+
 class CarbonCalculationService {
   constructor() {
     // Emission factors (kg CO2 per unit)
@@ -330,13 +372,19 @@ class CarbonCalculationService {
         }
       }
     }
+
+    const locationWeightage = this.getLocationWeightage(transaction, category);
+    if (locationWeightage !== 1) {
+      co2Emissions *= locationWeightage;
+    }
     
     emissionFactor = amount > 0 ? co2Emissions / amount : 0;
     
     return {
       co2Emissions: Math.round(co2Emissions * 100) / 100,
       emissionFactor: Math.round(emissionFactor * 10000) / 10000,
-      calculationMethod
+      calculationMethod,
+      locationWeightage
     };
   }
 
@@ -420,6 +468,58 @@ class CarbonCalculationService {
     }
     
     return baseEmissions;
+  }
+
+  getLocationWeightage(transaction, category) {
+    const region = this.resolveRegion(
+      transaction.region ||
+      transaction.location?.region ||
+      transaction.location?.state ||
+      transaction.state
+    );
+    if (!region) {
+      return 1;
+    }
+    const sectorModel = getSectorModel(transaction.businessDomain);
+    const weightages = sectorModel?.locationWeightages || {};
+    const regionWeights = weightages[region] || weightages.default;
+    if (!regionWeights) {
+      return 1;
+    }
+    const categoryKey = this.mapCategoryToLocationKey(category);
+    return regionWeights[categoryKey] || 1;
+  }
+
+  mapCategoryToLocationKey(category) {
+    switch (category) {
+      case 'energy':
+      case 'equipment':
+      case 'maintenance':
+      case 'utilities':
+        return 'energy';
+      case 'transportation':
+        return 'transport';
+      case 'raw_materials':
+      case 'materials':
+        return 'materials';
+      case 'waste_management':
+        return 'waste';
+      case 'water':
+        return 'water';
+      default:
+        return 'energy';
+    }
+  }
+
+  resolveRegion(stateOrRegion) {
+    if (!stateOrRegion) return null;
+    const normalized = String(stateOrRegion).toLowerCase();
+    if (normalized.includes('india') && normalized.includes('north')) return 'north-india';
+    if (normalized.includes('india') && normalized.includes('south')) return 'south-india';
+    if (normalized.includes('india') && normalized.includes('east')) return 'east-india';
+    if (normalized.includes('india') && normalized.includes('west')) return 'west-india';
+    if (normalized.includes('india') && normalized.includes('northeast')) return 'northeast-india';
+    return STATE_REGION_MAP[normalized] || (normalized.includes('india') ? normalized : null);
   }
 
   calculateEquipmentEmissions(transaction) {

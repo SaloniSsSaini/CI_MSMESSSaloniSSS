@@ -166,6 +166,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Behavior weighting by MSME business domain
 - Orchestration planning recommendations
 - Sector model enrichment with granular transaction type context
+- Sector model location-based carbon weightages
 - Context enrichment for multi-agent coordination
 
 ### 11. Unified Process & Machinery Profiler Agent

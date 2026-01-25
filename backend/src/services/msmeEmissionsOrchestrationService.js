@@ -416,6 +416,8 @@ class OrchestrationManagerService {
   }
 
   normalizeTransaction(transaction, msmeProfile) {
+    const locationState = transaction?.location?.state || msmeProfile?.contact?.address?.state;
+    const region = this.resolveRegion(locationState);
     const normalized = {
       ...transaction,
       category: (transaction.category || 'other').toLowerCase(),
@@ -424,6 +426,12 @@ class OrchestrationManagerService {
       amount: Number(transaction.amount) || 0,
       industry: transaction.industry || msmeProfile.industry,
       businessDomain: transaction.businessDomain || msmeProfile.businessDomain,
+      region: transaction.region || region,
+      location: {
+        ...(transaction.location || {}),
+        state: transaction?.location?.state || msmeProfile?.contact?.address?.state || 'unknown',
+        country: transaction?.location?.country || msmeProfile?.contact?.address?.country || 'India'
+      },
       sustainability: transaction.sustainability || {
         isGreen: false,
         greenScore: 0
