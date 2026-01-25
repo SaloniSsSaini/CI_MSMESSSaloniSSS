@@ -70,7 +70,18 @@ const documentSchema = new mongoose.Schema({
       quantity: Number,
       unit: String,
       price: Number,
-      total: Number
+      total: Number,
+      carbonFootprint: {
+        co2Emissions: {
+          type: Number,
+          default: 0
+        },
+        emissionFactor: {
+          type: Number,
+          default: 0
+        },
+        calculationMethod: String
+      }
     }],
     tax: {
       cgst: Number,

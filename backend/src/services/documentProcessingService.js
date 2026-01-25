@@ -66,8 +66,13 @@ class DocumentProcessingService {
         return processingResult;
       }
 
+      const itemFootprints = this.calculateItemCarbonFootprints(extractedData);
+      if (itemFootprints.length > 0) {
+        extractedData.items = itemFootprints;
+      }
+
       // Calculate carbon footprint
-      const carbonFootprint = await this.calculateCarbonFootprint(extractedData);
+      const carbonFootprint = await this.calculateCarbonFootprint(extractedData, itemFootprints);
       
       // Update document with extracted data
       document.extractedData = extractedData;
@@ -84,8 +89,10 @@ class DocumentProcessingService {
       await document.save();
 
       // Create transaction record if applicable
-      if (extractedData.amount && extractedData.amount > 0) {
-        await this.createTransactionFromDocument(document);
+      if ((Array.isArray(itemFootprints) && itemFootprints.length > 0) ||
+          (extractedData.amount && extractedData.amount > 0)) {
+        await this.createTransactionsFromDocument(document, itemFootprints);
+        await this.updateMsmeCarbonAssessment(document.msmeId, extractedData.date || new Date());
       }
 
       processingResult.success = true;
@@ -186,6 +193,107 @@ class DocumentProcessingService {
     }
 
     return { warnings };
+  }
+
+  calculateItemCarbonFootprints(extractedData = {}) {
+    const items = Array.isArray(extractedData.items) ? extractedData.items : [];
+    if (items.length === 0) {
+      return [];
+    }
+
+    return items.map(item => {
+      const amount = this.resolveItemAmount(item);
+      const category = this.resolveItemCategory(item, extractedData);
+      const subcategory = this.resolveItemSubcategory(item, category, extractedData);
+      const description = item.name || extractedData.description || 'Document item';
+
+      const carbonFootprint = carbonCalculationService.calculateTransactionCarbonFootprint({
+        amount,
+        category,
+        subcategory,
+        description,
+        vendor: extractedData.vendor
+      });
+
+      return {
+        ...item,
+        total: amount || item.total,
+        carbonFootprint: {
+          co2Emissions: carbonFootprint.co2Emissions || 0,
+          emissionFactor: carbonFootprint.emissionFactor || 0,
+          calculationMethod: carbonFootprint.calculationMethod || 'document_item'
+        }
+      };
+    });
+  }
+
+  resolveItemAmount(item) {
+    const quantity = Number(item?.quantity) || 0;
+    const price = Number(item?.price) || 0;
+    const total = Number(item?.total) || 0;
+    if (total > 0) {
+      return total;
+    }
+    if (quantity > 0 && price > 0) {
+      return quantity * price;
+    }
+    return 0;
+  }
+
+  resolveItemCategory(item, extractedData = {}) {
+    const text = `${item?.name || ''} ${extractedData.description || ''}`.toLowerCase();
+    const categoryKeywords = {
+      energy: ['electricity', 'power', 'energy', 'fuel', 'diesel', 'petrol', 'gas', 'solar', 'wind', 'renewable'],
+      water: ['water', 'sewage', 'drainage', 'irrigation', 'treatment', 'supply'],
+      waste_management: ['waste', 'garbage', 'recycling', 'disposal', 'landfill', 'compost'],
+      transportation: ['transport', 'shipping', 'delivery', 'logistics', 'freight', 'vehicle', 'truck'],
+      raw_materials: ['material', 'steel', 'aluminum', 'plastic', 'wood', 'concrete', 'fabric', 'chemical'],
+      equipment: ['equipment', 'machine', 'tool', 'device', 'apparatus', 'instrument'],
+      maintenance: ['maintenance', 'repair', 'service', 'overhaul', 'upgrade', 'fix'],
+      utilities: ['utility', 'internet', 'phone', 'telecom', 'broadband', 'subscription']
+    };
+
+    for (const [category, keywords] of Object.entries(categoryKeywords)) {
+      if (keywords.some(keyword => text.includes(keyword))) {
+        return category;
+      }
+    }
+
+    return extractedData.category || 'other';
+  }
+
+  resolveItemSubcategory(item, category, extractedData = {}) {
+    const text = `${item?.name || ''} ${extractedData.description || ''}`.toLowerCase();
+    if (extractedData.subcategory) {
+      return extractedData.subcategory;
+    }
+
+    if (category === 'energy') {
+      if (text.includes('solar') || text.includes('wind') || text.includes('renewable')) return 'renewable';
+      if (text.includes('diesel') || text.includes('petrol') || text.includes('fuel')) return 'fuel';
+      return 'grid';
+    }
+
+    if (category === 'transportation') {
+      if (text.includes('diesel')) return 'diesel';
+      if (text.includes('petrol')) return 'petrol';
+      return 'general';
+    }
+
+    if (category === 'raw_materials') {
+      if (text.includes('steel')) return 'steel';
+      if (text.includes('aluminum')) return 'aluminum';
+      if (text.includes('plastic')) return 'plastic';
+      return 'general';
+    }
+
+    if (category === 'waste_management') {
+      if (text.includes('hazardous') || text.includes('toxic')) return 'hazardous';
+      if (text.includes('recycle')) return 'recycling';
+      return 'solid';
+    }
+
+    return extractedData.subcategory || 'general';
   }
 
   /**
@@ -379,9 +487,37 @@ class DocumentProcessingService {
    * @param {Object} extractedData - Extracted data
    * @returns {Object} - Carbon footprint data
    */
-  async calculateCarbonFootprint(extractedData) {
+  async calculateCarbonFootprint(extractedData, itemFootprints = []) {
     try {
-      // Use existing carbon calculation service
+      const resolvedFootprints = itemFootprints.length > 0
+        ? itemFootprints
+        : (Array.isArray(extractedData.items)
+          ? extractedData.items.filter(item => item?.carbonFootprint)
+          : []);
+
+      if (resolvedFootprints.length > 0) {
+        const totals = resolvedFootprints.reduce((acc, item) => {
+          const amount = Number(item.total) || 0;
+          const co2 = Number(item.carbonFootprint?.co2Emissions) || 0;
+          const factor = Number(item.carbonFootprint?.emissionFactor) || 0;
+          acc.totalAmount += amount;
+          acc.co2Emissions += co2;
+          acc.weightedFactor += amount > 0 ? factor * amount : 0;
+          return acc;
+        }, { totalAmount: 0, co2Emissions: 0, weightedFactor: 0 });
+
+        const emissionFactor = totals.totalAmount > 0
+          ? totals.weightedFactor / totals.totalAmount
+          : 0;
+
+        return {
+          co2Emissions: totals.co2Emissions,
+          emissionFactor,
+          calculationMethod: 'document_itemized',
+          sustainabilityScore: 0
+        };
+      }
+
       const carbonData = await carbonCalculationService.calculateTransactionCarbonFootprint({
         amount: extractedData.amount,
         category: extractedData.category,
@@ -393,7 +529,7 @@ class DocumentProcessingService {
       return {
         co2Emissions: carbonData.co2Emissions || 0,
         emissionFactor: carbonData.emissionFactor || 0,
-        calculationMethod: carbonData.calculationMethod || 'estimated',
+        calculationMethod: carbonData.calculationMethod || 'document_summary',
         sustainabilityScore: carbonData.sustainabilityScore || 0
       };
     } catch (error) {
@@ -428,54 +564,198 @@ class DocumentProcessingService {
     return totalFields > 0 ? score / totalFields : 0;
   }
 
+  mapDocumentToTransactionType(documentType) {
+    switch (documentType) {
+      case 'invoice':
+      case 'bill':
+        return 'expense';
+      case 'receipt':
+        return 'purchase';
+      case 'statement':
+        return 'other';
+      default:
+        return 'other';
+    }
+  }
+
+  async updateMsmeCarbonAssessment(msmeId, referenceDate = new Date()) {
+    try {
+      const MSME = require('../models/MSME');
+      const CarbonAssessment = require('../models/CarbonAssessment');
+      const Transaction = require('../models/Transaction');
+
+      const msmeProfile = await MSME.findById(msmeId);
+      if (!msmeProfile) {
+        return null;
+      }
+
+      const periodEnd = referenceDate ? new Date(referenceDate) : new Date();
+      const periodStart = new Date(periodEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const windowTransactions = await Transaction.find({
+        msmeId,
+        date: { $gte: periodStart, $lte: periodEnd },
+        isSpam: { $ne: true },
+        isDuplicate: { $ne: true }
+      }).lean();
+
+      const assessmentData = carbonCalculationService.calculateMSMECarbonFootprint(
+        msmeProfile,
+        windowTransactions
+      );
+
+      const existingAssessment = await CarbonAssessment.findOne({
+        msmeId,
+        'period.startDate': { $lte: periodEnd },
+        'period.endDate': { $gte: periodStart }
+      }).sort({ createdAt: -1 });
+
+      if (existingAssessment) {
+        existingAssessment.totalCO2Emissions = assessmentData.totalCO2Emissions;
+        existingAssessment.breakdown = assessmentData.breakdown;
+        existingAssessment.esgScopes = assessmentData.esgScopes;
+        existingAssessment.carbonScore = assessmentData.carbonScore;
+        existingAssessment.recommendations = assessmentData.recommendations;
+        existingAssessment.status = 'completed';
+        existingAssessment.period = {
+          startDate: periodStart,
+          endDate: periodEnd
+        };
+        await existingAssessment.save();
+      } else {
+        const newAssessment = new CarbonAssessment({
+          msmeId,
+          assessmentType: 'automatic',
+          period: {
+            startDate: periodStart,
+            endDate: periodEnd
+          },
+          totalCO2Emissions: assessmentData.totalCO2Emissions,
+          breakdown: assessmentData.breakdown,
+          esgScopes: assessmentData.esgScopes,
+          carbonScore: assessmentData.carbonScore,
+          recommendations: assessmentData.recommendations,
+          status: 'completed'
+        });
+        await newAssessment.save();
+      }
+
+      msmeProfile.carbonScore = assessmentData.carbonScore;
+      msmeProfile.lastCarbonAssessment = new Date();
+      await msmeProfile.save();
+
+      return assessmentData;
+    } catch (error) {
+      console.error('Failed to update MSME carbon assessment:', error);
+      return null;
+    }
+  }
+
   /**
    * Create transaction record from processed document
    * @param {Object} document - Processed document
    * @returns {Object} - Created transaction
    */
-  async createTransactionFromDocument(document) {
+  async createTransactionsFromDocument(document, itemFootprints = []) {
     try {
       const Transaction = require('../models/Transaction');
-      
-      const transaction = new Transaction({
-        msmeId: document.msmeId,
-        source: 'manual',
-        sourceId: document._id.toString(),
-        transactionType: 'expense',
-        amount: document.extractedData.amount,
-        currency: document.extractedData.currency,
-        description: document.extractedData.description,
-        vendor: document.extractedData.vendor,
-        category: document.extractedData.category,
-        subcategory: document.extractedData.subcategory,
-        date: document.extractedData.date,
-        carbonFootprint: document.carbonFootprint,
-        metadata: {
-          originalText: `Document: ${document.originalName}`,
-          extractedData: document.extractedData,
-          confidence: document.processingResults.confidence
-        },
-        isProcessed: true,
-        processedAt: new Date(),
-        tags: ['document-upload']
-      });
 
-      await transaction.save();
+      const transactionType = this.mapDocumentToTransactionType(document.documentType);
+      const transactionDate = document.extractedData?.date || new Date();
+      const itemTransactions = Array.isArray(itemFootprints) ? itemFootprints : [];
+      const createdTransactions = [];
+
+      if (itemTransactions.length > 0) {
+        for (const item of itemTransactions) {
+          const amount = Number(item.total) || 0;
+          if (!amount && !item.name) {
+            continue;
+          }
+
+          const category = this.resolveItemCategory(item, document.extractedData);
+          const subcategory = this.resolveItemSubcategory(item, category, document.extractedData);
+
+          const transaction = new Transaction({
+            msmeId: document.msmeId,
+            source: 'manual',
+            sourceId: `${document._id.toString()}_${item.name || 'item'}`,
+            transactionType,
+            amount,
+            currency: document.extractedData.currency,
+            description: item.name
+              ? `${document.extractedData.description || 'Document item'} - ${item.name}`
+              : (document.extractedData.description || 'Document item'),
+            vendor: document.extractedData.vendor,
+            category,
+            subcategory,
+            date: transactionDate,
+            carbonFootprint: item.carbonFootprint || document.carbonFootprint,
+            metadata: {
+              originalText: `Document: ${document.originalName}`,
+              extractedData: document.extractedData,
+              lineItem: {
+                name: item.name,
+                quantity: item.quantity,
+                unit: item.unit,
+                price: item.price,
+                total: item.total
+              },
+              confidence: document.processingResults.confidence
+            },
+            isProcessed: true,
+            processedAt: new Date(),
+            tags: ['document-upload', 'document-item']
+          });
+
+          await transaction.save();
+          createdTransactions.push(transaction);
+        }
+      } else {
+        const transaction = new Transaction({
+          msmeId: document.msmeId,
+          source: 'manual',
+          sourceId: document._id.toString(),
+          transactionType,
+          amount: document.extractedData.amount,
+          currency: document.extractedData.currency,
+          description: document.extractedData.description,
+          vendor: document.extractedData.vendor,
+          category: document.extractedData.category,
+          subcategory: document.extractedData.subcategory,
+          date: transactionDate,
+          carbonFootprint: document.carbonFootprint,
+          metadata: {
+            originalText: `Document: ${document.originalName}`,
+            extractedData: document.extractedData,
+            confidence: document.processingResults.confidence
+          },
+          isProcessed: true,
+          processedAt: new Date(),
+          tags: ['document-upload']
+        });
+
+        await transaction.save();
+        createdTransactions.push(transaction);
+      }
 
       try {
         const orchestrationManagerEventService = require('./orchestrationManagerEventService');
-        orchestrationManagerEventService.emitEvent('transactions.document_processed', {
-          msmeId: document.msmeId,
-          transaction: transaction.toObject(),
-          source: 'document'
-        }, 'document_processing');
+        createdTransactions.forEach(created => {
+          orchestrationManagerEventService.emitEvent('transactions.document_processed', {
+            msmeId: document.msmeId,
+            transaction: created.toObject(),
+            documentId: document._id.toString(),
+            source: 'document'
+          }, 'document_processing');
+        });
       } catch (eventError) {
         console.warn('Failed to emit orchestration event for document transaction', {
           error: eventError.message,
           msmeId: document.msmeId
         });
       }
-      return transaction;
+
+      return createdTransactions;
     } catch (error) {
       console.error('Error creating transaction from document:', error);
       throw error;

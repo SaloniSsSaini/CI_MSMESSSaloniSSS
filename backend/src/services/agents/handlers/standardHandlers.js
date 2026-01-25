@@ -284,7 +284,8 @@ const dataProcessorAgent = async (task) => {
     context: input?.context,
     documents: input?.documents,
     documentSummary: input?.documentSummary,
-    transactionTypeContext: input?.transactionTypeContext
+    transactionTypeContext: input?.transactionTypeContext,
+    thresholds: input?.thresholds || input?.orchestrationOptions?.thresholds || input?.context?.orchestrationOptions?.thresholds
   });
 };
 

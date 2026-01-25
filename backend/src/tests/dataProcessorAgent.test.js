@@ -50,6 +50,19 @@ describe('Data Processor Agent - Learning and Uncertainty Handling', () => {
     expect(result.documentRequests).toHaveLength(0);
   });
 
+  test('should request documents for high-value transactions', async () => {
+    const result = await dataProcessorAgent.processTransactions([{
+      description: 'Industrial equipment purchase',
+      category: 'equipment',
+      transactionType: 'purchase',
+      amount: 500000,
+      date: new Date()
+    }]);
+
+    expect(result.documentRequests).toHaveLength(1);
+    expect(result.documentRequests[0].reasons.join(' ')).toMatch(/high-value/i);
+  });
+
   test('should fallback category from transaction type', async () => {
     const result = await dataProcessorAgent.processTransactions([{
       description: 'Monthly billing charge',

@@ -85,7 +85,8 @@ const ORCHESTRATION_DEFAULTS = {
     wasteShareHigh: 0.1,
     transportShareHigh: 0.15,
     materialsShareHigh: 0.15,
-    manufacturingShareHigh: 0.12
+    manufacturingShareHigh: 0.12,
+    highValueAmount: 250000
   },
   weights: {
     completeness: 0.4,

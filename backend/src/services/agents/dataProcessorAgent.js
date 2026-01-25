@@ -24,6 +24,7 @@ class DataProcessorAgent {
       minTransactionTypeConfidence: 0.55,
       learningConfidence: 0.75,
       documentRequestThreshold: 0.4,
+      highValueAmountThreshold: 250000,
       maxLearnedKeywordsPerCategory: 40,
       maxLearnedKeywordsPerType: 30
     };
@@ -544,14 +545,23 @@ class DataProcessorAgent {
       reasons.push('Transaction data is incomplete or invalid');
     }
 
+    const amount = Number(transaction.amount) || 0;
+    const threshold = options?.thresholds?.highValueAmount
+      ?? options?.highValueAmountThreshold
+      ?? options?.context?.orchestrationOptions?.thresholds?.highValueAmount
+      ?? this.learningConfig.highValueAmountThreshold;
+    if (amount >= threshold && threshold > 0) {
+      reasons.push(`High-value transaction (${amount}) requires supporting documents`);
+    }
+
     if (reasons.length === 0) {
       return null;
     }
 
     return {
       transactionId: transaction._id || transaction.sourceId || null,
-      message: 'Unable to confidently classify this transaction. Please upload supporting documents for review.',
-      requestedDocuments: ['invoice', 'receipt', 'bank_statement'],
+      message: 'Please upload invoices, bills, or receipts to verify this transaction.',
+      requestedDocuments: ['invoice', 'bill', 'receipt', 'bank_statement'],
       reasons
     };
   }
