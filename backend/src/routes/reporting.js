@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const MSME = require('../models/MSME');
 
 // Mock data - in production, this would come from database
 const carbonData = [
@@ -76,6 +77,262 @@ const recommendations = [
     implementationTime: '1-3 months'
   }
 ];
+
+const cbamGoodsCatalog = [
+  {
+    id: 'iron_steel',
+    name: 'Iron & Steel Products',
+    hsCode: '7208',
+    baseIntensity: 2.1,
+    baseVolume: 48,
+    scope: 'Scope 1+2',
+    category: 'steel',
+    dataQuality: 'estimated'
+  },
+  {
+    id: 'aluminum_profiles',
+    name: 'Aluminum Profiles',
+    hsCode: '7604',
+    baseIntensity: 8.6,
+    baseVolume: 18,
+    scope: 'Scope 1+2',
+    category: 'aluminum',
+    dataQuality: 'supplier'
+  },
+  {
+    id: 'cement_clinker',
+    name: 'Cement Clinker',
+    hsCode: '2523',
+    baseIntensity: 0.86,
+    baseVolume: 32,
+    scope: 'Scope 1+2',
+    category: 'cement',
+    dataQuality: 'estimated'
+  },
+  {
+    id: 'nitrogen_fertilizers',
+    name: 'Nitrogen Fertilizers',
+    hsCode: '3102',
+    baseIntensity: 2.5,
+    baseVolume: 14,
+    scope: 'Scope 1+2',
+    category: 'fertilizer',
+    dataQuality: 'primary'
+  },
+  {
+    id: 'hydrogen',
+    name: 'Hydrogen',
+    hsCode: '2804',
+    baseIntensity: 10.0,
+    baseVolume: 6,
+    scope: 'Scope 1+2',
+    category: 'hydrogen',
+    dataQuality: 'estimated'
+  },
+  {
+    id: 'electricity',
+    name: 'Electricity',
+    hsCode: '2716',
+    baseIntensity: 0.45,
+    baseVolume: 80,
+    scope: 'Scope 2',
+    category: 'electricity',
+    dataQuality: 'estimated'
+  }
+];
+
+const cbamKeywordMap = [
+  { category: 'steel', keywords: ['steel', 'iron', 'metal'] },
+  { category: 'aluminum', keywords: ['aluminum', 'aluminium', 'bauxite'] },
+  { category: 'cement', keywords: ['cement', 'clinker'] },
+  { category: 'fertilizer', keywords: ['fertilizer', 'fertiliser', 'ammonia'] },
+  { category: 'hydrogen', keywords: ['hydrogen', 'electrolysis'] },
+  { category: 'electricity', keywords: ['electricity', 'power', 'energy'] }
+];
+
+const getCompanyScale = (companyType) => {
+  switch (companyType) {
+    case 'micro':
+      return 0.6;
+    case 'small':
+      return 0.85;
+    case 'medium':
+      return 1.15;
+    default:
+      return 0.9;
+  }
+};
+
+const roundTo = (value, decimals = 1) => {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+};
+
+const sumBy = (items, selector) => items.reduce((sum, item) => sum + selector(item), 0);
+
+const getQuarterLabel = (year, quarter) => `Q${quarter} ${year}`;
+
+const getRecentQuarters = (count) => {
+  const now = new Date();
+  let year = now.getFullYear();
+  let quarter = Math.floor(now.getMonth() / 3) + 1;
+  const quarters = [];
+
+  for (let i = 0; i < count; i += 1) {
+    quarters.unshift({ year, quarter });
+    quarter -= 1;
+    if (quarter === 0) {
+      quarter = 4;
+      year -= 1;
+    }
+  }
+
+  return quarters;
+};
+
+const getNextCbamDeadline = () => {
+  const now = new Date();
+  const quarter = Math.floor(now.getMonth() / 3) + 1;
+  const year = now.getFullYear();
+  const dueMonthMap = { 1: 3, 2: 6, 3: 9, 4: 0 };
+  const dueMonth = dueMonthMap[quarter];
+  const dueYear = quarter === 4 ? year + 1 : year;
+  return new Date(dueYear, dueMonth + 1, 0);
+};
+
+const buildCbamReport = (msme, period = 'quarter') => {
+  const profileText = `${msme?.industry || ''} ${msme?.business?.primaryProducts || ''}`.toLowerCase();
+  const matchedCategories = new Set();
+  cbamKeywordMap.forEach(({ category, keywords }) => {
+    if (keywords.some(keyword => profileText.includes(keyword))) {
+      matchedCategories.add(category);
+    }
+  });
+
+  const isExporter = msme?.businessDomain === 'export_import' || msme?.businessDomain === 'manufacturing';
+  const companyScale = getCompanyScale(msme?.companyType);
+  const baseGoods = cbamGoodsCatalog.filter(good => matchedCategories.has(good.category));
+  const selectedGoods = baseGoods.length > 0 ? baseGoods : cbamGoodsCatalog.slice(0, 2);
+  const carbonPriceEUR = 90;
+
+  const goods = isExporter ? selectedGoods.map((good, index) => {
+    const exportVolumeTonnes = roundTo(good.baseVolume * companyScale * (1 + index * 0.05), 1);
+    const embeddedEmissions = roundTo(exportVolumeTonnes * good.baseIntensity, 1);
+    const emissionIntensity = exportVolumeTonnes > 0 ? roundTo(embeddedEmissions / exportVolumeTonnes, 2) : 0;
+    const estimatedLiabilityEUR = Math.round(embeddedEmissions * carbonPriceEUR);
+    const reportingStatus = index === 0 ? 'submitted' : index === 1 ? 'in_progress' : 'pending';
+
+    return {
+      id: good.id,
+      name: good.name,
+      hsCode: good.hsCode,
+      exportVolumeTonnes,
+      embeddedEmissions,
+      emissionIntensity,
+      scope: good.scope,
+      dataQuality: good.dataQuality,
+      reportingStatus,
+      carbonPriceEUR,
+      estimatedLiabilityEUR
+    };
+  }) : [];
+
+  const totalEmbeddedEmissions = roundTo(sumBy(goods, item => item.embeddedEmissions), 1);
+  const totalExportVolume = roundTo(sumBy(goods, item => item.exportVolumeTonnes), 1);
+  const estimatedLiabilityEUR = Math.round(sumBy(goods, item => item.estimatedLiabilityEUR));
+  const coveredGoodsCount = goods.length;
+
+  const documentation = [
+    { id: 'importer', title: 'EU importer declaration', status: isExporter ? 'in_progress' : 'missing', owner: 'Finance' },
+    { id: 'supplier', title: 'Supplier emission factors', status: isExporter ? 'missing' : 'missing', owner: 'Procurement' },
+    { id: 'production', title: 'Production emissions ledger', status: isExporter ? 'in_progress' : 'missing', owner: 'Operations' },
+    { id: 'transport', title: 'Transport emissions evidence', status: isExporter ? 'complete' : 'missing', owner: 'Logistics' },
+    { id: 'verification', title: 'Third-party verification plan', status: isExporter ? 'missing' : 'missing', owner: 'Compliance' }
+  ];
+
+  const docComplete = documentation.filter(item => item.status === 'complete').length;
+  const docInProgress = documentation.filter(item => item.status === 'in_progress').length;
+  const readinessScore = isExporter
+    ? Math.round(((docComplete + docInProgress * 0.5) / documentation.length) * 100)
+    : 0;
+  const complianceStatus = !isExporter
+    ? 'Not Required'
+    : readinessScore >= 80
+      ? 'On Track'
+      : readinessScore >= 50
+        ? 'Needs Attention'
+        : 'At Risk';
+
+  const exposureLevel = !isExporter
+    ? 'None'
+    : totalEmbeddedEmissions > 150
+      ? 'High'
+      : totalEmbeddedEmissions > 80
+        ? 'Medium'
+        : 'Low';
+
+  const periodConfig = {
+    month: 1,
+    quarter: 2,
+    '3months': 2,
+    '6months': 2,
+    'half-year': 2,
+    year: 4,
+    '1year': 4
+  };
+  const trendPoints = periodConfig[period] || 2;
+  const quarters = getRecentQuarters(trendPoints);
+  const emissionsTrend = goods.length > 0
+    ? quarters.map((quarterItem, index) => {
+      const weight = 1 - (trendPoints - 1 - index) * 0.04;
+      const embeddedEmissions = roundTo(totalEmbeddedEmissions * weight, 1);
+      const exportVolume = roundTo(totalExportVolume * weight, 1);
+      return {
+        period: getQuarterLabel(quarterItem.year, quarterItem.quarter),
+        embeddedEmissions,
+        exportVolume,
+        estimatedLiabilityEUR: Math.round(embeddedEmissions * carbonPriceEUR)
+      };
+    })
+    : [];
+
+  const recommendations = [];
+  if (!isExporter) {
+    recommendations.push('No EU CBAM reporting required for the current business domain. Update export markets if this changes.');
+  } else {
+    recommendations.push('Request supplier-specific emission factors for high-intensity materials.');
+    recommendations.push('Finalize EU importer declarations ahead of the next reporting deadline.');
+    recommendations.push('Align production emissions ledger with CBAM scope 1+2 guidance.');
+    recommendations.push('Schedule third-party verification before the next submission window.');
+  }
+
+  const nextDeadline = getNextCbamDeadline();
+
+  return {
+    overview: {
+      reportingPeriod: getQuarterLabel(new Date().getFullYear(), Math.floor(new Date().getMonth() / 3) + 1),
+      nextDeadline: nextDeadline.toISOString(),
+      lastSubmitted: isExporter ? new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() : null,
+      exposureLevel,
+      complianceStatus,
+      totalEmbeddedEmissions,
+      totalExportVolume,
+      estimatedLiabilityEUR,
+      readinessScore,
+      coveredGoodsCount
+    },
+    goods,
+    emissionsTrend,
+    documentation,
+    recommendations,
+    msmeProfile: {
+      companyName: msme?.companyName || 'MSME',
+      companyType: msme?.companyType || 'small',
+      industry: msme?.industry || 'General',
+      businessDomain: msme?.businessDomain || 'services'
+    }
+  };
+};
 
 // Get carbon footprint data
 router.get('/carbon-footprint', auth, (req, res) => {
@@ -213,6 +470,34 @@ router.get('/comparisons', auth, (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching comparison data',
+      error: error.message
+    });
+  }
+});
+
+// Get CBAM reporting data for MSME
+router.get('/cbam', auth, async (req, res) => {
+  try {
+    const { period = 'quarter' } = req.query;
+
+    if (!req.user?.msmeId) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME profile not found'
+      });
+    }
+
+    const msme = await MSME.findById(req.user.msmeId).lean();
+    const cbamReport = buildCbamReport(msme, period);
+
+    res.json({
+      success: true,
+      data: cbamReport
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching CBAM reporting data',
       error: error.message
     });
   }

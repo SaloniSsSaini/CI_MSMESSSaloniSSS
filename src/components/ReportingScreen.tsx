@@ -60,6 +60,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import ApiService from '../services/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -107,6 +108,65 @@ interface TrendData {
   change: number;
 }
 
+type CbamComplianceStatus = 'On Track' | 'Needs Attention' | 'At Risk' | 'Not Required';
+type CbamDocumentStatus = 'complete' | 'in_progress' | 'missing';
+type CbamReportingStatus = 'submitted' | 'in_progress' | 'pending';
+
+interface CbamOverview {
+  reportingPeriod: string;
+  nextDeadline: string;
+  lastSubmitted: string | null;
+  exposureLevel: string;
+  complianceStatus: CbamComplianceStatus;
+  totalEmbeddedEmissions: number;
+  totalExportVolume: number;
+  estimatedLiabilityEUR: number;
+  readinessScore: number;
+  coveredGoodsCount: number;
+}
+
+interface CbamGood {
+  id: string;
+  name: string;
+  hsCode: string;
+  exportVolumeTonnes: number;
+  embeddedEmissions: number;
+  emissionIntensity: number;
+  scope: string;
+  dataQuality: string;
+  reportingStatus: CbamReportingStatus;
+  carbonPriceEUR: number;
+  estimatedLiabilityEUR: number;
+}
+
+interface CbamTrendPoint {
+  period: string;
+  embeddedEmissions: number;
+  exportVolume: number;
+  estimatedLiabilityEUR: number;
+}
+
+interface CbamDocumentationItem {
+  id: string;
+  title: string;
+  status: CbamDocumentStatus;
+  owner: string;
+}
+
+interface CbamReport {
+  overview: CbamOverview;
+  goods: CbamGood[];
+  emissionsTrend: CbamTrendPoint[];
+  documentation: CbamDocumentationItem[];
+  recommendations: string[];
+  msmeProfile: {
+    companyName: string;
+    companyType: string;
+    industry: string;
+    businessDomain: string;
+  };
+}
+
 const ReportingScreen: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState('6months');
@@ -116,6 +176,9 @@ const ReportingScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [cbamReport, setCbamReport] = useState<CbamReport | null>(null);
+  const [cbamLoading, setCbamLoading] = useState(false);
+  const [cbamError, setCbamError] = useState<string | null>(null);
 
   // Sample data - in real app, this would come from API
   const carbonData: CarbonData[] = [
@@ -176,6 +239,35 @@ const ReportingScreen: React.FC = () => {
     }
   ];
 
+  useEffect(() => {
+    const fetchCbamReport = async () => {
+      setCbamLoading(true);
+      setCbamError(null);
+
+      const periodMap: Record<string, string> = {
+        '1month': 'month',
+        '3months': 'quarter',
+        '6months': 'half-year',
+        '1year': 'year'
+      };
+
+      try {
+        const response = await ApiService.getCbamReport({
+          period: periodMap[dateRange] || 'quarter'
+        });
+        const report = response?.data ?? response;
+        setCbamReport(report);
+      } catch (error: any) {
+        setCbamError(error?.message || 'Unable to load CBAM reporting data.');
+        setCbamReport(null);
+      } finally {
+        setCbamLoading(false);
+      }
+    };
+
+    fetchCbamReport();
+  }, [dateRange]);
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -210,6 +302,64 @@ const ReportingScreen: React.FC = () => {
       case 'Not Implemented': return 'default';
       default: return 'default';
     }
+  };
+
+  const getCbamDocumentColor = (status: CbamDocumentStatus): 'success' | 'warning' | 'error' | 'default' => {
+    switch (status) {
+      case 'complete':
+        return 'success';
+      case 'in_progress':
+        return 'warning';
+      case 'missing':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getCbamReportingColor = (status: CbamReportingStatus): 'success' | 'warning' | 'info' | 'default' => {
+    switch (status) {
+      case 'submitted':
+        return 'success';
+      case 'in_progress':
+        return 'warning';
+      case 'pending':
+        return 'info';
+      default:
+        return 'default';
+    }
+  };
+
+  const getCbamComplianceColor = (status: CbamComplianceStatus): 'success' | 'warning' | 'error' | 'default' => {
+    switch (status) {
+      case 'On Track':
+        return 'success';
+      case 'Needs Attention':
+        return 'warning';
+      case 'At Risk':
+        return 'error';
+      case 'Not Required':
+        return 'default';
+      default:
+        return 'default';
+    }
+  };
+
+  const formatNumber = (value: number, decimals = 1) =>
+    value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+  const formatCurrencyEUR = (value: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+
+  const formatDate = (value: string | null) => {
+    if (!value) {
+      return 'Not submitted';
+    }
+    return new Date(value).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   return (
@@ -275,6 +425,7 @@ const ReportingScreen: React.FC = () => {
                   <MenuItem value="comprehensive">Comprehensive</MenuItem>
                   <MenuItem value="executive">Executive Summary</MenuItem>
                   <MenuItem value="detailed">Detailed Analysis</MenuItem>
+                  <MenuItem value="cbam">CBAM Compliance</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -296,6 +447,7 @@ const ReportingScreen: React.FC = () => {
             <Tab label="Recommendations" />
             <Tab label="Trends" />
             <Tab label="Comparisons" />
+            <Tab label="CBAM" />
           </Tabs>
         </Box>
 
@@ -646,6 +798,235 @@ const ReportingScreen: React.FC = () => {
               </Card>
             </Grid>
           </Grid>
+        </TabPanel>
+
+        {/* CBAM Tab */}
+        <TabPanel value={tabValue} index={5}>
+          {cbamLoading && <LinearProgress sx={{ mb: 2 }} />}
+          {cbamError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {cbamError}
+            </Alert>
+          )}
+          {!cbamLoading && !cbamError && !cbamReport && (
+            <Alert severity="info">
+              CBAM reporting data is not available yet. Please complete MSME registration.
+            </Alert>
+          )}
+          {cbamReport && (
+            <>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6">CBAM Compliance Snapshot</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {cbamReport.msmeProfile.companyName} · {cbamReport.msmeProfile.industry} · {cbamReport.msmeProfile.businessDomain}
+                </Typography>
+              </Box>
+
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Readiness Score
+                      </Typography>
+                      <Typography variant="h4" color="primary">
+                        {cbamReport.overview.readinessScore}%
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={cbamReport.overview.readinessScore}
+                        sx={{ height: 8, borderRadius: 4, mt: 1 }}
+                      />
+                      <Box sx={{ mt: 2 }}>
+                        <Chip
+                          label={cbamReport.overview.complianceStatus}
+                          color={getCbamComplianceColor(cbamReport.overview.complianceStatus)}
+                          size="small"
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Reporting Window
+                      </Typography>
+                      <Typography variant="h6">
+                        {cbamReport.overview.reportingPeriod}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Next deadline: {formatDate(cbamReport.overview.nextDeadline)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Last submitted: {formatDate(cbamReport.overview.lastSubmitted)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Exposure & Liability
+                      </Typography>
+                      <Typography variant="h6">
+                        {cbamReport.overview.coveredGoodsCount} covered goods
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Embedded emissions: {formatNumber(cbamReport.overview.totalEmbeddedEmissions)} tCO₂
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Estimated liability: {formatCurrencyEUR(cbamReport.overview.estimatedLiabilityEUR)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Exposure level: {cbamReport.overview.exposureLevel}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={7}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        CBAM Emissions Trend
+                      </Typography>
+                      {cbamReport.emissionsTrend.length === 0 ? (
+                        <Alert severity="info">No CBAM-covered exports detected for this period.</Alert>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={cbamReport.emissionsTrend}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="period" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="embeddedEmissions"
+                              stroke="#8884d8"
+                              strokeWidth={3}
+                              name="Embedded Emissions (tCO₂)"
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="exportVolume"
+                              stroke="#82ca9d"
+                              strokeWidth={2}
+                              name="Export Volume (t)"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={5}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Documentation Checklist
+                      </Typography>
+                      {cbamReport.documentation.map((doc) => (
+                        <Box
+                          key={doc.id}
+                          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}
+                        >
+                          <Box>
+                            <Typography variant="subtitle2">{doc.title}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Owner: {doc.owner}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={doc.status.replace('_', ' ')}
+                            color={getCbamDocumentColor(doc.status)}
+                            size="small"
+                          />
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Covered Goods & Embedded Emissions
+                      </Typography>
+                      {cbamReport.goods.length === 0 ? (
+                        <Alert severity="info">
+                          No covered goods found for the selected period.
+                        </Alert>
+                      ) : (
+                        <TableContainer component={Paper}>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Goods</TableCell>
+                                <TableCell>HS Code</TableCell>
+                                <TableCell align="right">Export Volume (t)</TableCell>
+                                <TableCell align="right">Embedded Emissions (tCO₂)</TableCell>
+                                <TableCell align="right">Intensity (tCO₂/t)</TableCell>
+                                <TableCell align="right">Liability</TableCell>
+                                <TableCell>Status</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {cbamReport.goods.map((good) => (
+                                <TableRow key={good.id}>
+                                  <TableCell>
+                                    <Typography variant="subtitle2">{good.name}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Data quality: {good.dataQuality}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>{good.hsCode}</TableCell>
+                                  <TableCell align="right">{formatNumber(good.exportVolumeTonnes)}</TableCell>
+                                  <TableCell align="right">{formatNumber(good.embeddedEmissions)}</TableCell>
+                                  <TableCell align="right">{formatNumber(good.emissionIntensity, 2)}</TableCell>
+                                  <TableCell align="right">{formatCurrencyEUR(good.estimatedLiabilityEUR)}</TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      label={good.reportingStatus.replace('_', ' ')}
+                                      color={getCbamReportingColor(good.reportingStatus)}
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Recommended Actions
+                      </Typography>
+                      {cbamReport.recommendations.map((recommendation, index) => (
+                        <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <EcoIcon color="primary" sx={{ mr: 1, mt: 0.5, fontSize: 20 }} />
+                          <Typography variant="body2">{recommendation}</Typography>
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </>
+          )}
         </TabPanel>
       </Card>
 
