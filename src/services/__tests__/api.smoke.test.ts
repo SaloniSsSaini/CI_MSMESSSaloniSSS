@@ -741,6 +741,23 @@ describe('ApiService', () => {
   });
 
   describe('Reporting endpoints', () => {
+    test('getCbamReport makes GET request with period', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ cbam: 'data' }),
+      });
+
+      const result = await ApiService.getCbamReport({ period: 'quarter' });
+
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/reporting/cbam?period=quarter',
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+      expect(result).toEqual({ cbam: 'data' });
+    });
+
     test('getReports makes GET request', async () => {
       (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,

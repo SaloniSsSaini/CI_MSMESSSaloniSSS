@@ -215,6 +215,14 @@ async resetPassword(userData: { token: string; password: string }) {
   }
 
   // Reporting endpoints
+  async getCbamReport(params?: { period?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+
+    const queryString = queryParams.toString();
+    return this.request(`/reporting/cbam${queryString ? `?${queryString}` : ''}`);
+  }
+
   // GIFT Scheme endpoints
   async getGIFTSchemes(params?: { category?: string; status?: string; page?: number; limit?: number }) {
     const queryParams = new URLSearchParams();
