@@ -7,6 +7,7 @@ const carbonCalculationService = require('../services/carbonCalculationService')
 const spamDetectionService = require('../services/spamDetectionService');
 const duplicateDetectionService = require('../services/duplicateDetectionService');
 const Transaction = require('../models/Transaction');
+const MSME = require('../models/MSME');
 const logger = require('../utils/logger');
 const { MSMENotificationService } = require('../services/msmeNotificationService');
 const orchestrationManagerEventService = require('../services/orchestrationManagerEventService');
@@ -36,13 +37,15 @@ router.post('/process', [
     const { body, sender, timestamp, messageId } = req.body;
     const msmeId = req.user.msmeId;
 
+    const msmeProfile = msmeId ? await MSME.findById(msmeId).lean() : null;
+
     // Process SMS
     const result = await smsService.processSMS({
       body,
       sender,
       timestamp,
       messageId
-    });
+    }, msmeProfile);
 
     if (!result.success) {
       return res.status(400).json({
@@ -347,10 +350,12 @@ router.post('/bulk-process', [
     const msmeId = req.user.msmeId;
     const results = [];
 
+    const msmeProfile = msmeId ? await MSME.findById(msmeId).lean() : null;
+
     for (const message of messages) {
       try {
         // Process SMS
-        const result = await smsService.processSMS(message);
+        const result = await smsService.processSMS(message, msmeProfile);
         
         if (result.success) {
           // Detect spam

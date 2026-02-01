@@ -1,5 +1,9 @@
 const natural = require('natural');
 const compromise = require('compromise');
+const {
+  buildMsmeClassificationContext,
+  findContextMatches
+} = require('./msmeContextService');
 
 class SMSService {
   constructor() {
@@ -52,12 +56,18 @@ class SMSService {
     this.classifier.train();
   }
 
-  async processSMS(smsData) {
+  async processSMS(smsData, msmeProfile = null) {
     try {
       const { body, sender, timestamp, messageId } = smsData;
       
       // Extract transaction information
-      const transaction = await this.extractTransactionData(body, sender, timestamp, messageId);
+      const transaction = await this.extractTransactionData(
+        body,
+        sender,
+        timestamp,
+        messageId,
+        msmeProfile
+      );
       
       return {
         success: true,
@@ -73,7 +83,7 @@ class SMSService {
     }
   }
 
-  async extractTransactionData(text, sender, timestamp, messageId) {
+  async extractTransactionData(text, sender, timestamp, messageId, msmeProfile = null) {
     // Clean and normalize text
     if (!text) {
       throw new Error('SMS text is required');
@@ -103,7 +113,7 @@ class SMSService {
     // Extract sustainability factors
     const sustainabilityFactors = this.extractSustainabilityFactors(cleanText);
     
-    return {
+    const baseTransaction = {
       source: 'sms',
       sourceId: messageId,
       transactionType,
@@ -140,6 +150,8 @@ class SMSService {
       },
       tags: this.extractTags(cleanText)
     };
+
+    return this.applyMsmeContext(baseTransaction, cleanText, msmeProfile);
   }
 
   extractVendorName(text, sender) {
@@ -275,6 +287,35 @@ class SMSService {
     }
     
     return 'other';
+  }
+
+  applyMsmeContext(transaction, text, msmeProfile) {
+    if (!msmeProfile) {
+      return transaction;
+    }
+
+    const classificationContext = buildMsmeClassificationContext(msmeProfile);
+    if (!classificationContext) {
+      return transaction;
+    }
+
+    const matches = findContextMatches(text, classificationContext);
+    const updated = { ...transaction };
+
+    updated.classificationContext = {
+      ...classificationContext,
+      matchedProcess: matches.processMatch,
+      matchedMachinery: matches.machineryMatch,
+      matchedProducts: matches.productMatches
+    };
+
+    if ((!updated.subcategory || updated.subcategory === 'general') && matches.processMatch) {
+      updated.subcategory = matches.processMatch;
+    } else if ((!updated.subcategory || updated.subcategory === 'general') && matches.machineryMatch) {
+      updated.subcategory = matches.machineryMatch;
+    }
+
+    return updated;
   }
 
   extractSustainabilityFactors(text) {

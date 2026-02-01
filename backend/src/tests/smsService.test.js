@@ -98,6 +98,26 @@ describe('SMS Service', () => {
 
       expect(result.metadata.confidence).toBeGreaterThan(0.5);
     });
+
+    test('should attach MSME sector and process context when available', async () => {
+      const msmeProfile = {
+        businessDomain: 'manufacturing',
+        industry: 'metal',
+        companyType: 'small',
+        business: {
+          primaryProducts: 'steel',
+          manufacturingUnits: 2
+        }
+      };
+
+      const text = 'Welding service charges of Rs. 2000';
+      const result = await service.extractTransactionData(text, 'BANK', new Date(), 'msg_123', msmeProfile);
+
+      expect(result.classificationContext).toBeDefined();
+      expect(result.classificationContext.sector).toBe('manufacturing');
+      expect(result.classificationContext.matchedProcess).toBe('welding');
+      expect(result.subcategory).toBe('welding');
+    });
   });
 
   describe('transaction type classification', () => {
