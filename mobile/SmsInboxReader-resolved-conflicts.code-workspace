@@ -1,10 +1,10 @@
 {
 	"folders": [
 		{
-			"path": "../../slm"
+			"path": "."
 		},
 		{
-			"path": ".."
+			"path": "../CI_MSME"
 		}
 	],
 	"settings": {}

@@ -73,7 +73,7 @@ android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion 33
 
-    namespace "com.carbonintelligence"
+    namespace "com.smsinboxreader"
     
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
@@ -85,7 +85,7 @@ android {
     }
     
     defaultConfig {
-        applicationId "com.carbonintelligence"
+        applicationId "com.smsinboxreader"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 1

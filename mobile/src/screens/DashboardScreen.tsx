@@ -56,35 +56,35 @@ export const DashboardScreen = ({ navigation }: any) => {
   // };
 
   const loadDashboardData = async () => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    if (!apiService) {
-      throw new Error('API service not available');
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (!apiService) {
+        throw new Error('API service not available');
+      }
+
+      const response = await apiService.getDashboard();
+
+      if (!response) {
+        throw new Error('No response from server');
+      }
+
+      if (response.success) {
+        setDashboardData(response.data);
+      } else {
+        throw new Error(response.message || 'Failed to load dashboard data');
+      }
+    } catch (error: any) {
+      console.error('Error loading dashboard:', error);
+      setError(error.message || 'Network error. Please check your connection and try again.');
+
+      // Optionally: Log to monitoring service
+      // logError('DashboardLoadError', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    const response = await apiService.getDashboard();
-    
-    if (!response) {
-      throw new Error('No response from server');
-    }
-    
-    if (response.success) {
-      setDashboardData(response.data);
-    } else {
-      throw new Error(response.message || 'Failed to load dashboard data');
-    }
-  } catch (error: any) {
-    console.error('Error loading dashboard:', error);
-    setError(error.message || 'Network error. Please check your connection and try again.');
-    
-    // Optionally: Log to monitoring service
-    // logError('DashboardLoadError', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
 
@@ -262,6 +262,13 @@ export const DashboardScreen = ({ navigation }: any) => {
                 style={styles.actionChip}
               >
                 Reports
+              </Chip>
+              <Chip
+                icon="file-document"
+                onPress={() => navigation.navigate('SmsReading')}
+                style={styles.actionChip}
+              >
+                Sms Reading
               </Chip>
             </View>
           </Card.Content>

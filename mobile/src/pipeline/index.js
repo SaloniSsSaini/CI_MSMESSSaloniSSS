@@ -218,11 +218,64 @@ const RE_DELIVERY = /\b(out\s*for\s*delivery|delivered|shipped|dispatched|arrivi
 // Service notifications
 const RE_SERVICE = /\b(subscription|plan\s*activated|plan\s*expired|data\s*balance|validity|recharged|activated|deactivated)\b/i;
 
+// ============= DLT Header Detection =============
+
+/**
+ * Check if sender is a DLT (registered) header vs personal mobile number
+ * DLT headers are alphanumeric like: XX-HDFCBK, SBIINB, VM-SWIGGY, AD-ICICIB
+ * Personal numbers are: +919876543210, 9876543210, +91-9876543210
+ */
+function isDLTHeader(sender) {
+  if (!sender) return false;
+
+  const s = (sender || "").trim();
+  if (!s) return false;
+
+  // Pattern for personal mobile numbers (Indian)
+  // Matches: +919876543210, 919876543210, 9876543210, +91-9876543210, +91 9876543210
+  const personalNumberPattern = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+
+  // If it's a personal number, it's NOT a DLT header
+  if (personalNumberPattern.test(s.replace(/[-\s]/g, ''))) {
+    return false;
+  }
+
+  // Pattern for DLT headers (alphanumeric sender IDs)
+  // Matches: XX-HDFCBK, HDFCBK, VM-SWIGGY, AD-ICICIB, SBIINB, JK-PYTMSG
+  // Typically 2-8 alphanumeric characters, optionally with prefix like XX-, VM-, AD-, JK-
+  const dltHeaderPattern = /^([A-Z]{2}[-])?[A-Z0-9]{2,8}$/i;
+
+  // Additional pattern for longer headers like HDFCBANK, IKIBNK, etc.
+  const extendedDltPattern = /^[A-Z]{2,}[-]?[A-Z0-9]+$/i;
+
+  return dltHeaderPattern.test(s) || extendedDltPattern.test(s);
+}
+
+/**
+ * Check if sender looks like a personal/unknown number (not a registered business)
+ */
+function isPersonalNumber(sender) {
+  if (!sender) return true; // No sender = treat as personal/unknown
+
+  const s = (sender || "").trim();
+  if (!s) return true;
+
+  // Pattern for personal mobile numbers (Indian)
+  const personalNumberPattern = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+
+  // Pattern for international numbers
+  const internationalPattern = /^\+?\d{10,15}$/;
+
+  const cleanedSender = s.replace(/[-\s]/g, '');
+
+  return personalNumberPattern.test(cleanedSender) || internationalPattern.test(cleanedSender);
+}
+
 /**
  * Message classification for MSME context.
  * 
- * NOT SPAM = Important financial transactions only
- * SPAM = Everything else (OTPs, promos, alerts, delivery, etc.)
+ * NOT SPAM = Important financial transactions from DLT headers only
+ * SPAM = Everything else (OTPs, promos, alerts, delivery, personal messages, etc.)
  */
 function detectSpamRules(text, sender = null) {
   const t = (text || "").trim();
@@ -231,6 +284,23 @@ function detectSpamRules(text, sender = null) {
   }
 
   const signals = [];
+
+  // ========== FIRST CHECK: Sender Type ==========
+  // Messages from personal numbers are always spam (not transactions)
+  if (isPersonalNumber(sender)) {
+    signals.push("personal_number");
+    return {
+      isSpam: true,
+      score: 1.0,
+      signals,
+      isTransactional: false,
+    };
+  }
+
+  // If sender is a DLT header, continue with content analysis
+  if (isDLTHeader(sender)) {
+    signals.push("dlt_header");
+  }
 
   // ========== CHECK FOR IMPORTANT TRANSACTIONS (NOT SPAM) ==========
 
@@ -269,7 +339,7 @@ function detectSpamRules(text, sender = null) {
     signals.push("expense_related");
   }
 
-  // If strong transaction signals -> NOT SPAM
+  // If strong transaction signals AND from DLT header -> NOT SPAM
   if (importantScore >= 0.5) {
     return {
       isSpam: false,
@@ -364,4 +434,39 @@ export function createSpamDetector(options = {}) {
   return new SpamDetector(spamModel, options);
 }
 
-export { SpamDetector, LinearModel, detectSpamRules };
+export { SpamDetector, LinearModel, detectSpamRules, isDLTHeader, isPersonalNumber };
+
+// Re-export CarbonPipeline components
+export { processMessage, getCategoryInfo, getScopeInfo, CarbonPipeline } from './CarbonPipeline';
+export { extractQuantity, extractAmount, QuantityExtractor } from './QuantityExtractor';
+export { classifyCategory, CategoryClassifier } from './CategoryClassifier';
+export { attributeScope, ScopeAttributor, GHGScope } from './ScopeAttributor';
+
+// Re-export ExpenseClassifier components
+export {
+  classifyExpense,
+  parseUPITransaction,
+  extractExpenseAmount,
+  getExpenseCategoryInfo,
+  ExpenseClassifier,
+  ExpenseCategory,
+  ExpenseSubcategory,
+} from './ExpenseClassifier';
+
+// Re-export IndustryClassifier components (MSME B2B classification)
+export {
+  classifyIndustry,
+  getIndustryInfo,
+  getAllIndustries,
+  IndustryClassifier,
+  IndustrySector,
+} from './IndustryClassifier';
+
+// Re-export MSMERules for carbon calculation
+export {
+  SECTOR_MODELS,
+  getSectorModel,
+  BASE_TRANSACTION_TYPES,
+  BASE_LOCATION_WEIGHTAGES,
+  SECTOR_LOCATION_SENSITIVITY,
+} from './MSMERules';
