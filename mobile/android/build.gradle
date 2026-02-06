@@ -1,0 +1,34 @@
+buildscript {
+    ext {
+    buildToolsVersion = "33.0.0"
+    minSdkVersion = 21
+    compileSdkVersion = 33
+    targetSdkVersion = 33
+    ndkVersion = "23.1.7779620"  // Add this
+    kotlinVersion = "1.8.10"      // Change from 1.7.20 to 1.8.10
+}
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:7.4.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+    }
+}
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "androidx.appcompat:appcompat:1.6.1"
+            force "androidx.appcompat:appcompat-resources:1.6.1"
+            force "androidx.core:core:1.10.1"
+            force "androidx.core:core-ktx:1.10.1"
+            
+            // Add these lines to force consistent Kotlin versions
+            force "org.jetbrains.kotlin:kotlin-stdlib:1.8.10"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10"
+        }
+    }
+}
