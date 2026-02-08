@@ -164,7 +164,7 @@ const ReportingScreen: React.FC = () => {
     pdf: 'PDF',
     excel: 'Excel',
     csv: 'CSV',
-    brsr: 'BRSR'
+    brsr: 'BRSR (Business Responsibility and Sustainability Reporting)'
   };
 
   const handleExport = () => {
