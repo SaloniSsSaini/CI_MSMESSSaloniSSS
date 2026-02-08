@@ -50,6 +50,7 @@ const ReportingScreen: React.FC = () => {
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const reportTypeLabel = 'BRSR Compliant';
 
   // Sample data - in real app, this would come from API
   const carbonData: CarbonData[] = [
@@ -496,6 +497,12 @@ const ReportingScreen: React.FC = () => {
                 style={styles.segmentedButtons}
               />
             </View>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Report Type:</Text>
+              <View style={styles.reportTypeBadge}>
+                <Text style={styles.reportTypeText}>{reportTypeLabel}</Text>
+              </View>
+            </View>
             <Button mode="contained" style={styles.generateButton}>
               Generate Report
             </Button>
@@ -668,6 +675,17 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 16,
     marginRight: 16,
+  },
+  reportTypeBadge: {
+    backgroundColor: '#e3f2fd',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  reportTypeText: {
+    color: '#1976d2',
+    fontSize: 14,
+    fontWeight: '600',
   },
   segmentedButtons: {
     flex: 1,

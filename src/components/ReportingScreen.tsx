@@ -171,7 +171,7 @@ interface CbamReport {
 const ReportingScreen: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState('6months');
-  const [reportType, setReportType] = useState('comprehensive');
+  const [reportType, setReportType] = useState('brsr');
   const [exportFormat] = useState<ExportFormat>('brsr');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -426,12 +426,9 @@ const ReportingScreen: React.FC = () => {
                   value={reportType}
                   label="Report Type"
                   onChange={(e) => setReportType(e.target.value)}
+                  disabled
                 >
-                  <MenuItem value="summary">Summary</MenuItem>
-                  <MenuItem value="comprehensive">Comprehensive</MenuItem>
-                  <MenuItem value="executive">Executive Summary</MenuItem>
-                  <MenuItem value="detailed">Detailed Analysis</MenuItem>
-                  <MenuItem value="cbam">CBAM Compliance</MenuItem>
+                  <MenuItem value="brsr">BRSR Compliant</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
