@@ -2,6 +2,10 @@ const nodemailer = require('nodemailer');
 const cheerio = require('cheerio');
 const natural = require('natural');
 const compromise = require('compromise');
+const {
+  buildMsmeClassificationContext,
+  findContextMatches
+} = require('./msmeContextService');
 
 class EmailService {
   constructor() {
@@ -52,12 +56,20 @@ class EmailService {
     this.classifier.train();
   }
 
-  async processEmail(emailData) {
+  async processEmail(emailData, msmeProfile = null) {
     try {
       const { subject, body, from, to, date, messageId } = emailData;
       
       // Extract transaction information
-      const transaction = await this.extractTransactionData(subject, body, from, to, date, messageId);
+      const transaction = await this.extractTransactionData(
+        subject,
+        body,
+        from,
+        to,
+        date,
+        messageId,
+        msmeProfile
+      );
       
       return {
         success: true,
@@ -73,7 +85,7 @@ class EmailService {
     }
   }
 
-  async extractTransactionData(subject, body, from, to, date, messageId) {
+  async extractTransactionData(subject, body, from, to, date, messageId, msmeProfile = null) {
     // Clean HTML and extract text
     const cleanBody = this.cleanEmailBody(body);
     const fullText = `${subject} ${cleanBody}`.toLowerCase();
@@ -99,7 +111,7 @@ class EmailService {
     // Extract sustainability factors
     const sustainabilityFactors = this.extractSustainabilityFactors(fullText);
     
-    return {
+    const baseTransaction = {
       source: 'email',
       sourceId: messageId,
       transactionType,
@@ -133,6 +145,8 @@ class EmailService {
       },
       tags: this.extractTags(fullText)
     };
+
+    return this.applyMsmeContext(baseTransaction, fullText, msmeProfile);
   }
 
   cleanEmailBody(body) {
@@ -372,6 +386,35 @@ class EmailService {
     }
     
     return 'other';
+  }
+
+  applyMsmeContext(transaction, text, msmeProfile) {
+    if (!msmeProfile) {
+      return transaction;
+    }
+
+    const classificationContext = buildMsmeClassificationContext(msmeProfile);
+    if (!classificationContext) {
+      return transaction;
+    }
+
+    const matches = findContextMatches(text, classificationContext);
+    const updated = { ...transaction };
+
+    updated.classificationContext = {
+      ...classificationContext,
+      matchedProcess: matches.processMatch,
+      matchedMachinery: matches.machineryMatch,
+      matchedProducts: matches.productMatches
+    };
+
+    if ((!updated.subcategory || updated.subcategory === 'general') && matches.processMatch) {
+      updated.subcategory = matches.processMatch;
+    } else if ((!updated.subcategory || updated.subcategory === 'general') && matches.machineryMatch) {
+      updated.subcategory = matches.machineryMatch;
+    }
+
+    return updated;
   }
 
   extractSustainabilityFactors(text) {

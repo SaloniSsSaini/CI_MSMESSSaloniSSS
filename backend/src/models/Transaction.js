@@ -55,6 +55,21 @@ const transactionSchema = new mongoose.Schema({
     required: true
   },
   subcategory: String,
+  classificationContext: {
+    sector: String,
+    sectorLabel: String,
+    industry: String,
+    companyType: String,
+    primaryProducts: [String],
+    manufacturingUnits: Number,
+    processes: [String],
+    machinery: [String],
+    productSignals: [String],
+    matchedProcess: String,
+    matchedMachinery: String,
+    matchedProducts: [String],
+    source: String
+  },
   date: {
     type: Date,
     required: true

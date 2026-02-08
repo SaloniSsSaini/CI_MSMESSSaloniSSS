@@ -1,5 +1,9 @@
 const natural = require('natural');
 const logger = require('../../utils/logger');
+const {
+  buildMsmeClassificationContext,
+  findContextMatches
+} = require('../msmeContextService');
 
 class DataProcessorAgent {
   constructor() {
@@ -81,7 +85,7 @@ class DataProcessorAgent {
           processedData.statistics.totalProcessed++;
 
           // Step 2: Classify transaction
-          const classified = await this.classifyTransaction(cleaned);
+          const classified = await this.classifyTransaction(cleaned, options);
           processedData.classified.push(classified);
           if (classified.category && classified.category !== 'unknown') {
             processedData.statistics.successfullyClassified++;
@@ -166,7 +170,7 @@ class DataProcessorAgent {
     return cleaned;
   }
 
-  async classifyTransaction(transaction) {
+  async classifyTransaction(transaction, options = {}) {
     const classified = { ...transaction };
 
     // If category is already set and valid, keep it
@@ -193,6 +197,8 @@ class DataProcessorAgent {
       needsReview: reviewReasons.length > 0,
       reviewReasons
     };
+
+    this.applyMsmeContext(classified, text, options);
 
     return classified;
   }
@@ -728,6 +734,42 @@ class DataProcessorAgent {
     }
 
     return null;
+  }
+
+  applyMsmeContext(transaction, text, options = {}) {
+    const contextInput = options.msmeData || options.msmeProfile || options.context;
+    if (!contextInput) {
+      return;
+    }
+
+    const classificationContext = buildMsmeClassificationContext(contextInput);
+    if (!classificationContext) {
+      return;
+    }
+
+    const matches = findContextMatches(text, classificationContext);
+    transaction.classificationContext = {
+      ...classificationContext,
+      matchedProcess: matches.processMatch,
+      matchedMachinery: matches.machineryMatch,
+      matchedProducts: matches.productMatches
+    };
+
+    if ((!transaction.subcategory || transaction.subcategory === 'general') && matches.processMatch) {
+      transaction.subcategory = matches.processMatch;
+    } else if ((!transaction.subcategory || transaction.subcategory === 'general') && matches.machineryMatch) {
+      transaction.subcategory = matches.machineryMatch;
+    }
+
+    transaction.processingMetadata = {
+      ...(transaction.processingMetadata || {}),
+      sectorProcessContext: {
+        sector: classificationContext.sector,
+        matchedProcess: matches.processMatch,
+        matchedMachinery: matches.machineryMatch,
+        matchedProducts: matches.productMatches
+      }
+    };
   }
 
   calculateClassificationConfidence(text, category) {

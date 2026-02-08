@@ -38,6 +38,8 @@ router.post('/process', [
     const { subject, body, from, to, date, messageId } = req.body;
     const msmeId = req.user.msmeId;
 
+    const msmeProfile = msmeId ? await MSME.findById(msmeId).lean() : null;
+
     // Process email
     const result = await emailService.processEmail({
       subject,
@@ -46,7 +48,7 @@ router.post('/process', [
       to,
       date,
       messageId
-    });
+    }, msmeProfile);
 
     if (!result.success) {
       return res.status(400).json({
@@ -358,10 +360,12 @@ router.post('/bulk-process', [
     const msmeId = req.user.msmeId;
     const results = [];
 
+    const msmeProfile = msmeId ? await MSME.findById(msmeId).lean() : null;
+
     for (const email of emails) {
       try {
         // Process email
-        const result = await emailService.processEmail(email);
+        const result = await emailService.processEmail(email, msmeProfile);
         
         if (result.success) {
           // Detect spam
@@ -632,7 +636,7 @@ router.post('/ingest-assess', [
           to: Array.isArray(email.to) && email.to.length > 0 ? email.to[0] : mailboxEmail,
           date: email.date,
           messageId: email.id
-        });
+        }, msme);
 
         if (!processed.success) {
           failures.push({
