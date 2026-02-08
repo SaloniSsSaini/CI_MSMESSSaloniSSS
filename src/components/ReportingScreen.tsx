@@ -111,6 +111,7 @@ interface TrendData {
 type CbamComplianceStatus = 'On Track' | 'Needs Attention' | 'At Risk' | 'Not Required';
 type CbamDocumentStatus = 'complete' | 'in_progress' | 'missing';
 type CbamReportingStatus = 'submitted' | 'in_progress' | 'pending';
+type ExportFormat = 'pdf' | 'excel' | 'csv' | 'brsr';
 
 interface CbamOverview {
   reportingPeriod: string;
@@ -171,6 +172,7 @@ const ReportingScreen: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState('6months');
   const [reportType, setReportType] = useState('comprehensive');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('pdf');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -272,8 +274,15 @@ const ReportingScreen: React.FC = () => {
     setTabValue(newValue);
   };
 
+  const exportFormatLabels: Record<ExportFormat, string> = {
+    pdf: 'PDF',
+    excel: 'Excel',
+    csv: 'CSV',
+    brsr: 'BRSR'
+  };
+
   const handleExport = () => {
-    setSnackbarMessage('Report exported successfully!');
+    setSnackbarMessage(`Report exported as ${exportFormatLabels[exportFormat]} successfully!`);
     setSnackbarOpen(true);
     setExportDialogOpen(false);
   };
@@ -1045,15 +1054,41 @@ const ReportingScreen: React.FC = () => {
             <Typography variant="body1" gutterBottom>
               Choose export format:
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-              <Button variant="outlined" fullWidth>
-                PDF
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                gap: 2,
+                mt: 2
+              }}
+            >
+              <Button
+                variant={exportFormat === 'pdf' ? 'contained' : 'outlined'}
+                onClick={() => setExportFormat('pdf')}
+                fullWidth
+              >
+                {exportFormatLabels.pdf}
               </Button>
-              <Button variant="outlined" fullWidth>
-                Excel
+              <Button
+                variant={exportFormat === 'excel' ? 'contained' : 'outlined'}
+                onClick={() => setExportFormat('excel')}
+                fullWidth
+              >
+                {exportFormatLabels.excel}
               </Button>
-              <Button variant="outlined" fullWidth>
-                CSV
+              <Button
+                variant={exportFormat === 'csv' ? 'contained' : 'outlined'}
+                onClick={() => setExportFormat('csv')}
+                fullWidth
+              >
+                {exportFormatLabels.csv}
+              </Button>
+              <Button
+                variant={exportFormat === 'brsr' ? 'contained' : 'outlined'}
+                onClick={() => setExportFormat('brsr')}
+                fullWidth
+              >
+                {exportFormatLabels.brsr}
               </Button>
             </Box>
           </Box>
