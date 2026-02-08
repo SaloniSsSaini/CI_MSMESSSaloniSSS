@@ -40,12 +40,12 @@ interface TrendData {
   change: number;
 }
 
-type ExportFormat = 'pdf' | 'excel' | 'csv' | 'brsr';
+type ExportFormat = 'brsr';
 
 const ReportingScreen: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dateRange, setDateRange] = useState('6months');
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('pdf');
+  const [exportFormat] = useState<ExportFormat>('brsr');
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [email, setEmail] = useState('');
@@ -161,10 +161,7 @@ const ReportingScreen: React.FC = () => {
   };
 
   const exportFormatLabels: Record<ExportFormat, string> = {
-    pdf: 'PDF',
-    excel: 'Excel',
-    csv: 'CSV',
-    brsr: 'BRSR (Business Responsibility and Sustainability Reporting)'
+    brsr: 'BRSR (Business Responsibility and Sustainability Reporting) - PDF'
   };
 
   const handleExport = () => {
@@ -553,34 +550,9 @@ const ReportingScreen: React.FC = () => {
                 <Icon name="close" size={24} color="#757575" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalSubtitle}>Choose export format:</Text>
+            <Text style={styles.modalSubtitle}>Export format:</Text>
             <View style={styles.exportButtons}>
-              <Button
-                mode={exportFormat === 'pdf' ? 'contained' : 'outlined'}
-                onPress={() => setExportFormat('pdf')}
-                style={styles.exportButton}
-              >
-                {exportFormatLabels.pdf}
-              </Button>
-              <Button
-                mode={exportFormat === 'excel' ? 'contained' : 'outlined'}
-                onPress={() => setExportFormat('excel')}
-                style={styles.exportButton}
-              >
-                {exportFormatLabels.excel}
-              </Button>
-              <Button
-                mode={exportFormat === 'csv' ? 'contained' : 'outlined'}
-                onPress={() => setExportFormat('csv')}
-                style={styles.exportButton}
-              >
-                {exportFormatLabels.csv}
-              </Button>
-              <Button
-                mode={exportFormat === 'brsr' ? 'contained' : 'outlined'}
-                onPress={() => setExportFormat('brsr')}
-                style={styles.exportButton}
-              >
+              <Button mode="contained" style={styles.exportButton}>
                 {exportFormatLabels.brsr}
               </Button>
             </View>
@@ -849,13 +821,11 @@ const styles = StyleSheet.create({
   },
   exportButtons: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     marginBottom: 12,
   },
   exportButton: {
     flexGrow: 1,
-    flexBasis: '48%',
     marginHorizontal: 4,
     marginBottom: 8,
   },
