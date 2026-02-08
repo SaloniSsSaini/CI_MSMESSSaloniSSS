@@ -40,13 +40,17 @@ interface TrendData {
   change: number;
 }
 
+type ExportFormat = 'brsr';
+
 const ReportingScreen: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [dateRange, setDateRange] = useState('6months');
+  const [exportFormat] = useState<ExportFormat>('brsr');
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const reportTypeLabel = 'BRSR Compliant';
 
   // Sample data - in real app, this would come from API
   const carbonData: CarbonData[] = [
@@ -157,8 +161,12 @@ const ReportingScreen: React.FC = () => {
     ]
   };
 
+  const exportFormatLabels: Record<ExportFormat, string> = {
+    brsr: 'BRSR (Business Responsibility and Sustainability Reporting) - PDF'
+  };
+
   const handleExport = () => {
-    Alert.alert('Export Report', 'Report exported successfully!');
+    Alert.alert('Export Report', `Report exported as ${exportFormatLabels[exportFormat]} successfully!`);
     setExportModalVisible(false);
   };
 
@@ -489,6 +497,12 @@ const ReportingScreen: React.FC = () => {
                 style={styles.segmentedButtons}
               />
             </View>
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Report Type:</Text>
+              <View style={styles.reportTypeBadge}>
+                <Text style={styles.reportTypeText}>{reportTypeLabel}</Text>
+              </View>
+            </View>
             <Button mode="contained" style={styles.generateButton}>
               Generate Report
             </Button>
@@ -543,11 +557,11 @@ const ReportingScreen: React.FC = () => {
                 <Icon name="close" size={24} color="#757575" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalSubtitle}>Choose export format:</Text>
+            <Text style={styles.modalSubtitle}>Export format:</Text>
             <View style={styles.exportButtons}>
-              <Button mode="outlined" style={styles.exportButton}>PDF</Button>
-              <Button mode="outlined" style={styles.exportButton}>Excel</Button>
-              <Button mode="outlined" style={styles.exportButton}>CSV</Button>
+              <Button mode="contained" style={styles.exportButton}>
+                {exportFormatLabels.brsr}
+              </Button>
             </View>
             <View style={styles.modalActions}>
               <Button
@@ -661,6 +675,17 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 16,
     marginRight: 16,
+  },
+  reportTypeBadge: {
+    backgroundColor: '#e3f2fd',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  reportTypeText: {
+    color: '#1976d2',
+    fontSize: 14,
+    fontWeight: '600',
   },
   segmentedButtons: {
     flex: 1,
@@ -814,12 +839,13 @@ const styles = StyleSheet.create({
   },
   exportButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   exportButton: {
-    flex: 1,
+    flexGrow: 1,
     marginHorizontal: 4,
+    marginBottom: 8,
   },
   emailInput: {
     borderWidth: 1,

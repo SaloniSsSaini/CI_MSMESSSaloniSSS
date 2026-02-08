@@ -111,6 +111,7 @@ interface TrendData {
 type CbamComplianceStatus = 'On Track' | 'Needs Attention' | 'At Risk' | 'Not Required';
 type CbamDocumentStatus = 'complete' | 'in_progress' | 'missing';
 type CbamReportingStatus = 'submitted' | 'in_progress' | 'pending';
+type ExportFormat = 'brsr';
 
 interface CbamOverview {
   reportingPeriod: string;
@@ -170,7 +171,8 @@ interface CbamReport {
 const ReportingScreen: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState('6months');
-  const [reportType, setReportType] = useState('comprehensive');
+  const [reportType, setReportType] = useState('brsr');
+  const [exportFormat] = useState<ExportFormat>('brsr');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -272,8 +274,12 @@ const ReportingScreen: React.FC = () => {
     setTabValue(newValue);
   };
 
+  const exportFormatLabels: Record<ExportFormat, string> = {
+    brsr: 'BRSR (Business Responsibility and Sustainability Reporting) - PDF'
+  };
+
   const handleExport = () => {
-    setSnackbarMessage('Report exported successfully!');
+    setSnackbarMessage(`Report exported as ${exportFormatLabels[exportFormat]} successfully!`);
     setSnackbarOpen(true);
     setExportDialogOpen(false);
   };
@@ -420,12 +426,9 @@ const ReportingScreen: React.FC = () => {
                   value={reportType}
                   label="Report Type"
                   onChange={(e) => setReportType(e.target.value)}
+                  disabled
                 >
-                  <MenuItem value="summary">Summary</MenuItem>
-                  <MenuItem value="comprehensive">Comprehensive</MenuItem>
-                  <MenuItem value="executive">Executive Summary</MenuItem>
-                  <MenuItem value="detailed">Detailed Analysis</MenuItem>
-                  <MenuItem value="cbam">CBAM Compliance</MenuItem>
+                  <MenuItem value="brsr">BRSR Compliant</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1043,19 +1046,11 @@ const ReportingScreen: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="body1" gutterBottom>
-              Choose export format:
+              Export format:
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-              <Button variant="outlined" fullWidth>
-                PDF
-              </Button>
-              <Button variant="outlined" fullWidth>
-                Excel
-              </Button>
-              <Button variant="outlined" fullWidth>
-                CSV
-              </Button>
-            </Box>
+            <Button variant="contained" fullWidth sx={{ mt: 2 }}>
+              {exportFormatLabels.brsr}
+            </Button>
           </Box>
         </DialogContent>
         <DialogActions>
