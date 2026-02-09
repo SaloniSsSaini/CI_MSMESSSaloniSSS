@@ -1,13 +1,19 @@
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
+const pdfParse = require('pdf-parse');
+const moment = require('moment');
 const duplicateDetectionService = require('./duplicateDetectionService');
 const carbonCalculationService = require('./carbonCalculationService');
+const AIDataExtractionService = require('./aiDataExtractionService');
+const AdvancedCarbonCalculationService = require('./advancedCarbonCalculationService');
 
 class DocumentProcessingService {
   constructor() {
     this.uploadDir = path.join(__dirname, '../../uploads');
     this.processedDir = path.join(__dirname, '../../processed');
+    this.aiDataExtractionService = new AIDataExtractionService();
+    this.advancedCarbonCalculationService = new AdvancedCarbonCalculationService();
     this.ensureDirectories();
   }
 
@@ -42,10 +48,14 @@ class DocumentProcessingService {
       await document.save();
 
       // Extract text and data from PDF
-      const extractedData = await this.extractDataFromPDF(fileBuffer);
+      const extractionResult = await this.extractDataFromPDF(fileBuffer, document);
       
-      if (!extractedData) {
+      if (!extractionResult || !extractionResult.data) {
         throw new Error('Failed to extract data from PDF');
+      }
+      const { data: extractedData, carbonExtraction, extractionWarnings } = extractionResult;
+      if (Array.isArray(extractionWarnings) && extractionWarnings.length > 0) {
+        processingResult.warnings.push(...extractionWarnings);
       }
 
       // Validate extracted data
@@ -72,12 +82,28 @@ class DocumentProcessingService {
       }
 
       // Calculate carbon footprint
-      const carbonFootprint = await this.calculateCarbonFootprint(extractedData, itemFootprints);
-      const carbonAnalysis = await this.calculateDocumentCarbonAnalysis(
+      const transactionFootprint = await this.calculateCarbonFootprint(extractedData, itemFootprints);
+      const msmeProfile = await this.fetchMsmeProfile(document.msmeId);
+      const transactionAnalysis = await this.calculateDocumentCarbonAnalysis(
         document,
         extractedData,
-        itemFootprints
+        itemFootprints,
+        msmeProfile
       );
+      const consumptionAnalysis = await this.calculateBillReceiptCarbonAnalysis(
+        document,
+        extractedData,
+        carbonExtraction,
+        msmeProfile
+      );
+      const hasItemizedFootprints = itemFootprints.length > 0;
+      const useConsumptionAnalysis = Boolean(consumptionAnalysis) && !hasItemizedFootprints;
+      const carbonAnalysis = useConsumptionAnalysis
+        ? consumptionAnalysis
+        : (transactionAnalysis || consumptionAnalysis);
+      const carbonFootprint = useConsumptionAnalysis && consumptionAnalysis
+        ? this.buildCarbonFootprintFromAnalysis(consumptionAnalysis, extractedData)
+        : transactionFootprint;
       
       // Update document with extracted data
       document.extractedData = extractedData;
@@ -131,54 +157,355 @@ class DocumentProcessingService {
   }
 
   /**
-   * Extract data from PDF (simplified implementation)
+   * Extract data from PDF
    * @param {Buffer} fileBuffer - PDF file buffer
-   * @returns {Object} - Extracted data
+   * @param {Object} document - Document metadata
+   * @returns {Object} - Extraction result
    */
-  async extractDataFromPDF(fileBuffer) {
-    // This is a simplified implementation
-    // In a real application, you would use libraries like pdf-parse or pdf2pic
-    // For now, we'll return mock data based on common patterns
-    
+  async extractDataFromPDF(fileBuffer, document = {}) {
+    const extractionWarnings = [];
     try {
-      // Mock extraction - in reality, you'd use PDF parsing libraries
-      const mockData = {
-        vendor: {
-          name: 'Sample Vendor',
-          address: '123 Business Street, City, State',
-          phone: '+91-9876543210',
-          email: 'vendor@example.com'
-        },
-        amount: Math.floor(Math.random() * 10000) + 1000, // Random amount between 1000-11000
-        currency: 'INR',
-        date: new Date(),
-        description: 'Business transaction',
-        category: 'utilities',
-        subcategory: 'electricity',
-        items: [
-          {
-            name: 'Service Charge',
-            quantity: 1,
-            unit: 'month',
-            price: Math.floor(Math.random() * 1000) + 500,
-            total: Math.floor(Math.random() * 1000) + 500
-          }
-        ],
-        tax: {
-          cgst: 0,
-          sgst: 0,
-          igst: 0,
-          total: 0
-        },
-        paymentMethod: 'Bank Transfer',
-        referenceNumber: 'TXN' + Date.now()
+      const rawText = await this.extractTextFromPDF(fileBuffer);
+      if (!rawText) {
+        extractionWarnings.push('PDF text extraction failed; using fallback values.');
+        return {
+          data: this.buildFallbackExtractedData(document),
+          rawText: null,
+          carbonExtraction: null,
+          extractionWarnings
+        };
+      }
+
+      const normalizedText = this.normalizeDocumentText(rawText);
+      const amountData = this.extractAmountFromText(rawText);
+      const documentDate = this.extractDateFromText(rawText);
+      const vendorName = this.extractVendorNameFromText(rawText);
+      const description = this.extractDescriptionFromText(rawText)
+        || this.buildFallbackDescription(document, normalizedText);
+      const referenceNumber = this.extractReferenceNumberFromText(rawText);
+      const carbonExtraction = await this.extractCarbonDataFromText(rawText, document?.documentType);
+
+      if (carbonExtraction?.extractedData &&
+          carbonExtraction.extractedData.carbonRelevant === false) {
+        extractionWarnings.push('No carbon-relevant signals detected in PDF text.');
+      }
+
+      const category = this.resolveCategoryFromSignals(carbonExtraction?.extractedData, normalizedText);
+      const subcategory = this.resolveSubcategoryFromSignals(
+        carbonExtraction?.extractedData,
+        category,
+        normalizedText
+      );
+
+      const extractedData = {
+        currency: amountData?.currency || 'INR'
       };
 
-      return mockData;
+      if (vendorName) {
+        extractedData.vendor = { name: vendorName };
+      }
+      if (Number.isFinite(amountData?.amount)) {
+        extractedData.amount = amountData.amount;
+      }
+      if (documentDate) {
+        extractedData.date = documentDate;
+      }
+      if (description) {
+        extractedData.description = description;
+      }
+      if (category) {
+        extractedData.category = category;
+      }
+      if (subcategory) {
+        extractedData.subcategory = subcategory;
+      }
+      if (referenceNumber) {
+        extractedData.referenceNumber = referenceNumber;
+      }
+
+      return {
+        data: extractedData,
+        rawText,
+        carbonExtraction,
+        extractionWarnings
+      };
     } catch (error) {
       console.error('PDF extraction error:', error);
+      extractionWarnings.push('PDF extraction failed; using fallback values.');
+      return {
+        data: this.buildFallbackExtractedData(document),
+        rawText: null,
+        carbonExtraction: null,
+        extractionWarnings
+      };
+    }
+  }
+
+  async extractTextFromPDF(fileBuffer) {
+    if (!fileBuffer) {
       return null;
     }
+    try {
+      const parsed = await pdfParse(fileBuffer);
+      const text = parsed?.text ? String(parsed.text) : '';
+      return text.trim().length > 0 ? text : null;
+    } catch (error) {
+      console.error('PDF text parse error:', error);
+      return null;
+    }
+  }
+
+  normalizeDocumentText(text) {
+    if (!text) return '';
+    return text.replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  async extractCarbonDataFromText(text, documentType) {
+    if (!text) return null;
+    try {
+      const source = documentType ? `document_${documentType}` : 'document';
+      return await this.aiDataExtractionService.extractCarbonDataFromText(text, source);
+    } catch (error) {
+      console.warn('AI carbon extraction failed:', error.message);
+      return null;
+    }
+  }
+
+  buildFallbackExtractedData(document = {}) {
+    const fallbackDescription = this.buildFallbackDescription(document);
+    return {
+      currency: 'INR',
+      description: fallbackDescription,
+      date: document?.createdAt ? new Date(document.createdAt) : new Date(),
+      category: 'other',
+      subcategory: 'general'
+    };
+  }
+
+  buildFallbackDescription(document = {}, normalizedText = '') {
+    if (normalizedText) {
+      return normalizedText.slice(0, 160);
+    }
+    if (document?.originalName) {
+      return document.originalName;
+    }
+    if (document?.documentType) {
+      return `${document.documentType} document`;
+    }
+    return 'Document transaction';
+  }
+
+  extractAmountFromText(text = '') {
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const totalLineRegex = /(grand total|total payable|amount payable|amount due|invoice total|bill total|total amount|balance due)/i;
+    const currencyRegex = /(?:₹|Rs\.?|INR|\$|USD|EUR|€)\s*([\d,]+(?:\.\d{1,2})?)/gi;
+    const suffixRegex = /([\d,]+(?:\.\d{1,2})?)\s*(INR|Rs\.?|USD|EUR)\b/gi;
+
+    const candidates = [];
+    const addCandidate = (value, currency, weight) => {
+      const amount = this.parseAmount(value);
+      if (!Number.isFinite(amount)) return;
+      candidates.push({
+        amount,
+        currency: this.normalizeCurrency(currency),
+        weight
+      });
+    };
+
+    const scanLine = (line, weight) => {
+      let match;
+      currencyRegex.lastIndex = 0;
+      suffixRegex.lastIndex = 0;
+      while ((match = currencyRegex.exec(line)) !== null) {
+        addCandidate(match[1], match[0], weight);
+      }
+      while ((match = suffixRegex.exec(line)) !== null) {
+        addCandidate(match[1], match[2], weight);
+      }
+    };
+
+    lines.forEach(line => {
+      if (totalLineRegex.test(line)) {
+        scanLine(line, 2);
+      }
+    });
+    lines.forEach(line => scanLine(line, 1));
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    candidates.sort((a, b) => {
+      if (b.weight !== a.weight) {
+        return b.weight - a.weight;
+      }
+      return b.amount - a.amount;
+    });
+
+    return {
+      amount: candidates[0].amount,
+      currency: candidates[0].currency || 'INR'
+    };
+  }
+
+  parseAmount(value) {
+    if (value === null || value === undefined) return null;
+    const cleaned = String(value).replace(/,/g, '');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  normalizeCurrency(value = '') {
+    const normalized = String(value).toUpperCase();
+    if (normalized.includes('₹') || normalized.includes('INR') || normalized.includes('RS')) {
+      return 'INR';
+    }
+    if (normalized.includes('USD') || normalized.includes('$')) {
+      return 'USD';
+    }
+    if (normalized.includes('EUR') || normalized.includes('€')) {
+      return 'EUR';
+    }
+    return 'INR';
+  }
+
+  extractDateFromText(text = '') {
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const dateLineRegex = /(invoice date|bill date|receipt date|date)/i;
+    const dateFormats = [
+      'DD/MM/YYYY', 'D/M/YYYY', 'DD-MM-YYYY', 'D-M-YYYY',
+      'YYYY-MM-DD', 'YYYY/MM/DD',
+      'DD MMM YYYY', 'D MMM YYYY', 'DD MMMM YYYY', 'D MMMM YYYY',
+      'MMM D, YYYY', 'MMMM D, YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY'
+    ];
+
+    const extractCandidates = (content) => {
+      const matches = [];
+      const patterns = [
+        /\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}\b/g,
+        /\b\d{4}[\/-]\d{1,2}[\/-]\d{1,2}\b/g,
+        /\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\b/g,
+        /\b[A-Za-z]{3,9}\s+\d{1,2},\s+\d{2,4}\b/g
+      ];
+      patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(content)) !== null) {
+          matches.push(match[0]);
+        }
+      });
+      return matches;
+    };
+
+    const prioritizedLines = lines.filter(line => dateLineRegex.test(line));
+    const candidates = prioritizedLines.length > 0
+      ? extractCandidates(prioritizedLines.join(' '))
+      : extractCandidates(text);
+
+    for (const candidate of candidates) {
+      const parsed = moment(candidate, dateFormats, true);
+      if (parsed.isValid()) {
+        return parsed.toDate();
+      }
+    }
+
+    return null;
+  }
+
+  extractVendorNameFromText(text = '') {
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const labeledRegex = /(vendor|supplier|billed by|sold by|from|issuer)\s*[:\-]\s*(.+)/i;
+    const ignoreRegex = /(invoice|receipt|bill|tax|gst|total|amount|date)/i;
+
+    for (const line of lines) {
+      const match = line.match(labeledRegex);
+      if (match && match[2]) {
+        return match[2].trim();
+      }
+    }
+
+    const candidate = lines.slice(0, 10).find(line => {
+      const hasLetters = /[A-Za-z]/.test(line);
+      return hasLetters && !ignoreRegex.test(line);
+    });
+
+    return candidate || null;
+  }
+
+  extractDescriptionFromText(text = '') {
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const descriptionRegex = /(description|particulars|details|service|item)\s*[:\-]\s*(.+)/i;
+    for (const line of lines) {
+      const match = line.match(descriptionRegex);
+      if (match && match[2]) {
+        return match[2].trim();
+      }
+    }
+    return null;
+  }
+
+  extractReferenceNumberFromText(text = '') {
+    if (!text) return null;
+    const referenceRegex = /(invoice|receipt|bill|ref(?:erence)?|txn|transaction)\s*(no\.?|#|id|:)?\s*([A-Za-z0-9\-\/]+)/i;
+    const match = text.match(referenceRegex);
+    if (match && match[3]) {
+      return match[3].trim();
+    }
+    return null;
+  }
+
+  resolveCategoryFromSignals(carbonData, normalizedText = '') {
+    if (carbonData && this.hasCarbonSignals(carbonData)) {
+      if (carbonData.energy?.electricity?.consumption || carbonData.energy?.fuel?.consumption) {
+        return 'energy';
+      }
+      if (carbonData.water?.consumption) {
+        return 'water';
+      }
+      if (carbonData.waste?.solid?.quantity || carbonData.waste?.hazardous?.quantity) {
+        return 'waste_management';
+      }
+      if (carbonData.transportation?.distance || carbonData.transportation?.fuelConsumption) {
+        return 'transportation';
+      }
+      if (carbonData.materials?.rawMaterials?.quantity || carbonData.materials?.packaging?.quantity) {
+        return 'raw_materials';
+      }
+    }
+
+    return this.resolveItemCategory({ name: normalizedText }, { description: normalizedText });
+  }
+
+  resolveSubcategoryFromSignals(carbonData, category, normalizedText = '') {
+    if (category === 'energy' && carbonData?.energy) {
+      if (carbonData.energy.renewable?.percentage > 0) {
+        return 'renewable';
+      }
+      if (carbonData.energy.fuel?.consumption > 0) {
+        return 'fuel';
+      }
+      return 'grid';
+    }
+
+    return this.resolveItemSubcategory({ name: normalizedText }, category, { description: normalizedText });
+  }
+
+  hasCarbonSignals(carbonData) {
+    if (!carbonData) return false;
+    return Boolean(
+      carbonData.energy?.electricity?.consumption ||
+      carbonData.energy?.fuel?.consumption ||
+      carbonData.materials?.rawMaterials?.quantity ||
+      carbonData.materials?.packaging?.quantity ||
+      carbonData.transportation?.distance ||
+      carbonData.transportation?.fuelConsumption ||
+      carbonData.waste?.solid?.quantity ||
+      carbonData.waste?.hazardous?.quantity ||
+      carbonData.water?.consumption
+    );
   }
 
   /**
@@ -556,6 +883,93 @@ class DocumentProcessingService {
         sustainabilityScore: 0
       };
     }
+  }
+
+  async fetchMsmeProfile(msmeId) {
+    if (!msmeId) return null;
+    try {
+      const MSME = require('../models/MSME');
+      return await MSME.findById(msmeId).lean();
+    } catch (error) {
+      console.warn('Failed to fetch MSME profile for document processing:', error.message);
+      return null;
+    }
+  }
+
+  buildCarbonFootprintFromAnalysis(analysis, extractedData = {}) {
+    if (!analysis) return null;
+    const totalAmount = Number(analysis.totalAmount) || Number(extractedData.amount) || 0;
+    const emissionFactor = totalAmount > 0
+      ? analysis.totalCO2Emissions / totalAmount
+      : 0;
+    return {
+      co2Emissions: Number(analysis.totalCO2Emissions) || 0,
+      emissionFactor: Math.round(emissionFactor * 10000) / 10000,
+      calculationMethod: analysis.calculationMethod || 'document_analysis',
+      sustainabilityScore: analysis.carbonScore || 0
+    };
+  }
+
+  async calculateBillReceiptCarbonAnalysis(document, extractedData = {}, carbonExtraction = null, msmeProfileOverride = null) {
+    try {
+      if (!document || !['bill', 'receipt'].includes(document.documentType)) {
+        return null;
+      }
+      const carbonData = carbonExtraction?.extractedData;
+      if (!carbonData || (!carbonData.carbonRelevant && !this.hasCarbonSignals(carbonData))) {
+        return null;
+      }
+
+      const msmeProfile = msmeProfileOverride || await this.fetchMsmeProfile(document.msmeId);
+      if (!msmeProfile) {
+        return null;
+      }
+
+      const calculation = await this.advancedCarbonCalculationService.calculateAdvancedCarbonFootprint(
+        carbonData,
+        msmeProfile
+      );
+      const totalAmount = this.resolveAmountFromExtraction(extractedData, carbonData);
+
+      return {
+        totalCO2Emissions: Number(calculation.totalCO2Emissions) || 0,
+        totalAmount,
+        transactionCount: totalAmount > 0 ? 1 : 0,
+        categoryBreakdown: this.buildCategoryBreakdownFromAdvanced(calculation),
+        breakdown: calculation.breakdown,
+        esgScopes: calculation.scopeBreakdown,
+        carbonScore: calculation.carbonScore || 0,
+        recommendations: calculation.recommendations || [],
+        calculatedAt: new Date(),
+        calculationMethod: 'document_bill_receipt_consumption'
+      };
+    } catch (error) {
+      console.warn('Bill/receipt carbon analysis failed:', error.message);
+      return null;
+    }
+  }
+
+  buildCategoryBreakdownFromAdvanced(calculation = {}) {
+    const breakdown = calculation.breakdown || {};
+    return Object.entries(breakdown).reduce((acc, [category, data]) => {
+      acc[category] = {
+        count: null,
+        amount: null,
+        emissions: Number(data?.co2) || 0,
+        emissionFactor: 0,
+        percentage: Number(data?.percentage) || 0,
+        subcategoryBreakdown: {}
+      };
+      return acc;
+    }, {});
+  }
+
+  resolveAmountFromExtraction(extractedData = {}, carbonData = {}) {
+    if (Number.isFinite(extractedData.amount) && extractedData.amount > 0) {
+      return extractedData.amount;
+    }
+    const energyCost = Number(carbonData?.energy?.totalCost) || 0;
+    return energyCost > 0 ? energyCost : 0;
   }
 
   buildDocumentTransactions(document, extractedData = {}, itemFootprints = [], msmeProfile = {}) {

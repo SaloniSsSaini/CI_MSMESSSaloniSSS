@@ -105,4 +105,58 @@ describe('Document Processing Service - Itemized Carbon', () => {
     expect(analysis.categoryBreakdown.energy.emissions).toBeCloseTo(100);
     expect(analysis.carbonScore).toBe(88);
   });
+
+  test('should calculate bill/receipt carbon analysis from pdf extraction', async () => {
+    const originalAdvancedService = documentProcessingService.advancedCarbonCalculationService;
+    documentProcessingService.advancedCarbonCalculationService = {
+      calculateAdvancedCarbonFootprint: jest.fn().mockResolvedValue({
+        totalCO2Emissions: 800,
+        breakdown: {
+          energy: { co2: 800, percentage: 100 }
+        },
+        scopeBreakdown: {
+          scope1: { co2: 200, percentage: 25 },
+          scope2: { co2: 600, percentage: 75 },
+          scope3: { co2: 0, percentage: 0 }
+        },
+        carbonScore: 72,
+        recommendations: [{ category: 'energy', title: 'Test Recommendation' }]
+      })
+    };
+
+    try {
+      const document = {
+        msmeId: 'msme123',
+        documentType: 'bill'
+      };
+      const extractedData = { amount: 5000, currency: 'INR' };
+      const carbonExtraction = {
+        extractedData: {
+          carbonRelevant: true,
+          energy: { electricity: { consumption: 1000 }, fuel: { consumption: 0 }, renewable: { percentage: 0 } },
+          materials: { rawMaterials: { quantity: 0 }, packaging: { quantity: 0 } },
+          transportation: { distance: 0, fuelConsumption: 0 },
+          waste: { solid: { quantity: 0 }, hazardous: { quantity: 0 } },
+          water: { consumption: 0 }
+        }
+      };
+      const msmeProfile = { industry: 'services', businessDomain: 'services' };
+
+      const analysis = await documentProcessingService.calculateBillReceiptCarbonAnalysis(
+        document,
+        extractedData,
+        carbonExtraction,
+        msmeProfile
+      );
+
+      expect(analysis).toBeTruthy();
+      expect(analysis.totalCO2Emissions).toBe(800);
+      expect(analysis.totalAmount).toBe(5000);
+      expect(analysis.categoryBreakdown.energy.emissions).toBe(800);
+      expect(analysis.carbonScore).toBe(72);
+      expect(documentProcessingService.advancedCarbonCalculationService.calculateAdvancedCarbonFootprint).toHaveBeenCalled();
+    } finally {
+      documentProcessingService.advancedCarbonCalculationService = originalAdvancedService;
+    }
+  });
 });
