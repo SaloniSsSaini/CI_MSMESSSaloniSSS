@@ -12,6 +12,7 @@ const aiAgentSchema = new mongoose.Schema({
       'carbon_analyzer',
       'data_privacy',
       'document_analyzer',
+      'orchestration_agent',
       'recommendation_engine', 
       'data_processor',
       'anomaly_detector',

@@ -32,6 +32,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
    - Recommendation Engine Agent
    - Data Processor Agent
 - Data Privacy Agent
+- Orchestration Agent
 - Document Analyzer Agent
    - Anomaly Detector Agent
    - Trend Analyzer Agent
@@ -98,7 +99,17 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Retention guidance for sensitive fields
 - Privacy risk flagging for unknown parameters
 
-### 5. Document Analyzer Agent
+### 5. Orchestration Agent
+**Type:** `orchestration_agent`
+**Purpose:** Coordinate agent handoffs, shared context, and cross-agent communication
+
+**Capabilities:**
+- Summarize shared context and data quality for agents
+- Publish agent briefings and routing notes
+- Surface coordination messages and risk flags
+- Align agent outputs with the orchestration plan
+
+### 6. Document Analyzer Agent
 **Type:** `document_analyzer`
 **Purpose:** Analyze uploaded documents and derive transaction context
 
@@ -108,7 +119,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Amount aggregation and date range coverage
 - Document metadata enrichment for orchestration
 
-### 6. Anomaly Detector Agent
+### 7. Anomaly Detector Agent
 **Type:** `anomaly_detector`
 **Purpose:** Detect unusual patterns and anomalies in data
 
@@ -119,7 +130,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Risk assessment
 - Alert generation
 
-### 7. Trend Analyzer Agent
+### 8. Trend Analyzer Agent
 **Type:** `trend_analyzer`
 **Purpose:** Analyze trends and patterns in sustainability data
 
@@ -130,7 +141,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Predictive forecasting
 - Performance benchmarking
 
-### 8. Compliance Monitor Agent
+### 9. Compliance Monitor Agent
 **Type:** `compliance_monitor`
 **Purpose:** Monitor environmental compliance and regulatory requirements
 
@@ -141,7 +152,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Regulatory change monitoring
 - Compliance scoring
 
-### 9. Optimization Advisor Agent
+### 10. Optimization Advisor Agent
 **Type:** `optimization_advisor`
 **Purpose:** Provide optimization suggestions for processes and resources
 
@@ -152,7 +163,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Energy optimization suggestions
 - Waste reduction plans
 
-### 10. Report Generator Agent
+### 11. Report Generator Agent
 **Type:** `report_generator`
 **Purpose:** Generate comprehensive reports and visualizations
 
@@ -163,7 +174,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Multi-format export (PDF, Excel, JSON)
 - Customizable report templates
 
-### 11. Unified Sector Profiler Agent
+### 12. Unified Sector Profiler Agent
 **Type:** `sector_profiler`
 **Purpose:** Build sector-specific MSME profiles and guide dynamic orchestration
 
@@ -180,7 +191,7 @@ The Carbon Intelligence backend now includes a comprehensive multi-AI agent syst
 - Sector model location-based carbon weightages
 - Context enrichment for multi-agent coordination
 
-### 12. Unified Process & Machinery Profiler Agent
+### 13. Unified Process & Machinery Profiler Agent
 **Type:** `process_machinery_profiler`
 **Purpose:** Identify sector processes, machinery, and emissions generation factors
 

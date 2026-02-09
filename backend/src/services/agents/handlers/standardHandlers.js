@@ -201,6 +201,214 @@ const documentAnalyzerAgent = async (task) => {
   };
 };
 
+const summarizeDataQuality = (dataQuality = {}) => ({
+  confidence: Number.isFinite(dataQuality.confidence) ? dataQuality.confidence : null,
+  completeness: Number.isFinite(dataQuality.completeness) ? dataQuality.completeness : null,
+  consistency: Number.isFinite(dataQuality.consistency) ? dataQuality.consistency : null,
+  coverage: Number.isFinite(dataQuality.coverage) ? dataQuality.coverage : null
+});
+
+const summarizeKnownParameters = (known = {}) => ({
+  processCount: Array.isArray(known.processes) ? known.processes.length : 0,
+  machineryCount: Array.isArray(known.machinery) ? known.machinery.length : 0,
+  waterConsumption: known.waterConsumption?.total ?? null,
+  fuelConsumption: known.fuelConsumption?.total ?? null,
+  wasteGeneration: known.wasteGeneration?.total ?? null,
+  materialsConsumption: known.materialsConsumption?.total ?? null,
+  chemicalsConsumption: known.chemicalsConsumption?.total ?? null,
+  airPollutants: Array.isArray(known.airPollution?.pollutants) ? known.airPollution.pollutants.length : 0
+});
+
+const summarizeUnknownParameters = (unknown = {}) => ({
+  needsReview: Boolean(unknown.needsReview),
+  detectedCategories: Array.isArray(unknown.detectedCategories)
+    ? unknown.detectedCategories.slice(0, 5)
+    : [],
+  weightedCount: Array.isArray(unknown.weightedParameters)
+    ? unknown.weightedParameters.length
+    : 0
+});
+
+const summarizeDocumentContext = (documentAnalysis, context = {}) => {
+  const summary = documentAnalysis?.summary || context.documentSummary || {};
+  return {
+    totalDocuments: Number.isFinite(summary.totalDocuments) ? summary.totalDocuments : 0,
+    processedDocuments: Number.isFinite(summary.processedDocuments) ? summary.processedDocuments : 0,
+    categoryCount: summary.categoryBreakdown ? Object.keys(summary.categoryBreakdown).length : 0,
+    vendorCount: summary.vendorBreakdown ? Object.keys(summary.vendorBreakdown).length : 0
+  };
+};
+
+const buildSharedContext = ({
+  stage,
+  orchestrationId,
+  msmeSnapshot,
+  context = {},
+  orchestrationPlan,
+  transactions = [],
+  processedTransactions = [],
+  agentOutputs = {}
+}) => {
+  const transactionCount = processedTransactions.length || transactions.length;
+  const dataQuality = summarizeDataQuality(context.dataQuality || agentOutputs.dataQuality);
+  const knownParameters = summarizeKnownParameters(context.knownParameters);
+  const unknownParameters = summarizeUnknownParameters(context.unknownParameters);
+  const documentContext = summarizeDocumentContext(agentOutputs.documentAnalysis, context);
+
+  return {
+    stage,
+    orchestrationId: orchestrationId || null,
+    msme: msmeSnapshot || null,
+    businessDomain: context.businessDomain,
+    industry: context.industry,
+    region: context.region,
+    season: context.season,
+    transactionCount,
+    dataQuality,
+    knownParameters,
+    unknownParameters,
+    policyStatus: context.policyUpdates?.status || 'unknown',
+    documentContext,
+    orchestrationPlan: orchestrationPlan ? {
+      coordinationMode: orchestrationPlan.coordinationMode,
+      parallelAgents: orchestrationPlan.parallelAgents,
+      outputs: orchestrationPlan.outputs
+    } : null
+  };
+};
+
+const buildAgentBriefings = (sharedContext, input = {}) => {
+  const baseBriefing = {
+    stage: sharedContext.stage,
+    orchestrationId: sharedContext.orchestrationId,
+    policyStatus: sharedContext.policyStatus,
+    dataQuality: sharedContext.dataQuality,
+    transactionCount: sharedContext.transactionCount
+  };
+
+  return {
+    data_processor: {
+      ...baseBriefing,
+      focus: 'data_enrichment',
+      documentContext: sharedContext.documentContext,
+      knownParameters: sharedContext.knownParameters
+    },
+    carbon_analyzer: {
+      ...baseBriefing,
+      focus: 'emissions_analysis',
+      behaviorSignals: input.context?.behaviorSignals || {},
+      knownParameters: sharedContext.knownParameters,
+      unknownParameters: sharedContext.unknownParameters
+    },
+    anomaly_detector: {
+      ...baseBriefing,
+      focus: 'risk_detection',
+      unknownParameters: sharedContext.unknownParameters
+    },
+    trend_analyzer: {
+      ...baseBriefing,
+      focus: 'trend_context',
+      documentContext: sharedContext.documentContext
+    },
+    compliance_monitor: {
+      ...baseBriefing,
+      focus: 'regulatory_checks',
+      policyStatus: sharedContext.policyStatus,
+      knownParameters: sharedContext.knownParameters,
+      unknownParameters: sharedContext.unknownParameters
+    },
+    optimization_advisor: {
+      ...baseBriefing,
+      focus: 'optimization_targets',
+      knownParameters: sharedContext.knownParameters
+    },
+    recommendation_engine: {
+      ...baseBriefing,
+      focus: 'recommendation_alignment',
+      orchestrationPlan: sharedContext.orchestrationPlan
+    },
+    report_generator: {
+      ...baseBriefing,
+      focus: 'report_alignment',
+      orchestrationPlan: sharedContext.orchestrationPlan
+    }
+  };
+};
+
+const buildOrchestrationMessages = (sharedContext) => {
+  const messages = [];
+  const timestamp = new Date().toISOString();
+
+  const pushMessage = (targets, message, severity = 'info', context = {}) => {
+    messages.push({
+      targets: Array.isArray(targets) ? targets : [targets],
+      message,
+      severity,
+      context,
+      timestamp
+    });
+  };
+
+  if (Number.isFinite(sharedContext.dataQuality?.confidence) &&
+      sharedContext.dataQuality.confidence < 0.6) {
+    pushMessage('broadcast', 'Data quality is below target; interpret results cautiously.', 'warning', {
+      confidence: sharedContext.dataQuality.confidence
+    });
+  }
+
+  if (sharedContext.unknownParameters?.needsReview) {
+    pushMessage(['anomaly_detector', 'compliance_monitor'], 'Unknown parameters detected; prioritize review.', 'warning', {
+      detectedCategories: sharedContext.unknownParameters.detectedCategories
+    });
+  }
+
+  if (sharedContext.policyStatus === 'placeholder') {
+    pushMessage('compliance_monitor', 'Policy updates are placeholders; note regulatory uncertainty.', 'info');
+  }
+
+  if (sharedContext.documentContext?.totalDocuments === 0 && sharedContext.transactionCount > 0) {
+    pushMessage('data_processor', 'No document context available; consider requesting supporting documents.', 'info');
+  }
+
+  return messages;
+};
+
+const orchestrationAgent = async (task) => {
+  const { input } = task || {};
+  const stage = input?.stage || 'unknown';
+  const context = input?.context || {};
+  const coordinationContext = input?.coordinationContext || {};
+  const orchestrationId = input?.orchestrationId || coordinationContext.orchestrationId || null;
+
+  const sharedContext = buildSharedContext({
+    stage,
+    orchestrationId,
+    msmeSnapshot: input?.msmeSnapshot,
+    context,
+    orchestrationPlan: input?.orchestrationPlan,
+    transactions: Array.isArray(input?.transactions) ? input.transactions : [],
+    processedTransactions: Array.isArray(input?.processedTransactions) ? input.processedTransactions : [],
+    agentOutputs: input?.agentOutputs || {}
+  });
+
+  const agentBriefings = buildAgentBriefings(sharedContext, input);
+  const messages = buildOrchestrationMessages(sharedContext);
+
+  return {
+    stage,
+    updatedAt: new Date().toISOString(),
+    summary: {
+      transactionCount: sharedContext.transactionCount,
+      dataQuality: sharedContext.dataQuality,
+      unknownParameters: sharedContext.unknownParameters,
+      policyStatus: sharedContext.policyStatus
+    },
+    sharedContext,
+    agentBriefings,
+    messages
+  };
+};
+
 const carbonAnalyzerAgent = async (task) => {
   const { input } = task;
 
@@ -401,6 +609,7 @@ const handlers = {
   carbon_analyzer: carbonAnalyzerAgent,
   data_privacy: dataPrivacyAgent,
   document_analyzer: documentAnalyzerAgent,
+  orchestration_agent: orchestrationAgent,
   recommendation_engine: recommendationEngineAgent,
   data_processor: dataProcessorAgent,
   anomaly_detector: anomalyDetectorAgent,
