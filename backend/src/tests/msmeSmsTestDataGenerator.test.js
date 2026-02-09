@@ -64,4 +64,26 @@ describe('MSME SMS test data generator', () => {
       expect(result.transaction.classificationContext.matchedProcess).toBe(sample.metadata.process);
     });
   });
+
+  test('generates messages for a single sector with shared profile', () => {
+    const { messages, summary } = generateMsmeSmsTestData({
+      totalMessages: 120,
+      sectorKey: 'textiles',
+      useSingleProfile: true
+    });
+
+    expect(messages).toHaveLength(120);
+    expect(summary.sectorCounts.textiles).toBe(120);
+    expect(summary.sectorKeys).toEqual(['textiles']);
+
+    const firstProfile = JSON.stringify(messages[0].msmeProfile);
+    messages.forEach((message) => {
+      expect(message.metadata.sector).toBe('textiles');
+      expect(JSON.stringify(message.msmeProfile)).toBe(firstProfile);
+    });
+
+    TRANSACTION_TYPES.forEach((type) => {
+      expect(summary.transactionTypeCounts[type]).toBeGreaterThan(0);
+    });
+  });
 });
