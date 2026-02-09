@@ -73,6 +73,11 @@ class DocumentProcessingService {
 
       // Calculate carbon footprint
       const carbonFootprint = await this.calculateCarbonFootprint(extractedData, itemFootprints);
+      const carbonAnalysis = await this.calculateDocumentCarbonAnalysis(
+        document,
+        extractedData,
+        itemFootprints
+      );
       
       // Update document with extracted data
       document.extractedData = extractedData;
@@ -84,6 +89,14 @@ class DocumentProcessingService {
         warnings: processingResult.warnings
       };
       document.carbonFootprint = carbonFootprint;
+      if (carbonAnalysis) {
+        document.carbonAnalysis = carbonAnalysis;
+        if (document.carbonFootprint) {
+          document.carbonFootprint.sustainabilityScore = carbonAnalysis.carbonScore || 0;
+        }
+      } else if (Array.isArray(processingResult.warnings)) {
+        processingResult.warnings.push('Carbon analysis unavailable for this document');
+      }
       document.duplicateDetection = duplicateResult;
 
       await document.save();
@@ -218,6 +231,8 @@ class DocumentProcessingService {
       return {
         ...item,
         total: amount || item.total,
+        category,
+        subcategory,
         carbonFootprint: {
           co2Emissions: carbonFootprint.co2Emissions || 0,
           emissionFactor: carbonFootprint.emissionFactor || 0,
@@ -543,6 +558,141 @@ class DocumentProcessingService {
     }
   }
 
+  buildDocumentTransactions(document, extractedData = {}, itemFootprints = [], msmeProfile = {}) {
+    const baseTransaction = {
+      msmeId: document.msmeId,
+      source: 'manual',
+      transactionType: this.mapDocumentToTransactionType(document.documentType),
+      currency: extractedData.currency || 'INR',
+      vendor: extractedData.vendor,
+      date: extractedData.date || new Date(),
+      description: extractedData.description || document.originalName || 'Document transaction',
+      industry: msmeProfile?.industry,
+      businessDomain: msmeProfile?.businessDomain,
+      region: carbonCalculationService.resolveRegion(msmeProfile?.contact?.address?.state),
+      location: {
+        state: msmeProfile?.contact?.address?.state || 'unknown',
+        country: msmeProfile?.contact?.address?.country || 'India'
+      },
+      sustainability: {
+        isGreen: false,
+        greenScore: 0
+      }
+    };
+
+    const itemTransactions = Array.isArray(itemFootprints) ? itemFootprints : [];
+    if (itemTransactions.length > 0) {
+      return itemTransactions
+        .map(item => {
+          const amount = Number(item.total) || this.resolveItemAmount(item);
+          const category = item.category || this.resolveItemCategory(item, extractedData);
+          const subcategory = item.subcategory || this.resolveItemSubcategory(item, category, extractedData);
+          if (!amount && !item.name) {
+            return null;
+          }
+          return {
+            ...baseTransaction,
+            sourceId: `${document._id?.toString() || document.fileName}_${item.name || 'item'}`,
+            amount,
+            category,
+            subcategory,
+            description: item.name
+              ? `${baseTransaction.description} - ${item.name}`
+              : baseTransaction.description,
+            carbonFootprint: item.carbonFootprint
+          };
+        })
+        .filter(Boolean);
+    }
+
+    if (extractedData.amount && extractedData.amount > 0) {
+      return [{
+        ...baseTransaction,
+        sourceId: document._id?.toString() || document.fileName,
+        amount: extractedData.amount,
+        category: extractedData.category || 'other',
+        subcategory: extractedData.subcategory || 'general',
+        carbonFootprint: document.carbonFootprint
+      }];
+    }
+
+    return [];
+  }
+
+  buildCategoryBreakdown(transactions = []) {
+    return transactions.reduce((acc, transaction) => {
+      const category = (transaction.category || 'other').toLowerCase();
+      const subcategory = transaction.subcategory || 'general';
+      const amount = Number(transaction.amount) || 0;
+      const carbonFootprint = transaction.carbonFootprint ||
+        carbonCalculationService.calculateTransactionCarbonFootprint(transaction);
+      const emissions = Number(carbonFootprint.co2Emissions) || 0;
+
+      if (!acc[category]) {
+        acc[category] = {
+          count: 0,
+          amount: 0,
+          emissions: 0,
+          emissionFactor: 0,
+          subcategoryBreakdown: {}
+        };
+      }
+
+      acc[category].count += 1;
+      acc[category].amount += amount;
+      acc[category].emissions += emissions;
+      acc[category].emissionFactor = acc[category].amount > 0
+        ? acc[category].emissions / acc[category].amount
+        : 0;
+      acc[category].subcategoryBreakdown[subcategory] =
+        (acc[category].subcategoryBreakdown[subcategory] || 0) + emissions;
+
+      return acc;
+    }, {});
+  }
+
+  async calculateDocumentCarbonAnalysis(document, extractedData = {}, itemFootprints = [], msmeProfileOverride = null) {
+    try {
+      const MSME = require('../models/MSME');
+      const msmeProfile = msmeProfileOverride || await MSME.findById(document.msmeId).lean();
+      if (!msmeProfile) {
+        return null;
+      }
+
+      const transactions = this.buildDocumentTransactions(
+        document,
+        extractedData,
+        itemFootprints,
+        msmeProfile
+      );
+      if (transactions.length === 0) {
+        return null;
+      }
+
+      const assessment = carbonCalculationService.calculateMSMECarbonFootprint(
+        msmeProfile,
+        transactions
+      );
+      const totalAmount = transactions.reduce((sum, txn) => sum + (Number(txn.amount) || 0), 0);
+
+      return {
+        totalCO2Emissions: assessment.totalCO2Emissions,
+        totalAmount,
+        transactionCount: transactions.length,
+        categoryBreakdown: this.buildCategoryBreakdown(transactions),
+        breakdown: assessment.breakdown,
+        esgScopes: assessment.esgScopes,
+        carbonScore: assessment.carbonScore,
+        recommendations: assessment.recommendations,
+        calculatedAt: new Date(),
+        calculationMethod: 'document_transactions'
+      };
+    } catch (error) {
+      console.error('Document carbon analysis error:', error);
+      return null;
+    }
+  }
+
   /**
    * Calculate confidence score for extracted data
    * @param {Object} extractedData - Extracted data
@@ -672,8 +822,8 @@ class DocumentProcessingService {
             continue;
           }
 
-          const category = this.resolveItemCategory(item, document.extractedData);
-          const subcategory = this.resolveItemSubcategory(item, category, document.extractedData);
+          const category = item.category || this.resolveItemCategory(item, document.extractedData);
+          const subcategory = item.subcategory || this.resolveItemSubcategory(item, category, document.extractedData);
 
           const transaction = new Transaction({
             msmeId: document.msmeId,
@@ -720,8 +870,8 @@ class DocumentProcessingService {
           currency: document.extractedData.currency,
           description: document.extractedData.description,
           vendor: document.extractedData.vendor,
-          category: document.extractedData.category,
-          subcategory: document.extractedData.subcategory,
+          category: document.extractedData.category || 'other',
+          subcategory: document.extractedData.subcategory || 'general',
           date: transactionDate,
           carbonFootprint: document.carbonFootprint,
           metadata: {

@@ -71,6 +71,8 @@ const documentSchema = new mongoose.Schema({
       unit: String,
       price: Number,
       total: Number,
+      category: String,
+      subcategory: String,
       carbonFootprint: {
         co2Emissions: {
           type: Number,
@@ -142,6 +144,32 @@ const documentSchema = new mongoose.Schema({
       max: 100,
       default: 0
     }
+  },
+  carbonAnalysis: {
+    totalCO2Emissions: {
+      type: Number,
+      default: 0
+    },
+    totalAmount: {
+      type: Number,
+      default: 0
+    },
+    transactionCount: {
+      type: Number,
+      default: 0
+    },
+    categoryBreakdown: mongoose.Schema.Types.Mixed,
+    breakdown: mongoose.Schema.Types.Mixed,
+    esgScopes: mongoose.Schema.Types.Mixed,
+    carbonScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    recommendations: [mongoose.Schema.Types.Mixed],
+    calculatedAt: Date,
+    calculationMethod: String
   },
   metadata: {
     uploadSource: {
