@@ -254,4 +254,110 @@ describe('MSME Emissions Orchestration Service', () => {
     expect(aiAgentService.anomalyDetectorAgent).not.toHaveBeenCalled();
     expect(aiAgentService.complianceMonitorAgent).not.toHaveBeenCalled();
   });
+
+  describe('Orchestration agent coordination', () => {
+    test('should apply orchestration updates into communication context', () => {
+      const coordinationContext = { orchestrationId: 'orch_001' };
+
+      orchestrationService.applyOrchestrationUpdate(coordinationContext, {
+        stage: 'bootstrap',
+        summary: { transactionCount: 4 },
+        updatedAt: '2024-02-01T00:00:00.000Z',
+        sharedContext: { region: 'south-india' },
+        agentBriefings: { data_processor: { focus: 'data_enrichment' } },
+        messages: [{ targets: ['broadcast'], message: 'sync', severity: 'info', timestamp: '2024-02-01T00:00:00.000Z' }]
+      });
+
+      expect(coordinationContext.communication).toBeDefined();
+      expect(coordinationContext.communication.sharedContext).toEqual({ region: 'south-india' });
+      expect(coordinationContext.communication.agentBriefings.data_processor.focus).toBe('data_enrichment');
+      expect(coordinationContext.communication.messages).toHaveLength(1);
+      expect(coordinationContext.communication.stageSummaries).toEqual([
+        {
+          stage: 'bootstrap',
+          summary: { transactionCount: 4 },
+          updatedAt: '2024-02-01T00:00:00.000Z'
+        }
+      ]);
+    });
+
+    test('should include agent briefing in coordination payload', () => {
+      const coordinationContext = {
+        communication: {
+          agentBriefings: {
+            trend_analyzer: { focus: 'trend_context', transactionCount: 2 }
+          }
+        }
+      };
+
+      const payload = orchestrationService.buildCoordinationPayload(
+        coordinationContext,
+        'trend_analyzer'
+      );
+
+      expect(payload.agentBriefing).toEqual({
+        focus: 'trend_context',
+        transactionCount: 2
+      });
+      expect(payload.communication).toBe(coordinationContext.communication);
+    });
+
+    test('should run orchestration agent and merge communication updates', async () => {
+      const coordinationContext = {
+        orchestrationId: 'orch_abc',
+        interactions: [],
+        previousResults: {},
+        warnings: [],
+        communication: orchestrationService.initializeCommunicationContext('orch_abc')
+      };
+
+      aiAgentService.orchestrationAgent.mockResolvedValue({
+        stage: 'bootstrap',
+        summary: { transactionCount: 2 },
+        updatedAt: '2024-02-01T00:00:00.000Z',
+        sharedContext: { orchestrationId: 'orch_abc' },
+        agentBriefings: { data_processor: { focus: 'data_enrichment' } },
+        messages: [
+          {
+            targets: ['broadcast'],
+            message: 'coordination ready',
+            severity: 'info',
+            timestamp: '2024-02-01T00:00:00.000Z'
+          }
+        ]
+      });
+
+      await orchestrationService.runOrchestrationAgent({
+        stage: 'bootstrap',
+        msmeProfile: {
+          companyName: 'Acme Works',
+          industry: 'manufacturing',
+          businessDomain: 'manufacturing',
+          companyType: 'small',
+          contact: { address: { state: 'Karnataka' } }
+        },
+        context: { businessDomain: 'manufacturing' },
+        coordinationContext,
+        agentAvailability: { orchestration_agent: { available: true } },
+        transactions: [{ id: 1 }, { id: 2 }]
+      });
+
+      expect(aiAgentService.orchestrationAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            stage: 'bootstrap',
+            orchestrationId: 'orch_abc'
+          })
+        })
+      );
+      expect(coordinationContext.communication.sharedContext).toEqual({ orchestrationId: 'orch_abc' });
+      expect(coordinationContext.communication.agentBriefings.data_processor.focus).toBe('data_enrichment');
+      expect(coordinationContext.communication.messages).toHaveLength(1);
+      expect(coordinationContext.communication.stageSummaries).toHaveLength(1);
+      expect(coordinationContext.interactions[0]).toEqual(expect.objectContaining({
+        agentType: 'orchestration_agent',
+        status: 'completed'
+      }));
+    });
+  });
 });
