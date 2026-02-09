@@ -9,6 +9,7 @@ jest.mock('../services/aiAgentService', () => ({
   trendAnalyzerAgent: jest.fn(),
   complianceMonitorAgent: jest.fn(),
   optimizationAdvisorAgent: jest.fn(),
+  orchestrationAgent: jest.fn(),
   recommendationEngineAgent: jest.fn(),
   reportGeneratorAgent: jest.fn()
 }));

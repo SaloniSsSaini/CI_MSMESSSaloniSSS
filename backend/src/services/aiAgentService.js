@@ -586,6 +586,11 @@ class AIAgentService {
     return handler ? handler(task) : { error: 'Report generator handler not available' };
   }
 
+  async orchestrationAgent(task) {
+    const handler = agentRegistry.getHandler('orchestration_agent');
+    return handler ? handler(task) : { error: 'Orchestration handler not available' };
+  }
+
   // Helper methods
   generateTaskId() {
     return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

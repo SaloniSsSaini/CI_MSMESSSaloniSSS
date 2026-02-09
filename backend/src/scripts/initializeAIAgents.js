@@ -129,6 +129,30 @@ const defaultAgents = [
     }
   },
   {
+    name: 'Orchestration Agent',
+    type: 'orchestration_agent',
+    description: 'Coordinates multi-agent workflows and shared context exchange',
+    capabilities: [
+      'agent_coordination',
+      'context_synchronization',
+      'workflow_guardrails',
+      'communication_hub',
+      'orchestration_planning'
+    ],
+    configuration: {
+      model: 'orchestration_coordinator_v1',
+      parameters: {
+        summaryDetail: 'standard',
+        maxMessages: 200,
+        includeBriefings: true
+      },
+      thresholds: {
+        lowDataQuality: 0.6,
+        unknownParameterWeight: 0.35
+      }
+    }
+  },
+  {
     name: 'Anomaly Detector Agent',
     type: 'anomaly_detector',
     description: 'Detects unusual patterns and anomalies in transaction and emission data',

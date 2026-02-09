@@ -137,7 +137,8 @@ class OrchestrationManagerService {
       interactions: [],
       previousResults: {},
       warnings: [],
-      orchestrationOptions
+      orchestrationOptions,
+      communication: this.initializeCommunicationContext(orchestrationId)
     };
 
     const sectorAgentType = this.getSectorAgentType(msmeProfile.businessDomain);
@@ -147,6 +148,15 @@ class OrchestrationManagerService {
       sectorAgentType,
       processMachineryAgentType
     ]);
+
+    await this.runOrchestrationAgent({
+      stage: 'bootstrap',
+      msmeProfile,
+      context: baseContext,
+      coordinationContext,
+      agentAvailability,
+      transactions: normalizedTransactions
+    });
 
     const resolvedDocuments = await this.resolveDocuments(
       msmeProfile._id || msmeId,
@@ -159,7 +169,8 @@ class OrchestrationManagerService {
         input: {
           documents: resolvedDocuments,
           msmeData: msmeProfile,
-          context: baseContext
+          context: baseContext,
+          ...this.buildCoordinationPayload(coordinationContext, 'document_analyzer')
         }
       }),
       coordinationContext,
@@ -182,7 +193,8 @@ class OrchestrationManagerService {
           transactions: mergedTransactions,
           msmeData: msmeProfile,
           context: baseContext,
-          policyUpdates: baseContext.policyUpdates
+          policyUpdates: baseContext.policyUpdates,
+          ...this.buildCoordinationPayload(coordinationContext, 'data_privacy')
         }
       }),
       coordinationContext,
@@ -209,13 +221,27 @@ class OrchestrationManagerService {
     baseContext.dynamicParameters = dynamicParameters;
     baseContext.documentSummary = documentAnalysis?.summary || null;
 
+    await this.runOrchestrationAgent({
+      stage: 'context_enrichment',
+      msmeProfile,
+      context: baseContext,
+      coordinationContext,
+      agentAvailability,
+      agentOutputs: {
+        documentAnalysis,
+        dataPrivacy: privacyReview
+      },
+      transactions: privacySafeTransactions
+    });
+
     const sectorProfile = await this.executeAgent(
       sectorAgentType,
       () => aiAgentService.sectorProfilerAgent({
         input: {
           msmeData: msmeProfile,
           transactions: privacySafeTransactions,
-          context: baseContext
+          context: baseContext,
+          ...this.buildCoordinationPayload(coordinationContext, sectorAgentType)
         }
       }),
       coordinationContext,
@@ -233,7 +259,8 @@ class OrchestrationManagerService {
           msmeData: msmeProfile,
           transactions: privacySafeTransactions,
           context: baseContext,
-          sectorProfile
+          sectorProfile,
+          ...this.buildCoordinationPayload(coordinationContext, processMachineryAgentType)
         }
       }),
       coordinationContext,
@@ -269,6 +296,19 @@ class OrchestrationManagerService {
       });
     }
 
+    await this.runOrchestrationAgent({
+      stage: 'profiling_complete',
+      msmeProfile,
+      context,
+      coordinationContext,
+      agentAvailability,
+      agentOutputs: {
+        sectorProfile,
+        processMachineryProfile
+      },
+      transactions: privacySafeTransactions
+    });
+
     const dataProcessing = await this.executeAgent(
       'data_processor',
       () => aiAgentService.dataProcessorAgent({
@@ -278,8 +318,8 @@ class OrchestrationManagerService {
           documentSummary: documentAnalysis?.summary,
           context,
           behaviorProfiles,
-          coordinationContext,
-          orchestrationOptions
+          orchestrationOptions,
+          ...this.buildCoordinationPayload(coordinationContext, 'data_processor')
         }
       }),
       coordinationContext,
@@ -309,8 +349,8 @@ class OrchestrationManagerService {
           msmeData: msmeProfile,
           context,
           behaviorProfiles,
-          coordinationContext,
-          orchestrationOptions
+          orchestrationOptions,
+          ...this.buildCoordinationPayload(coordinationContext, 'carbon_analyzer')
         }
       }),
       coordinationContext,
@@ -348,6 +388,20 @@ class OrchestrationManagerService {
       orchestrationOptions
     });
 
+    await this.runOrchestrationAgent({
+      stage: 'core_analysis_complete',
+      msmeProfile,
+      context,
+      coordinationContext,
+      agentAvailability,
+      orchestrationPlan,
+      agentOutputs: {
+        dataProcessing,
+        carbonAnalysis
+      },
+      processedTransactions
+    });
+
     const parallelAgents = this.buildParallelAgentDefinitions(
       analysisContext,
       orchestrationPlan,
@@ -361,6 +415,22 @@ class OrchestrationManagerService {
         agentAvailability
       )
       : {};
+
+    await this.runOrchestrationAgent({
+      stage: 'parallel_insights',
+      msmeProfile,
+      context,
+      coordinationContext,
+      agentAvailability,
+      orchestrationPlan,
+      agentOutputs: {
+        anomalies: parallelResults.anomaly_detector,
+        trends: parallelResults.trend_analyzer,
+        compliance: parallelResults.compliance_monitor,
+        optimization: parallelResults.optimization_advisor
+      },
+      processedTransactions
+    });
 
     let recommendations = null;
     if (orchestrationPlan.outputs?.recommendations !== false) {
@@ -381,9 +451,9 @@ class OrchestrationManagerService {
             unknownParameters: analysisContext.unknownParameters,
             dynamicParameters: analysisContext.dynamicParameters,
             transactionTypeContext: analysisContext.transactionTypeContext,
-            coordinationContext,
             processMachineryProfile,
-            orchestrationOptions
+            orchestrationOptions,
+            ...this.buildCoordinationPayload(coordinationContext, 'recommendation_engine')
           }
         }),
         coordinationContext,
@@ -410,9 +480,9 @@ class OrchestrationManagerService {
             unknownParameters: analysisContext.unknownParameters,
             dynamicParameters: analysisContext.dynamicParameters,
             transactionTypeContext: analysisContext.transactionTypeContext,
-            coordinationContext,
             processMachineryProfile,
-            orchestrationOptions
+            orchestrationOptions,
+            ...this.buildCoordinationPayload(coordinationContext, 'report_generator')
           }
         }),
         coordinationContext,
@@ -423,6 +493,20 @@ class OrchestrationManagerService {
         }
       );
     }
+
+    await this.runOrchestrationAgent({
+      stage: 'outputs_compiled',
+      msmeProfile,
+      context,
+      coordinationContext,
+      agentAvailability,
+      orchestrationPlan,
+      agentOutputs: {
+        recommendations,
+        report
+      },
+      processedTransactions
+    });
 
     const emissionsSummary = this.buildEmissionsSummary(
       behaviorProfiles,
@@ -451,11 +535,13 @@ class OrchestrationManagerService {
         trends: parallelResults.trend_analyzer,
         compliance: parallelResults.compliance_monitor,
         optimization: parallelResults.optimization_advisor,
+        orchestrationAgent: coordinationContext.previousResults?.orchestration_agent || null,
         recommendations,
         report
       },
       interactions: coordinationContext.interactions,
-      warnings: coordinationContext.warnings
+      warnings: coordinationContext.warnings,
+      communication: coordinationContext.communication
     };
   }
 
@@ -1305,10 +1391,10 @@ class OrchestrationManagerService {
             unknownParameters: analysisContext.unknownParameters,
             dynamicParameters: analysisContext.dynamicParameters,
             transactionTypeContext: analysisContext.transactionTypeContext,
-            coordinationContext,
             dataQuality: analysisContext.dataQuality,
             orchestrationOptions,
-            thresholds: orchestrationOptions.thresholds
+            thresholds: orchestrationOptions.thresholds,
+            ...this.buildCoordinationPayload(coordinationContext, 'anomaly_detector')
           }
         })
       }),
@@ -1329,8 +1415,8 @@ class OrchestrationManagerService {
               dynamicParameters: analysisContext.dynamicParameters,
               transactionTypeContext: analysisContext.transactionTypeContext
             },
-            coordinationContext,
-            orchestrationOptions
+            orchestrationOptions,
+            ...this.buildCoordinationPayload(coordinationContext, 'trend_analyzer')
           }
         })
       }),
@@ -1348,9 +1434,9 @@ class OrchestrationManagerService {
             dynamicParameters: analysisContext.dynamicParameters,
             transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
-            coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,
-            orchestrationOptions
+            orchestrationOptions,
+            ...this.buildCoordinationPayload(coordinationContext, 'compliance_monitor')
           }
         })
       }),
@@ -1367,9 +1453,9 @@ class OrchestrationManagerService {
             dynamicParameters: analysisContext.dynamicParameters,
             transactionTypeContext: analysisContext.transactionTypeContext,
             context: analysisContext.context,
-            coordinationContext,
             processMachineryProfile: analysisContext.processMachineryProfile,
-            orchestrationOptions
+            orchestrationOptions,
+            ...this.buildCoordinationPayload(coordinationContext, 'optimization_advisor')
           }
         })
       })
@@ -1479,9 +1565,107 @@ class OrchestrationManagerService {
     });
   }
 
+  initializeCommunicationContext(orchestrationId) {
+    return {
+      orchestrationId: orchestrationId || null,
+      sharedContext: {},
+      agentBriefings: {},
+      messages: [],
+      stageSummaries: [],
+      lastUpdated: null
+    };
+  }
+
+  applyOrchestrationUpdate(coordinationContext, update) {
+    if (!coordinationContext) return;
+    if (!coordinationContext.communication) {
+      coordinationContext.communication = this.initializeCommunicationContext(
+        coordinationContext.orchestrationId
+      );
+    }
+    if (!update) return;
+
+    const communication = coordinationContext.communication;
+    if (update.sharedContext) {
+      communication.sharedContext = update.sharedContext;
+    }
+    if (update.agentBriefings) {
+      communication.agentBriefings = {
+        ...communication.agentBriefings,
+        ...update.agentBriefings
+      };
+    }
+    if (Array.isArray(update.messages) && update.messages.length > 0) {
+      communication.messages.push(...update.messages);
+    }
+    if (update.summary || update.stage) {
+      communication.stageSummaries.push({
+        stage: update.stage || 'unknown',
+        summary: update.summary || null,
+        updatedAt: update.updatedAt || new Date().toISOString()
+      });
+    }
+    communication.lastUpdated = new Date().toISOString();
+  }
+
+  getAgentBriefing(coordinationContext, agentType) {
+    if (!coordinationContext?.communication?.agentBriefings || !agentType) {
+      return null;
+    }
+    return coordinationContext.communication.agentBriefings[agentType] || null;
+  }
+
+  buildCoordinationPayload(coordinationContext, agentType) {
+    return {
+      coordinationContext,
+      communication: coordinationContext?.communication || null,
+      agentBriefing: this.getAgentBriefing(coordinationContext, agentType)
+    };
+  }
+
+  async runOrchestrationAgent({
+    stage,
+    msmeProfile,
+    context,
+    coordinationContext,
+    agentAvailability,
+    orchestrationPlan,
+    agentOutputs = {},
+    transactions = [],
+    processedTransactions = []
+  }) {
+    const output = await this.executeAgent(
+      'orchestration_agent',
+      () => aiAgentService.orchestrationAgent({
+        input: {
+          stage,
+          orchestrationId: coordinationContext?.orchestrationId,
+          msmeSnapshot: this.buildMSMESnapshot(msmeProfile),
+          context,
+          coordinationContext,
+          communicationState: coordinationContext?.communication,
+          orchestrationPlan,
+          agentOutputs,
+          transactions,
+          processedTransactions
+        }
+      }),
+      coordinationContext,
+      {
+        stage: `orchestration_${stage}`,
+        allowFailure: true,
+        executionMode: this.getExecutionMode(agentAvailability, 'orchestration_agent')
+      }
+    );
+
+    this.applyOrchestrationUpdate(coordinationContext, output);
+    return output;
+  }
+
   async resolveAgentAvailability(additionalTypes = []) {
     try {
       const agentTypes = [
+        'orchestration_agent',
         'document_analyzer',
         'data_privacy',
         'data_processor',
