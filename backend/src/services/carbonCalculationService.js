@@ -584,6 +584,7 @@ class CarbonCalculationService {
       esgScopes: {
         scope1: {
           total: 0,
+          percentage: 0,
           breakdown: {
             directFuel: 0,
             directTransport: 0,
@@ -603,6 +604,7 @@ class CarbonCalculationService {
         },
         scope2: {
           total: 0,
+          percentage: 0,
           breakdown: {
             electricity: 0,
             heating: 0,
@@ -621,6 +623,7 @@ class CarbonCalculationService {
         },
         scope3: {
           total: 0,
+          percentage: 0,
           breakdown: {
             purchasedGoods: 0,
             transportation: 0,
@@ -645,6 +648,7 @@ class CarbonCalculationService {
         },
         scope4: {
           total: 0,
+          percentage: 0,
           breakdown: {
             avoidedEmissions: 0,
             carbonOffsets: 0,
@@ -681,6 +685,9 @@ class CarbonCalculationService {
       // Update ESG scope breakdown
       this.updateESGScopes(assessment.esgScopes, transaction, carbonData.co2Emissions);
     });
+
+    // Normalize scope values and compute contribution percentages for reporting
+    this.finalizeESGScopeMetrics(assessment.esgScopes, assessment.totalCO2Emissions);
 
     // Calculate carbon score
     assessment.carbonScore = this.calculateCarbonScore(assessment, msmeData);
@@ -851,7 +858,9 @@ class CarbonCalculationService {
   }
 
   isScope1Emission(transaction) {
-    const { category, subcategory, description } = transaction;
+    const { category, subcategory, description, ownership, metadata = {} } = transaction;
+    const normalizedDescription = (description || '').toLowerCase();
+    const normalizedOwnership = (ownership || metadata.ownership || '').toLowerCase();
     
     // Direct fuel combustion
     if (category === 'energy' && subcategory !== 'renewable' && subcategory !== 'grid') {
@@ -859,10 +868,16 @@ class CarbonCalculationService {
     }
     
     // Company-owned vehicles
-    if (category === 'transportation' && description && 
-        (description.toLowerCase().includes('company') || 
-         description.toLowerCase().includes('owned') ||
-         description.toLowerCase().includes('fleet'))) {
+    if (
+      category === 'transportation' &&
+      (
+        normalizedOwnership === 'owned' ||
+        normalizedDescription.includes('company') ||
+        normalizedDescription.includes('owned') ||
+        normalizedDescription.includes('fleet') ||
+        normalizedDescription.includes('in-house')
+      )
+    ) {
       return true;
     }
     
@@ -872,7 +887,7 @@ class CarbonCalculationService {
     }
     
     // Fugitive emissions
-    if (description && description.toLowerCase().includes('fugitive')) {
+    if (normalizedDescription.includes('fugitive')) {
       return true;
     }
     
@@ -880,14 +895,96 @@ class CarbonCalculationService {
   }
 
   isScope2Emission(transaction) {
-    const { category, subcategory } = transaction;
+    const { category, subcategory, description } = transaction;
+    const normalizedDescription = (description || '').toLowerCase();
     
     // Purchased electricity, heating, cooling, steam
     if (category === 'energy' && (subcategory === 'grid' || subcategory === 'renewable')) {
       return true;
     }
+
+    if (
+      (category === 'utilities' || category === 'other') &&
+      (
+        normalizedDescription.includes('electricity') ||
+        normalizedDescription.includes('power bill') ||
+        normalizedDescription.includes('heating') ||
+        normalizedDescription.includes('cooling') ||
+        normalizedDescription.includes('steam') ||
+        normalizedDescription.includes('district energy')
+      )
+    ) {
+      return true;
+    }
     
     return false;
+  }
+
+  finalizeESGScopeMetrics(esgScopes, totalCO2Emissions = 0) {
+    if (!esgScopes || typeof esgScopes !== 'object') {
+      return;
+    }
+
+    const contributingScopes = ['scope1', 'scope2', 'scope3'];
+    const contributingTotal = contributingScopes.reduce((sum, scopeKey) => {
+      return sum + (Number(esgScopes?.[scopeKey]?.total) || 0);
+    }, 0);
+
+    const denominator = contributingTotal > 0
+      ? contributingTotal
+      : (Number(totalCO2Emissions) || 0);
+
+    Object.entries(esgScopes).forEach(([scopeKey, scopeData]) => {
+      if (!scopeData || typeof scopeData !== 'object') {
+        return;
+      }
+
+      scopeData.total = this.roundTo(scopeData.total, 2);
+
+      if (scopeKey === 'scope4') {
+        const baseTotal = Number(totalCO2Emissions) || 0;
+        scopeData.percentage = baseTotal > 0
+          ? this.roundTo((scopeData.total / baseTotal) * 100, 2)
+          : 0;
+      } else {
+        scopeData.percentage = denominator > 0
+          ? this.roundTo((scopeData.total / denominator) * 100, 2)
+          : 0;
+      }
+
+      if (scopeData.breakdown && typeof scopeData.breakdown === 'object') {
+        Object.keys(scopeData.breakdown).forEach(key => {
+          scopeData.breakdown[key] = this.roundTo(scopeData.breakdown[key], 2);
+        });
+      }
+
+      if (scopeData.parameters && typeof scopeData.parameters === 'object') {
+        this.roundScopeParameterMetrics(scopeData.parameters);
+      }
+    });
+  }
+
+  roundScopeParameterMetrics(parameters = {}) {
+    const metricKeys = ['totalEmissions', 'totalAvoidedEmissions', 'averageAmount', 'totalAmount'];
+    Object.values(parameters).forEach(entry => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+      metricKeys.forEach(metricKey => {
+        if (entry[metricKey] !== undefined) {
+          entry[metricKey] = this.roundTo(entry[metricKey], 2);
+        }
+      });
+    });
+  }
+
+  roundTo(value, decimals = 2) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    const factor = Math.pow(10, decimals);
+    return Math.round(numeric * factor) / factor;
   }
 
   calculateCarbonScore(assessment, msmeData) {

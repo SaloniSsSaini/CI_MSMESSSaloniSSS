@@ -27,6 +27,49 @@ const emitOrchestrationEvent = (eventType, payload = {}, source = 'ai-carbon-ana
   }
 };
 
+const mapAdvancedScopeBreakdownToESGScopes = (scopeBreakdown = {}) => {
+  const scope1CO2 = Number(scopeBreakdown?.scope1?.co2) || 0;
+  const scope2CO2 = Number(scopeBreakdown?.scope2?.co2) || 0;
+  const scope3CO2 = Number(scopeBreakdown?.scope3?.co2) || 0;
+
+  return {
+    scope1: {
+      total: scope1CO2,
+      breakdown: {
+        directFuel: Number(scopeBreakdown?.scope1?.breakdown?.directFuel) || scope1CO2,
+        directTransport: Number(scopeBreakdown?.scope1?.breakdown?.directTransport) || 0,
+        directManufacturing: Number(scopeBreakdown?.scope1?.breakdown?.directManufacturing) || 0,
+        fugitiveEmissions: 0
+      },
+      description: 'Direct emissions from owned or controlled sources'
+    },
+    scope2: {
+      total: scope2CO2,
+      breakdown: {
+        electricity: Number(scopeBreakdown?.scope2?.breakdown?.electricity) || scope2CO2,
+        heating: Number(scopeBreakdown?.scope2?.breakdown?.heating) || 0,
+        cooling: Number(scopeBreakdown?.scope2?.breakdown?.cooling) || 0,
+        steam: Number(scopeBreakdown?.scope2?.breakdown?.steam) || 0
+      },
+      description: 'Indirect emissions from purchased energy'
+    },
+    scope3: {
+      total: scope3CO2,
+      breakdown: {
+        purchasedGoods: Number(scopeBreakdown?.scope3?.breakdown?.purchasedGoods) || 0,
+        transportation: Number(scopeBreakdown?.scope3?.breakdown?.transportation) || 0,
+        wasteDisposal: Number(scopeBreakdown?.scope3?.breakdown?.wasteDisposal) || 0,
+        businessTravel: 0,
+        employeeCommuting: 0,
+        leasedAssets: 0,
+        investments: 0,
+        other: Number(scopeBreakdown?.scope3?.breakdown?.other) || 0
+      },
+      description: 'All other indirect emissions in the value chain'
+    }
+  };
+};
+
 // Middleware for authentication (if needed)
 const authenticateToken = (req, res, next) => {
   // Add authentication logic here
@@ -136,7 +179,7 @@ router.post('/calculate/advanced', authenticateToken, async (req, res) => {
       },
       totalCO2Emissions: calculation.totalCO2Emissions,
       breakdown: calculation.breakdown,
-      scopeBreakdown: calculation.scopeBreakdown,
+      esgScopes: mapAdvancedScopeBreakdownToESGScopes(calculation.scopeBreakdown),
       industryAdjustment: calculation.industryAdjustment,
       carbonScore: calculation.carbonScore,
       sustainabilityRating: calculation.sustainabilityRating,
@@ -642,7 +685,7 @@ router.post('/analyze/complete', authenticateToken, async (req, res) => {
       },
       totalCO2Emissions: results.carbonCalculation.totalCO2Emissions,
       breakdown: results.carbonCalculation.breakdown,
-      scopeBreakdown: results.carbonCalculation.scopeBreakdown,
+      esgScopes: mapAdvancedScopeBreakdownToESGScopes(results.carbonCalculation.scopeBreakdown),
       carbonScore: results.carbonScoring.overall,
       sustainabilityRating: results.carbonScoring.categories.sustainability.rating,
       mlInsights: results.insights,

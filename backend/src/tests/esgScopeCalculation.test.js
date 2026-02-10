@@ -74,6 +74,18 @@ describe('ESG Scope Calculations', () => {
     expect(Math.abs(totalScopes - assessment.totalCO2Emissions)).toBeLessThan(0.01);
   });
 
+  test('should provide scope contribution percentages for reporting', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, mockTransactions);
+    const { scope1, scope2, scope3 } = assessment.esgScopes;
+
+    expect(scope1.percentage).toBeGreaterThanOrEqual(0);
+    expect(scope2.percentage).toBeGreaterThanOrEqual(0);
+    expect(scope3.percentage).toBeGreaterThanOrEqual(0);
+
+    const totalPercentage = scope1.percentage + scope2.percentage + scope3.percentage;
+    expect(totalPercentage).toBeCloseTo(100, 1);
+  });
+
   test('should classify diesel fuel as Scope 1', () => {
     const transaction = {
       category: 'energy',
@@ -111,5 +123,84 @@ describe('ESG Scope Calculations', () => {
 
     const carbonData = carbonCalculationService.calculateTransactionCarbonFootprint(transaction);
     expect(carbonData.co2Emissions).toBeGreaterThan(0);
+  });
+
+  test('should classify company-owned fleet transport as Scope 1', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, [
+      {
+        category: 'transportation',
+        subcategory: 'diesel',
+        amount: 100,
+        description: 'Diesel consumed by company-owned fleet',
+        ownership: 'owned',
+        sustainability: { isGreen: false, greenScore: 0 }
+      }
+    ]);
+
+    expect(assessment.esgScopes.scope1.total).toBeGreaterThan(0);
+    expect(assessment.esgScopes.scope1.breakdown.directTransport).toBeGreaterThan(0);
+    expect(assessment.esgScopes.scope3.breakdown.transportation).toBe(0);
+  });
+
+  test('should classify outsourced transport as Scope 3', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, [
+      {
+        category: 'transportation',
+        subcategory: 'diesel',
+        amount: 100,
+        description: 'Outsourced third-party transportation service',
+        sustainability: { isGreen: false, greenScore: 0 }
+      }
+    ]);
+
+    expect(assessment.esgScopes.scope1.total).toBe(0);
+    expect(assessment.esgScopes.scope3.total).toBeGreaterThan(0);
+    expect(assessment.esgScopes.scope3.breakdown.transportation).toBeGreaterThan(0);
+  });
+
+  test('should classify utilities power bill as Scope 2', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, [
+      {
+        category: 'utilities',
+        subcategory: 'general',
+        amount: 300,
+        description: 'Monthly power bill and electricity charges',
+        sustainability: { isGreen: false, greenScore: 0 }
+      }
+    ]);
+
+    expect(assessment.esgScopes.scope2.total).toBeGreaterThan(0);
+    expect(assessment.esgScopes.scope2.breakdown.electricity).toBe(0);
+    expect(assessment.esgScopes.scope2.breakdown.heating).toBe(0);
+    expect(assessment.esgScopes.scope2.breakdown.cooling).toBe(0);
+    expect(assessment.esgScopes.scope2.breakdown.steam).toBe(0);
+  });
+
+  test('should return zero percentages when there are no emissions', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, []);
+    expect(assessment.totalCO2Emissions).toBe(0);
+    expect(assessment.esgScopes.scope1.total).toBe(0);
+    expect(assessment.esgScopes.scope2.total).toBe(0);
+    expect(assessment.esgScopes.scope3.total).toBe(0);
+    expect(assessment.esgScopes.scope1.percentage).toBe(0);
+    expect(assessment.esgScopes.scope2.percentage).toBe(0);
+    expect(assessment.esgScopes.scope3.percentage).toBe(0);
+  });
+
+  test('should detect scope classification from helper methods', () => {
+    expect(
+      carbonCalculationService.isScope1Emission({
+        category: 'transportation',
+        description: 'Fleet movement',
+        metadata: { ownership: 'owned' }
+      })
+    ).toBe(true);
+
+    expect(
+      carbonCalculationService.isScope2Emission({
+        category: 'utilities',
+        description: 'Power bill for manufacturing unit'
+      })
+    ).toBe(true);
   });
 });

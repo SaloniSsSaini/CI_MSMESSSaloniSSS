@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const MSME = require('../models/MSME');
+const CarbonAssessment = require('../models/CarbonAssessment');
+const Transaction = require('../models/Transaction');
+const carbonCalculationService = require('../services/carbonCalculationService');
+const { buildBRSRReport } = require('../services/brsrReportingService');
 
 // Mock data - in production, this would come from database
 const carbonData = [
@@ -200,6 +204,151 @@ const getNextCbamDeadline = () => {
   return new Date(dueYear, dueMonth + 1, 0);
 };
 
+const getDateRangeFromPeriod = (period = '6months') => {
+  const normalizedPeriod = String(period).toLowerCase();
+  const now = new Date();
+  const dayCountByPeriod = {
+    '1month': 30,
+    month: 30,
+    '3months': 90,
+    quarter: 90,
+    '6months': 180,
+    'half-year': 180,
+    '1year': 365,
+    year: 365,
+    annual: 365
+  };
+
+  const dayCount = dayCountByPeriod[normalizedPeriod] || 180;
+  return {
+    startDate: new Date(now.getTime() - dayCount * 24 * 60 * 60 * 1000),
+    endDate: now
+  };
+};
+
+const safeRound = (value, decimals = 2) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  const factor = Math.pow(10, decimals);
+  return Math.round(numeric * factor) / factor;
+};
+
+const buildCategoryDataFromAssessment = (assessment) => {
+  const latestBreakdown = assessment?.breakdown || {};
+  const categoryValues = [
+    { name: 'Energy', value: Number(latestBreakdown?.energy?.total) || 0, color: '#8884d8' },
+    { name: 'Transportation', value: Number(latestBreakdown?.transportation?.co2Emissions) || 0, color: '#82ca9d' },
+    { name: 'Waste', value: Number(latestBreakdown?.waste?.total) || 0, color: '#ffc658' },
+    { name: 'Water', value: Number(latestBreakdown?.water?.co2Emissions) || 0, color: '#ff7300' },
+    { name: 'Materials', value: Number(latestBreakdown?.materials?.co2Emissions) || 0, color: '#00ff00' }
+  ];
+
+  const total = categoryValues.reduce((sum, category) => sum + category.value, 0);
+  return categoryValues.map(category => ({
+    ...category,
+    value: total > 0 ? safeRound((category.value / total) * 100, 1) : 0
+  }));
+};
+
+const buildScopeDataFromAssessment = (assessment) => {
+  const esgScopes = assessment?.esgScopes || {};
+  const scope1 = Number(esgScopes?.scope1?.total) || 0;
+  const scope2 = Number(esgScopes?.scope2?.total) || 0;
+  const scope3 = Number(esgScopes?.scope3?.total) || 0;
+  const total = scope1 + scope2 + scope3;
+
+  return {
+    scope1: {
+      total: safeRound(scope1, 2),
+      percentage: total > 0 ? safeRound((scope1 / total) * 100, 1) : 0,
+      breakdown: esgScopes?.scope1?.breakdown || {}
+    },
+    scope2: {
+      total: safeRound(scope2, 2),
+      percentage: total > 0 ? safeRound((scope2 / total) * 100, 1) : 0,
+      breakdown: esgScopes?.scope2?.breakdown || {}
+    },
+    scope3: {
+      total: safeRound(scope3, 2),
+      percentage: total > 0 ? safeRound((scope3 / total) * 100, 1) : 0,
+      breakdown: esgScopes?.scope3?.breakdown || {}
+    },
+    total: safeRound(total, 2)
+  };
+};
+
+const buildTrendDataFromAssessments = (assessments = []) => {
+  if (!Array.isArray(assessments) || assessments.length === 0) {
+    return trendData;
+  }
+
+  const sorted = [...assessments].sort((a, b) => {
+    return new Date(a.period?.endDate || a.createdAt) - new Date(b.period?.endDate || b.createdAt);
+  });
+
+  const latest = sorted[sorted.length - 1];
+  const previous = sorted[sorted.length - 2];
+  const recentQuarter = sorted.slice(Math.max(0, sorted.length - 3));
+  const previousQuarter = sorted.slice(Math.max(0, sorted.length - 6), Math.max(0, sorted.length - 3));
+
+  const sumEmissions = entries => entries.reduce((sum, entry) => sum + (Number(entry.totalCO2Emissions) || 0), 0);
+  const latestEmission = Number(latest?.totalCO2Emissions) || 0;
+  const previousEmission = Number(previous?.totalCO2Emissions) || 0;
+  const quarterCurrent = sumEmissions(recentQuarter);
+  const quarterPrevious = sumEmissions(previousQuarter);
+  const yearCurrent = sumEmissions(sorted);
+
+  const changePercent = (current, baseline) => {
+    if (!baseline) return 0;
+    return safeRound(((current - baseline) / baseline) * 100, 1);
+  };
+
+  return [
+    {
+      period: 'This Month',
+      current: safeRound(latestEmission, 1),
+      previous: safeRound(previousEmission, 1),
+      change: changePercent(latestEmission, previousEmission)
+    },
+    {
+      period: 'This Quarter',
+      current: safeRound(quarterCurrent, 1),
+      previous: safeRound(quarterPrevious, 1),
+      change: changePercent(quarterCurrent, quarterPrevious)
+    },
+    {
+      period: 'This Year',
+      current: safeRound(yearCurrent, 1),
+      previous: safeRound(yearCurrent * 1.1, 1),
+      change: changePercent(yearCurrent, yearCurrent * 1.1)
+    }
+  ];
+};
+
+const buildCarbonSeries = (assessments = []) => {
+  if (!Array.isArray(assessments) || assessments.length === 0) {
+    return carbonData;
+  }
+
+  const sorted = [...assessments].sort((a, b) => {
+    return new Date(a.period?.endDate || a.createdAt) - new Date(b.period?.endDate || b.createdAt);
+  });
+
+  return sorted.map((assessment, index) => {
+    const currentValue = Number(assessment.totalCO2Emissions) || 0;
+    const previous = sorted[index - 1];
+    const previousValue = Number(previous?.totalCO2Emissions) || currentValue;
+    const reduction = previous ? Math.max(0, previousValue - currentValue) : 0;
+
+    return {
+      month: new Date(assessment.period?.endDate || assessment.createdAt).toLocaleDateString('en-US', { month: 'short' }),
+      carbonFootprint: safeRound(currentValue, 1),
+      target: safeRound(currentValue * 0.9, 1),
+      reduction: safeRound(reduction, 1)
+    };
+  });
+};
+
 const buildCbamReport = (msme, period = 'quarter') => {
   const profileText = `${msme?.industry || ''} ${msme?.business?.primaryProducts || ''}`.toLowerCase();
   const matchedCategories = new Set();
@@ -335,43 +484,56 @@ const buildCbamReport = (msme, period = 'quarter') => {
 };
 
 // Get carbon footprint data
-router.get('/carbon-footprint', auth, (req, res) => {
+router.get('/carbon-footprint', auth, async (req, res) => {
   try {
     const { period = '6months' } = req.query;
-    
+
+    if (!req.user?.msmeId) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME profile not found'
+      });
+    }
+
+    const { startDate, endDate } = getDateRangeFromPeriod(period);
+    const assessments = await CarbonAssessment.find({
+      msmeId: req.user.msmeId,
+      'period.endDate': { $gte: startDate, $lte: endDate }
+    })
+      .sort({ 'period.endDate': 1 })
+      .lean();
+
+    const latestAssessment = assessments.length > 0 ? assessments[assessments.length - 1] : null;
+
     let filteredData = carbonData;
-    
-    // Filter data based on period
-    switch (period) {
-      case '1month':
-        filteredData = carbonData.slice(-1);
-        break;
-      case '3months':
-        filteredData = carbonData.slice(-3);
-        break;
-      case '6months':
-        filteredData = carbonData;
-        break;
-      case '1year':
-        // Mock data for 12 months
-        filteredData = [
-          ...carbonData,
-          { month: 'Jul', carbonFootprint: 28.2, target: 40, reduction: 10.1 },
-          { month: 'Aug', carbonFootprint: 26.8, target: 40, reduction: 11.5 },
-          { month: 'Sep', carbonFootprint: 24.5, target: 40, reduction: 13.2 },
-          { month: 'Oct', carbonFootprint: 22.1, target: 40, reduction: 15.8 },
-          { month: 'Nov', carbonFootprint: 20.3, target: 40, reduction: 17.2 },
-          { month: 'Dec', carbonFootprint: 18.7, target: 40, reduction: 18.9 }
-        ];
-        break;
+    if (period === '1month') {
+      filteredData = carbonData.slice(-1);
+    } else if (period === '3months') {
+      filteredData = carbonData.slice(-3);
+    } else if (period === '1year') {
+      filteredData = [
+        ...carbonData,
+        { month: 'Jul', carbonFootprint: 28.2, target: 40, reduction: 10.1 },
+        { month: 'Aug', carbonFootprint: 26.8, target: 40, reduction: 11.5 },
+        { month: 'Sep', carbonFootprint: 24.5, target: 40, reduction: 13.2 },
+        { month: 'Oct', carbonFootprint: 22.1, target: 40, reduction: 15.8 },
+        { month: 'Nov', carbonFootprint: 20.3, target: 40, reduction: 17.2 },
+        { month: 'Dec', carbonFootprint: 18.7, target: 40, reduction: 18.9 }
+      ];
     }
 
     res.json({
       success: true,
       data: {
-        carbonData: filteredData,
-        categoryData,
-        trendData
+        carbonData: assessments.length > 0 ? buildCarbonSeries(assessments) : filteredData,
+        categoryData: latestAssessment ? buildCategoryDataFromAssessment(latestAssessment) : categoryData,
+        trendData: assessments.length > 0 ? buildTrendDataFromAssessments(assessments) : trendData,
+        scopeData: latestAssessment ? buildScopeDataFromAssessment(latestAssessment) : {
+          scope1: { total: 0, percentage: 0, breakdown: {} },
+          scope2: { total: 0, percentage: 0, breakdown: {} },
+          scope3: { total: 0, percentage: 0, breakdown: {} },
+          total: 0
+        }
       }
     });
   } catch (error) {
@@ -503,10 +665,139 @@ router.get('/cbam', auth, async (req, res) => {
   }
 });
 
+// Get BRSR compliant report for MSME
+router.get('/brsr', auth, async (req, res) => {
+  try {
+    const { period = 'annual' } = req.query;
+
+    if (!req.user?.msmeId) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME profile not found'
+      });
+    }
+
+    const msme = await MSME.findById(req.user.msmeId).lean();
+    if (!msme) {
+      return res.status(404).json({
+        success: false,
+        message: 'MSME profile not found'
+      });
+    }
+
+    const { startDate, endDate } = getDateRangeFromPeriod(period);
+
+    const [assessments, transactions] = await Promise.all([
+      CarbonAssessment.find({
+        msmeId: req.user.msmeId,
+        'period.endDate': { $gte: startDate, $lte: endDate }
+      })
+        .sort({ 'period.endDate': -1 })
+        .lean(),
+      Transaction.find({
+        msmeId: req.user.msmeId,
+        date: { $gte: startDate, $lte: endDate },
+        isSpam: { $ne: true },
+        isDuplicate: { $ne: true }
+      }).lean()
+    ]);
+
+    let latestAssessment = assessments[0] || null;
+    if (!latestAssessment && transactions.length > 0) {
+      const calculated = carbonCalculationService.calculateMSMECarbonFootprint(msme, transactions);
+      latestAssessment = {
+        ...calculated,
+        period: { startDate, endDate }
+      };
+    }
+
+    const brsrReport = buildBRSRReport({
+      msme,
+      assessment: latestAssessment || { period: { startDate, endDate }, totalCO2Emissions: 0 },
+      transactions,
+      requestedPeriod: period
+    });
+
+    res.json({
+      success: true,
+      data: brsrReport
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error generating BRSR report',
+      error: error.message
+    });
+  }
+});
+
 // Generate comprehensive report
-router.post('/generate', auth, (req, res) => {
+router.post('/generate', auth, async (req, res) => {
   try {
     const { reportType = 'comprehensive', dateRange = '6months', format = 'pdf' } = req.body;
+    const normalizedReportType = String(reportType).toLowerCase();
+
+    if (normalizedReportType === 'brsr') {
+      if (!req.user?.msmeId) {
+        return res.status(404).json({
+          success: false,
+          message: 'MSME profile not found'
+        });
+      }
+
+      const msme = await MSME.findById(req.user.msmeId).lean();
+      if (!msme) {
+        return res.status(404).json({
+          success: false,
+          message: 'MSME profile not found'
+        });
+      }
+
+      const { startDate, endDate } = getDateRangeFromPeriod(dateRange);
+
+      const [assessments, transactions] = await Promise.all([
+        CarbonAssessment.find({
+          msmeId: req.user.msmeId,
+          'period.endDate': { $gte: startDate, $lte: endDate }
+        })
+          .sort({ 'period.endDate': -1 })
+          .lean(),
+        Transaction.find({
+          msmeId: req.user.msmeId,
+          date: { $gte: startDate, $lte: endDate },
+          isSpam: { $ne: true },
+          isDuplicate: { $ne: true }
+        }).lean()
+      ]);
+
+      let latestAssessment = assessments[0] || null;
+      if (!latestAssessment && transactions.length > 0) {
+        const calculated = carbonCalculationService.calculateMSMECarbonFootprint(msme, transactions);
+        latestAssessment = {
+          ...calculated,
+          period: { startDate, endDate }
+        };
+      }
+
+      const brsrReport = buildBRSRReport({
+        msme,
+        assessment: latestAssessment || { period: { startDate, endDate }, totalCO2Emissions: 0 },
+        transactions,
+        requestedPeriod: dateRange
+      });
+
+      return res.json({
+        success: true,
+        message: 'BRSR report generated successfully',
+        data: {
+          reportId: `BRSR-${Date.now()}`,
+          reportType: 'brsr',
+          generatedAt: new Date().toISOString(),
+          format,
+          report: brsrReport
+        }
+      });
+    }
     
     // Mock report generation
     const reportData = {
