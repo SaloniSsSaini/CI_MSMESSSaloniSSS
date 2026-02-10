@@ -74,6 +74,18 @@ describe('ESG Scope Calculations', () => {
     expect(Math.abs(totalScopes - assessment.totalCO2Emissions)).toBeLessThan(0.01);
   });
 
+  test('should provide scope contribution percentages for reporting', () => {
+    const assessment = carbonCalculationService.calculateMSMECarbonFootprint(mockMSME, mockTransactions);
+    const { scope1, scope2, scope3 } = assessment.esgScopes;
+
+    expect(scope1.percentage).toBeGreaterThanOrEqual(0);
+    expect(scope2.percentage).toBeGreaterThanOrEqual(0);
+    expect(scope3.percentage).toBeGreaterThanOrEqual(0);
+
+    const totalPercentage = scope1.percentage + scope2.percentage + scope3.percentage;
+    expect(totalPercentage).toBeCloseTo(100, 1);
+  });
+
   test('should classify diesel fuel as Scope 1', () => {
     const transaction = {
       category: 'energy',

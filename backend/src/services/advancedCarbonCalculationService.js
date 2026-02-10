@@ -208,8 +208,10 @@ class AdvancedCarbonCalculationService {
     return baseMultiplier * subMultiplier;
   }
 
-  async calculateEnergyEmissions(energyData, msmeProfile) {
+  async calculateEnergyEmissions(energyData = {}, msmeProfile) {
     let totalCO2 = 0;
+    let electricityCO2 = 0;
+    let fuelCO2 = 0;
 
     // Electricity emissions
     if (energyData.electricity && energyData.electricity.consumption > 0) {
@@ -220,14 +222,16 @@ class AdvancedCarbonCalculationService {
       const gridConsumption = energyData.electricity.consumption * (1 - renewablePercentage / 100);
       const renewableConsumption = energyData.electricity.consumption * (renewablePercentage / 100);
       
-      totalCO2 += (gridConsumption * gridFactor) + (renewableConsumption * renewableFactor);
+      electricityCO2 = (gridConsumption * gridFactor) + (renewableConsumption * renewableFactor);
+      totalCO2 += electricityCO2;
     }
 
     // Fuel emissions
     if (energyData.fuel && energyData.fuel.consumption > 0) {
       const fuelType = energyData.fuel.type || 'diesel';
       const fuelFactor = this.emissionFactors.energy.fuel[fuelType] || this.emissionFactors.energy.fuel.diesel;
-      totalCO2 += energyData.fuel.consumption * fuelFactor;
+      fuelCO2 = energyData.fuel.consumption * fuelFactor;
+      totalCO2 += fuelCO2;
     }
 
     return {
@@ -236,12 +240,14 @@ class AdvancedCarbonCalculationService {
       details: {
         electricity: energyData.electricity?.consumption || 0,
         fuel: energyData.fuel?.consumption || 0,
-        renewable: energyData.renewable?.percentage || 0
+        renewable: energyData.renewable?.percentage || 0,
+        electricityCO2,
+        fuelCO2
       }
     };
   }
 
-  async calculateMaterialEmissions(materialData, msmeProfile) {
+  async calculateMaterialEmissions(materialData = {}, msmeProfile) {
     let totalCO2 = 0;
 
     // Raw materials emissions
@@ -268,7 +274,7 @@ class AdvancedCarbonCalculationService {
     };
   }
 
-  async calculateTransportationEmissions(transportData, msmeProfile) {
+  async calculateTransportationEmissions(transportData = {}, msmeProfile) {
     let totalCO2 = 0;
 
     if (transportData.distance > 0 && transportData.fuelConsumption > 0) {
@@ -295,7 +301,7 @@ class AdvancedCarbonCalculationService {
     };
   }
 
-  async calculateWasteEmissions(wasteData, msmeProfile) {
+  async calculateWasteEmissions(wasteData = {}, msmeProfile) {
     let totalCO2 = 0;
 
     // Solid waste emissions
@@ -318,7 +324,7 @@ class AdvancedCarbonCalculationService {
     };
   }
 
-  async calculateWaterEmissions(waterData, msmeProfile) {
+  async calculateWaterEmissions(waterData = {}, msmeProfile) {
     let totalCO2 = 0;
 
     if (waterData.consumption > 0) {
@@ -341,19 +347,42 @@ class AdvancedCarbonCalculationService {
 
   calculateScopeBreakdown(breakdown) {
     const scopeBreakdown = {
-      scope1: { co2: 0, percentage: 0 },
-      scope2: { co2: 0, percentage: 0 },
-      scope3: { co2: 0, percentage: 0 }
+      scope1: { co2: 0, percentage: 0, breakdown: {} },
+      scope2: { co2: 0, percentage: 0, breakdown: {} },
+      scope3: { co2: 0, percentage: 0, breakdown: {} }
     };
 
-    // Scope 1: Direct emissions (fuel combustion, on-site energy generation)
-    scopeBreakdown.scope1.co2 = breakdown.energy.co2 * 0.3; // Assume 30% is direct
+    // Scope 1: Direct emissions (stationary/mobile fuel combustion)
+    const directFuelEmissions = Number(breakdown.energy?.details?.fuelCO2) || 0;
+    scopeBreakdown.scope1.co2 = directFuelEmissions;
+    scopeBreakdown.scope1.breakdown = {
+      directFuel: directFuelEmissions,
+      directTransport: 0,
+      directManufacturing: 0
+    };
 
-    // Scope 2: Indirect emissions (purchased electricity, heat, steam)
-    scopeBreakdown.scope2.co2 = breakdown.energy.co2 * 0.7; // Assume 70% is indirect
+    // Scope 2: Purchased energy emissions
+    const purchasedElectricityEmissions = Number(breakdown.energy?.details?.electricityCO2) || 0;
+    scopeBreakdown.scope2.co2 = purchasedElectricityEmissions;
+    scopeBreakdown.scope2.breakdown = {
+      electricity: purchasedElectricityEmissions,
+      heating: 0,
+      cooling: 0,
+      steam: 0
+    };
 
-    // Scope 3: Other indirect emissions (transportation, materials, waste)
-    scopeBreakdown.scope3.co2 = breakdown.transportation.co2 + breakdown.materials.co2 + breakdown.waste.co2 + breakdown.water.co2;
+    // Scope 3: Other value-chain emissions
+    const transportationEmissions = Number(breakdown.transportation?.co2) || 0;
+    const materialsEmissions = Number(breakdown.materials?.co2) || 0;
+    const wasteEmissions = Number(breakdown.waste?.co2) || 0;
+    const waterEmissions = Number(breakdown.water?.co2) || 0;
+    scopeBreakdown.scope3.co2 = transportationEmissions + materialsEmissions + wasteEmissions + waterEmissions;
+    scopeBreakdown.scope3.breakdown = {
+      purchasedGoods: materialsEmissions,
+      transportation: transportationEmissions,
+      wasteDisposal: wasteEmissions,
+      other: waterEmissions
+    };
 
     const totalScope = scopeBreakdown.scope1.co2 + scopeBreakdown.scope2.co2 + scopeBreakdown.scope3.co2;
 

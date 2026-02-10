@@ -8,7 +8,7 @@ const carbonAssessmentSchema = new mongoose.Schema({
   },
   assessmentType: {
     type: String,
-    enum: ['manual', 'automatic', 'hybrid'],
+    enum: ['manual', 'automatic', 'hybrid', 'ai_comprehensive', 'ai_advanced'],
     required: true
   },
   period: {
@@ -83,12 +83,20 @@ const carbonAssessmentSchema = new mongoose.Schema({
         required: true,
         min: 0
       },
+      percentage: {
+        type: Number,
+        default: 0
+      },
       breakdown: {
         directFuel: Number,
         directTransport: Number,
         directManufacturing: Number,
-        fugitiveEmissions: Number
+        fugitiveEmissions: Number,
+        processEmissions: Number,
+        stationaryCombustion: Number,
+        mobileCombustion: Number
       },
+      parameters: mongoose.Schema.Types.Mixed,
       description: {
         type: String,
         default: 'Direct emissions from owned or controlled sources'
@@ -100,12 +108,19 @@ const carbonAssessmentSchema = new mongoose.Schema({
         required: true,
         min: 0
       },
+      percentage: {
+        type: Number,
+        default: 0
+      },
       breakdown: {
         electricity: Number,
         heating: Number,
         cooling: Number,
-        steam: Number
+        steam: Number,
+        districtHeating: Number,
+        districtCooling: Number
       },
+      parameters: mongoose.Schema.Types.Mixed,
       description: {
         type: String,
         default: 'Indirect emissions from purchased energy'
@@ -117,6 +132,10 @@ const carbonAssessmentSchema = new mongoose.Schema({
         required: true,
         min: 0
       },
+      percentage: {
+        type: Number,
+        default: 0
+      },
       breakdown: {
         purchasedGoods: Number,
         transportation: Number,
@@ -125,8 +144,13 @@ const carbonAssessmentSchema = new mongoose.Schema({
         employeeCommuting: Number,
         leasedAssets: Number,
         investments: Number,
+        franchises: Number,
+        processingSoldProducts: Number,
+        useSoldProducts: Number,
+        endLifeDisposal: Number,
         other: Number
       },
+      parameters: mongoose.Schema.Types.Mixed,
       description: {
         type: String,
         default: 'All other indirect emissions in the value chain'
