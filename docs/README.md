@@ -9,6 +9,7 @@ This directory contains all documentation for the Carbon Intelligence project, o
 - **BANK_INTEGRATION_DOCUMENTATION.md** - Banking system integration details
 - **BUILD_SUMMARY.md** - Build process and deployment information
 - **CARBON_CREDITS_IMPLEMENTATION_SUMMARY.md** - Carbon credits feature implementation
+- **CARBON_INTELLIGENCE_ARCHITECTURE_DIAGRAMS.md** - Detailed architecture, workflow, use-case, and deployment diagrams
 - **Carbon_Intelligence_Pitch_Presentation.md** - Business pitch and presentation materials
 - **COMPREHENSIVE_OPTIMIZATION_SUMMARY.md** - Performance optimization details
 - **DOCUMENT_UPLOAD_FEATURE.md** - Document upload functionality documentation
@@ -42,6 +43,7 @@ This directory contains all documentation for the Carbon Intelligence project, o
 ## Quick Navigation
 
 - For API integration: See `root/API_DOCUMENTATION.md`
+- For architecture diagrams: See `root/CARBON_INTELLIGENCE_ARCHITECTURE_DIAGRAMS.md`
 - For backend development: See `backend/` directory
 - For mobile development: See `mobile/README.md`
 - For project overview: See `root/PROJECT_SUMMARY.md`
